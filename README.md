@@ -80,9 +80,19 @@ pnpm dev:web
 
 - `pnpm dev`: Start all apps in parallel
 - `pnpm build`: Build all applications
-- `pnpm test`: Run test suites across all workspaces
+- `pnpm test`: Run unit test suites across all workspaces
+- `pnpm test:e2e`: Run end-to-end integration and RBAC test suites
 - `pnpm docker:up`: Launch PostgreSQL container in the background
 - `pnpm docker:down`: Stop PostgreSQL container
 - `pnpm db:migrate`: Run Prisma migrations on the database
 - `pnpm db:seed`: Seed initial organizations, users, and product data
 - `pnpm db:studio`: Launch Prisma Studio database GUI
+
+---
+
+## 📋 Implemented Modules & Features
+
+- [x] **Phase 1 — Project Setup**: Monorepo with pnpm, Next.js 16, NestJS 11, PostgreSQL Docker container.
+- [x] **Phase 2 — Database**: Prisma schema, relations, indexes, migrations, and seed script.
+- [x] **Phase 3 — Authentication**: JWT authentication, bcrypt password hashing, Passport strategy, RBAC guards (`@Roles`), `@CurrentUser`.
+- [x] **Phase 4 — Organizations**: Organization CRUD, RBAC management, multi-tenant organization isolation (`OrganizationIsolationGuard`), Ethereum wallet address validation & registration, audit logging.
