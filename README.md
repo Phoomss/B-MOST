@@ -96,3 +96,14 @@ pnpm dev:web
 - [x] **Phase 2 — Database**: Prisma schema, relations, indexes, migrations, and seed script.
 - [x] **Phase 3 — Authentication**: JWT authentication, bcrypt password hashing, Passport strategy, RBAC guards (`@Roles`), `@CurrentUser`.
 - [x] **Phase 4 — Organizations**: Organization CRUD, RBAC management, multi-tenant organization isolation (`OrganizationIsolationGuard`), Ethereum wallet address validation & registration, audit logging.
+- [x] **Phase 5 — Smart Contract**: Solidity contract `SupplyChainRegistry.sol` with role-based access control, product lifecycle states, and 100% test coverage.
+- [x] **Phase 6 — Blockchain Service**: Ethers.js integration, live event indexer, transaction querying, and node status endpoints.
+- [x] **Phase 7 — Product Management**:
+  - Full product CRUD with deterministic Keccak-256 cryptographic hashing (`productHash`)
+  - Smart contract product registration via `POST /api/products/:id/register-blockchain`
+  - Multi-tenant tenant isolation guards and role-based permissions (Manufacturer / Super Admin)
+  - QR Code generation (data URL & verification payload) for all products
+  - Traceability history endpoint combining on-chain events and PostgreSQL audit logs
+  - Public consumer QR verification endpoint (`GET /api/public/verify/:productCode`)
+  - Next.js Web UI for product listing, product creation, detailed provenance inspection, and mobile QR verification page (`/verify/[code]`)
+
