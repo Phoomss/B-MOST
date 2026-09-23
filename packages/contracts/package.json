@@ -1,0 +1,29 @@
+{
+  "name": "@b-most/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Smart contracts for B-MOST supply chain traceability platform",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:hardhat": "hardhat run scripts/deploy.ts --network hardhat",
+    "clean": "hardhat clean"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.2.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.7",
+    "chai": "^4.5.0",
+    "dotenv": "^16.4.7",
+    "ethers": "^6.13.5",
+    "hardhat": "^2.22.18",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  }
+}

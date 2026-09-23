@@ -7,7 +7,9 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   esbuild: true
+  keccak: true
   msgpackr-extract: true
   prisma: true
+  secp256k1: true
   unrs-resolver: true
   workerd: true
