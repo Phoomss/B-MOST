@@ -23,7 +23,9 @@ export class OrganizationsService {
       where: { code: formattedCode },
     });
     if (existingCode) {
-      throw new ConflictException(`Organization with code '${formattedCode}' already exists`);
+      throw new ConflictException(
+        `Organization with code '${formattedCode}' already exists`,
+      );
     }
 
     // Check wallet address uniqueness if provided
@@ -81,7 +83,7 @@ export class OrganizationsService {
     const limit = Math.min(100, Math.max(1, query.limit || 20));
     const skip = (page - 1) * limit;
 
-    let where: any = {};
+    const where: any = {};
 
     // Organization Isolation:
     // SUPER_ADMIN and AUDITOR can see all organizations.

@@ -45,11 +45,17 @@ export class OrganizationsController {
     description:
       'Creates a new supply-chain organization entity with designated type and optional wallet address.',
   })
-  @ApiResponse({ status: 201, description: 'Organization created successfully' })
+  @ApiResponse({
+    status: 201,
+    description: 'Organization created successfully',
+  })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires SUPER_ADMIN' })
-  @ApiResponse({ status: 409, description: 'Conflict - Code or wallet address already in use' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Code or wallet address already in use',
+  })
   async create(
     @Body() createDto: CreateOrganizationDto,
     @CurrentUser() user: any,
@@ -63,7 +69,10 @@ export class OrganizationsController {
     description:
       'Returns paginated list of organizations. Non-admin users are restricted to viewing only their own organization to enforce tenant isolation.',
   })
-  @ApiResponse({ status: 200, description: 'List of organizations returned successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of organizations returned successfully',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(
     @Query() query: QueryOrganizationDto,
@@ -82,7 +91,10 @@ export class OrganizationsController {
   @ApiParam({ name: 'id', description: 'Organization UUID' })
   @ApiResponse({ status: 200, description: 'Organization details returned' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Cannot access another organization' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Cannot access another organization',
+  })
   @ApiResponse({ status: 404, description: 'Organization not found' })
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.organizationsService.findOne(id, user);
@@ -95,12 +107,22 @@ export class OrganizationsController {
       'Updates organization profile. SUPER_ADMIN can update all fields; ORG_ADMIN can only update their own organization profile.',
   })
   @ApiParam({ name: 'id', description: 'Organization UUID' })
-  @ApiResponse({ status: 200, description: 'Organization updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Organization updated successfully',
+  })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions or organization mismatch' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Forbidden - Insufficient permissions or organization mismatch',
+  })
   @ApiResponse({ status: 404, description: 'Organization not found' })
-  @ApiResponse({ status: 409, description: 'Conflict - Code or wallet address already in use' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflict - Code or wallet address already in use',
+  })
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateOrganizationDto,
@@ -118,7 +140,10 @@ export class OrganizationsController {
       'Changes organization status to ACTIVE, INACTIVE, or SUSPENDED. Restricted to SUPER_ADMIN.',
   })
   @ApiParam({ name: 'id', description: 'Organization UUID' })
-  @ApiResponse({ status: 200, description: 'Organization status updated successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Organization status updated successfully',
+  })
   @ApiResponse({ status: 400, description: 'Validation failed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Requires SUPER_ADMIN' })

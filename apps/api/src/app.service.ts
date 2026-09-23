@@ -17,7 +17,8 @@ export class AppService {
 
     return {
       name: 'B-MOST API',
-      description: 'Blockchain-Based Multi-Organization Supply Chain Traceability Platform',
+      description:
+        'Blockchain-Based Multi-Organization Supply Chain Traceability Platform',
       status: 'ok',
       version: '1.0.0',
       database: {
