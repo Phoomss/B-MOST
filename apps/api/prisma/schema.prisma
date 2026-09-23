@@ -1,0 +1,248 @@
+// B-MOST Prisma Schema
+// Database specification based on docs/DATABASE.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// Enums
+// ----------------------------------------------------
+
+enum OrganizationType {
+  MANUFACTURER
+  DISTRIBUTOR
+  WAREHOUSE
+  RETAILER
+  LOGISTICS
+  AUDITOR
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ORG_ADMIN
+  MANUFACTURER
+  DISTRIBUTOR
+  WAREHOUSE
+  RETAILER
+  AUDITOR
+  VIEWER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ProductStatus {
+  REGISTERED
+  QUALITY_CHECKED
+  READY_TO_SHIP
+  SHIPPED
+  IN_TRANSIT
+  RECEIVED
+  STORED
+  SOLD
+  RECALLED
+}
+
+enum ShipmentStatus {
+  PENDING
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum QualityCheckResult {
+  PENDING
+  PASSED
+  FAILED
+}
+
+enum TxStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+// ----------------------------------------------------
+// Models
+// ----------------------------------------------------
+
+model Organization {
+  id            String             @id @default(uuid())
+  name          String
+  code          String             @unique
+  type          OrganizationType
+  address       String?
+  contactEmail  String?
+  phone         String?
+  walletAddress String?            @unique
+  status        OrganizationStatus @default(ACTIVE)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  // Relations
+  users                User[]
+  productsManufactured Product[]      @relation("ProductManufacturer")
+  productsOwned        Product[]      @relation("ProductOwner")
+  shipmentsSent        Shipment[]     @relation("ShipmentSender")
+  shipmentsReceived    Shipment[]     @relation("ShipmentReceiver")
+  shipmentsCarried     Shipment[]     @relation("ShipmentCarrier")
+  qualityChecks        QualityCheck[]
+  auditLogs            AuditLog[]
+
+  @@index([code])
+  @@index([type])
+  @@index([status])
+}
+
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           UserRole
+  organizationId String?
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  status         UserStatus     @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relations
+  auditLogs AuditLog[]
+
+  @@index([email])
+  @@index([organizationId])
+  @@index([role])
+}
+
+model Product {
+  id                  String        @id @default(uuid())
+  productCode         String        @unique
+  serialNumber        String        @unique
+  name                String
+  description         String?
+  category            String?
+  manufacturerId      String
+  manufacturer        Organization  @relation("ProductManufacturer", fields: [manufacturerId], references: [id])
+  currentOwnerId      String
+  currentOwner        Organization  @relation("ProductOwner", fields: [currentOwnerId], references: [id])
+  blockchainProductId String?       @unique
+  productHash         String?
+  blockchainTxHash    String?
+  status              ProductStatus @default(REGISTERED)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  qualityChecks          QualityCheck[]
+  shipments              Shipment[]
+  blockchainTransactions BlockchainTransaction[]
+
+  @@index([productCode])
+  @@index([serialNumber])
+  @@index([manufacturerId])
+  @@index([currentOwnerId])
+  @@index([status])
+}
+
+model Shipment {
+  id                     String         @id @default(uuid())
+  shipmentCode           String         @unique
+  productId              String
+  product                Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  senderOrganizationId   String
+  sender                 Organization   @relation("ShipmentSender", fields: [senderOrganizationId], references: [id])
+  receiverOrganizationId String
+  receiver               Organization   @relation("ShipmentReceiver", fields: [receiverOrganizationId], references: [id])
+  carrierOrganizationId  String?
+  carrier                Organization?  @relation("ShipmentCarrier", fields: [carrierOrganizationId], references: [id])
+  origin                 String
+  destination            String
+  status                 ShipmentStatus @default(PENDING)
+  blockchainShipmentId   String?
+  blockchainTxHash       String?
+  shippedAt              DateTime?
+  receivedAt             DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  @@index([shipmentCode])
+  @@index([productId])
+  @@index([status])
+  @@index([senderOrganizationId])
+  @@index([receiverOrganizationId])
+}
+
+model QualityCheck {
+  id               String             @id @default(uuid())
+  productId        String
+  product          Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  organizationId   String
+  organization     Organization       @relation(fields: [organizationId], references: [id])
+  inspectorName    String
+  result           QualityCheckResult
+  notes            String?
+  blockchainTxHash String?
+  createdAt        DateTime           @default(now())
+
+  @@index([productId])
+  @@index([organizationId])
+  @@index([result])
+}
+
+model BlockchainTransaction {
+  id              String   @id @default(uuid())
+  txHash          String   @unique
+  blockNumber     BigInt?
+  contractAddress String
+  eventType       String
+  entityType      String
+  entityId        String
+  productId       String?
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  walletAddress   String
+  status          TxStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+
+  @@index([txHash])
+  @@index([entityId])
+  @@index([productId])
+  @@index([eventType])
+  @@index([status])
+}
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  action         String
+  entityType     String
+  entityId       String
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entityType])
+  @@index([action])
+}
