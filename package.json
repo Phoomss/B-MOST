@@ -1,0 +1,27 @@
+{
+  "name": "b-most",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Blockchain-Based Multi-Organization Supply Chain Traceability Platform",
+  "scripts": {
+    "dev": "pnpm --parallel run dev",
+    "dev:api": "pnpm --filter @b-most/api run start:dev",
+    "dev:web": "pnpm --filter @b-most/web run dev",
+    "build": "pnpm --filter @b-most/api run build && pnpm --filter @b-most/web run build",
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "packageManager": "pnpm@11.1.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "unrs-resolver"
+    ]
+  }
+}
