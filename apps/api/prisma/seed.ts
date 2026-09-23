@@ -106,6 +106,18 @@ async function main() {
     },
   });
 
+  const orgAdmin = await prisma.user.create({
+    data: {
+      email: 'orgadmin@bmost.io',
+      passwordHash: defaultPassword,
+      firstName: 'Thana',
+      lastName: 'Manager',
+      role: UserRole.ORG_ADMIN,
+      organizationId: manufacturerOrg.id,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
   const mfgUser = await prisma.user.create({
     data: {
       email: 'manufacturer@bmost.io',
