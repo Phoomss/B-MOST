@@ -4,6 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+// Polyfill BigInt serialization for JSON responses
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
@@ -29,7 +34,9 @@ async function bootstrap() {
   // Swagger Documentation Setup
   const config = new DocumentBuilder()
     .setTitle('B-MOST API')
-    .setDescription('Blockchain-Based Multi-Organization Supply Chain Traceability Platform API')
+    .setDescription(
+      'Blockchain-Based Multi-Organization Supply Chain Traceability Platform API',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -41,4 +48,4 @@ async function bootstrap() {
   console.log(`Backend API is running on: http://localhost:${port}/api`);
   console.log(`Swagger Docs available at: http://localhost:${port}/api/docs`);
 }
-bootstrap();
+void bootstrap();

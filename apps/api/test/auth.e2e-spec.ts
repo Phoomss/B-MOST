@@ -16,7 +16,9 @@ describe('Auth & RBAC (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ whitelist: true, transform: true }),
+    );
     await app.init();
   });
 
@@ -111,9 +113,7 @@ describe('Auth & RBAC (e2e)', () => {
 
   describe('GET /api/auth/me (Protected Route)', () => {
     it('should reject unauthenticated request with 401', async () => {
-      await request(app.getHttpServer())
-        .get('/api/auth/me')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/auth/me').expect(401);
     });
 
     it('should reject request with invalid JWT with 401', async () => {
@@ -151,7 +151,9 @@ describe('Auth & RBAC (e2e)', () => {
         .set('Authorization', `Bearer ${superadminToken}`)
         .expect(200);
 
-      expect(response.body.message).toBe('Access granted to super administrator');
+      expect(response.body.message).toBe(
+        'Access granted to super administrator',
+      );
       expect(response.body.user.role).toBe('SUPER_ADMIN');
     });
 

@@ -21,7 +21,8 @@ export class CreateOrganizationDto {
   name: string;
 
   @ApiProperty({
-    description: 'Unique organization code (uppercase alphanumeric, hyphens, underscores)',
+    description:
+      'Unique organization code (uppercase alphanumeric, hyphens, underscores)',
     example: 'ORG-MFG-002',
   })
   @IsString()

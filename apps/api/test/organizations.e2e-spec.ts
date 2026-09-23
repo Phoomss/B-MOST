@@ -75,19 +75,39 @@ describe('Organizations & Organization Isolation (e2e)', () => {
 
     // Clean up test organizations if previously created
     await prisma.auditLog.deleteMany({
-      where: { organization: { code: { in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'] } } },
+      where: {
+        organization: {
+          code: {
+            in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'],
+          },
+        },
+      },
     });
     await prisma.organization.deleteMany({
-      where: { code: { in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'] } },
+      where: {
+        code: {
+          in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'],
+        },
+      },
     });
   });
 
   afterAll(async () => {
     await prisma.auditLog.deleteMany({
-      where: { organization: { code: { in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'] } } },
+      where: {
+        organization: {
+          code: {
+            in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'],
+          },
+        },
+      },
     });
     await prisma.organization.deleteMany({
-      where: { code: { in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'] } },
+      where: {
+        code: {
+          in: ['ORG-LOG-888', 'ORG-LOG-889', 'ORG-INV-WALLET', 'ORG-UNAUTH'],
+        },
+      },
     });
     await app.close();
   });
@@ -242,7 +262,11 @@ describe('Organizations & Organization Isolation (e2e)', () => {
         })
         .expect(400);
 
-      expect(response.body.message.some((msg: string) => msg.includes('walletAddress'))).toBe(true);
+      expect(
+        response.body.message.some((msg: string) =>
+          msg.includes('walletAddress'),
+        ),
+      ).toBe(true);
     });
 
     it('validates organization code format with 400', async () => {
@@ -256,7 +280,9 @@ describe('Organizations & Organization Isolation (e2e)', () => {
         })
         .expect(400);
 
-      expect(response.body.message.some((msg: string) => msg.includes('code'))).toBe(true);
+      expect(
+        response.body.message.some((msg: string) => msg.includes('code')),
+      ).toBe(true);
     });
 
     it('allows SUPER_ADMIN to successfully create an organization', async () => {
@@ -280,7 +306,9 @@ describe('Organizations & Organization Isolation (e2e)', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body.code).toBe('ORG-LOG-888');
       expect(response.body.name).toBe('Apex Fast Express Logistics');
-      expect(response.body.walletAddress).toBe('0x14dC79964da2C08b23698B3D3cc7Ca32193d9955');
+      expect(response.body.walletAddress).toBe(
+        '0x14dC79964da2C08b23698B3D3cc7Ca32193d9955',
+      );
       expect(response.body.status).toBe(OrganizationStatus.ACTIVE);
 
       // Verify audit log entry was created
@@ -363,7 +391,9 @@ describe('Organizations & Organization Isolation (e2e)', () => {
         })
         .expect(403);
 
-      expect(response.body.message).toContain('ORG_ADMIN is not authorized to modify');
+      expect(response.body.message).toContain(
+        'ORG_ADMIN is not authorized to modify',
+      );
     });
 
     it('MANUFACTURER role is forbidden from updating organization (403)', async () => {
@@ -422,7 +452,9 @@ describe('Organizations & Organization Isolation (e2e)', () => {
         orderBy: { createdAt: 'desc' },
       });
       expect(auditLog).toBeDefined();
-      expect((auditLog?.metadata as any).newStatus).toBe(OrganizationStatus.INACTIVE);
+      expect((auditLog?.metadata as any).newStatus).toBe(
+        OrganizationStatus.INACTIVE,
+      );
     });
 
     it('SUPER_ADMIN can reactivate organization to ACTIVE', async () => {
