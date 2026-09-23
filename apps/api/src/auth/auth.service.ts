@@ -33,7 +33,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    const { passwordHash, ...result } = user;
+    const { passwordHash: _passwordHash, ...result } = user;
     return result;
   }
 
@@ -50,18 +50,20 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload);
 
     // Record audit log for login
-    await this.prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        organizationId: user.organizationId,
-        action: 'USER_LOGIN',
-        entityType: 'User',
-        entityId: user.id,
-        metadata: { email: user.email, role: user.role },
-      },
-    }).catch(() => {
-      // Non-blocking audit log
-    });
+    await this.prisma.auditLog
+      .create({
+        data: {
+          userId: user.id,
+          organizationId: user.organizationId,
+          action: 'USER_LOGIN',
+          entityType: 'User',
+          entityId: user.id,
+          metadata: { email: user.email, role: user.role },
+        },
+      })
+      .catch(() => {
+        // Non-blocking audit log
+      });
 
     return {
       accessToken,
@@ -81,7 +83,7 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    const { passwordHash, ...result } = user;
+    const { passwordHash: _passwordHash, ...result } = user;
     return result;
   }
 }

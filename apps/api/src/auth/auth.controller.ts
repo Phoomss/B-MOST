@@ -1,5 +1,18 @@
-import { Controller, Post, Body, Get, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -17,7 +30,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authenticate user and return JWT access token' })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  @ApiResponse({ status: 401, description: 'Invalid credentials or inactive account' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials or inactive account',
+  })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
@@ -38,7 +54,10 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Test endpoint accessible only to SUPER_ADMIN' })
   @ApiResponse({ status: 200, description: 'Authorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
   async adminOnly(@CurrentUser() user: any) {
     return {
       message: 'Access granted to super administrator',
@@ -54,9 +73,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.MANUFACTURER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Test endpoint accessible only to MANUFACTURER or SUPER_ADMIN' })
+  @ApiOperation({
+    summary: 'Test endpoint accessible only to MANUFACTURER or SUPER_ADMIN',
+  })
   @ApiResponse({ status: 200, description: 'Authorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
   async manufacturerOnly(@CurrentUser() user: any) {
     return {
       message: 'Access granted to manufacturer',
