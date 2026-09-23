@@ -80,7 +80,8 @@ pnpm dev:web
 
 - `pnpm dev`: Start all apps in parallel
 - `pnpm build`: Build all applications
-- `pnpm test`: Run test suites across all workspaces
+- `pnpm test`: Run unit test suites across all workspaces
+- `pnpm test:e2e`: Run end-to-end integration and RBAC test suites
 - `pnpm docker:up`: Launch PostgreSQL container in the background
 - `pnpm docker:down`: Stop PostgreSQL container
 - `pnpm db:migrate`: Run Prisma migrations on the database
