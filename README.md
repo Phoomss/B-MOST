@@ -72,7 +72,7 @@ pnpm dev:web
 | **Frontend** | `3000` | `http://localhost:3000` | Next.js Web Application & Verification |
 | **Backend API** | `4000` | `http://localhost:4000/api` | NestJS REST API |
 | **API Docs (Swagger)** | `4000` | `http://localhost:4000/api/docs` | OpenAPI / Swagger Interface |
-| **PostgreSQL** | `5432` | `localhost:5432` | Relational application database |
+| **PostgreSQL** | `5433` | `localhost:5433` | Relational application database (Docker) |
 
 ---
 
@@ -83,3 +83,6 @@ pnpm dev:web
 - `pnpm test`: Run test suites across all workspaces
 - `pnpm docker:up`: Launch PostgreSQL container in the background
 - `pnpm docker:down`: Stop PostgreSQL container
+- `pnpm db:migrate`: Run Prisma migrations on the database
+- `pnpm db:seed`: Seed initial organizations, users, and product data
+- `pnpm db:studio`: Launch Prisma Studio database GUI
