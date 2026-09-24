@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsInt,
+  Min,
+  Max,
+  IsDateString,
+} from 'class-validator';
 
 export class QueryAuditLogDto {
   @ApiPropertyOptional({
@@ -20,7 +27,8 @@ export class QueryAuditLogDto {
   userId?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by specific audit action (e.g. PRODUCT_CREATED, SHIPMENT_DISPATCHED)',
+    description:
+      'Filter by specific audit action (e.g. PRODUCT_CREATED, SHIPMENT_DISPATCHED)',
     example: 'PRODUCT_CREATED',
   })
   @IsOptional()
@@ -28,7 +36,8 @@ export class QueryAuditLogDto {
   action?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by entity type (e.g. Product, Shipment, QualityCheck, Organization, User)',
+    description:
+      'Filter by entity type (e.g. Product, Shipment, QualityCheck, Organization, User)',
     example: 'Product',
   })
   @IsOptional()

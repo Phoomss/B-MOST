@@ -10,7 +10,6 @@ import {
   ShipmentStatus,
   TxStatus,
   UserRole,
-  OrganizationType,
 } from '@prisma/client';
 
 describe('Dashboard API Endpoints (e2e)', () => {
@@ -32,7 +31,10 @@ describe('Dashboard API Endpoints (e2e)', () => {
     $disconnect: jest.fn().mockResolvedValue(undefined),
     user: {
       findUnique: jest.fn().mockImplementation(({ where }) => {
-        if (where.id === mockAdminUser.id || where.email === mockAdminUser.email) {
+        if (
+          where.id === mockAdminUser.id ||
+          where.email === mockAdminUser.email
+        ) {
           return Promise.resolve(mockAdminUser);
         }
         return Promise.resolve(null);
@@ -43,8 +45,10 @@ describe('Dashboard API Endpoints (e2e)', () => {
     },
     product: {
       count: jest.fn().mockImplementation(({ where }) => {
-        if (where?.status?.in?.includes(ProductStatus.SHIPPED)) return Promise.resolve(4);
-        if (where?.status?.in?.includes(ProductStatus.RECEIVED)) return Promise.resolve(12);
+        if (where?.status?.in?.includes(ProductStatus.SHIPPED))
+          return Promise.resolve(4);
+        if (where?.status?.in?.includes(ProductStatus.RECEIVED))
+          return Promise.resolve(12);
         if (where?.status === ProductStatus.SOLD) return Promise.resolve(5);
         if (where?.status === ProductStatus.RECALLED) return Promise.resolve(1);
         return Promise.resolve(35);

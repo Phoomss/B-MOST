@@ -518,9 +518,9 @@ export class BlockchainService implements OnModuleDestroy {
         blockHashOrNumber === 'latest'
           ? 'latest'
           : typeof blockHashOrNumber === 'string' &&
-            blockHashOrNumber.startsWith('0x')
-          ? blockHashOrNumber
-          : Number(blockHashOrNumber);
+              blockHashOrNumber.startsWith('0x')
+            ? blockHashOrNumber
+            : Number(blockHashOrNumber);
       const block = await this.provider.getBlock(target);
       if (!block) return null;
 
@@ -567,4 +567,3 @@ export class BlockchainService implements OnModuleDestroy {
     return contract.hasRole(roleHash, account);
   }
 }
-

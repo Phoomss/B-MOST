@@ -12,6 +12,7 @@
     "typecheck": "pnpm --filter @b-most/web exec tsc --noEmit && pnpm --filter @b-most/api exec tsc --noEmit -p tsconfig.build.json",
     "test": "pnpm -r run test",
     "test:e2e": "pnpm --filter @b-most/api run test:e2e",
+    "test:integration": "pnpm --filter @b-most/api run test:integration",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",

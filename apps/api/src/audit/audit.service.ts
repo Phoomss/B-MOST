@@ -30,9 +30,18 @@ export class AuditService {
   private sanitizeMetadata(metadata: any): any {
     if (!metadata || typeof metadata !== 'object') return metadata;
     const sanitized = { ...metadata };
-    const sensitiveKeys = ['password', 'passwordHash', 'token', 'accessToken', 'secret', 'privateKey'];
+    const sensitiveKeys = [
+      'password',
+      'passwordHash',
+      'token',
+      'accessToken',
+      'secret',
+      'privateKey',
+    ];
     for (const key of Object.keys(sanitized)) {
-      if (sensitiveKeys.some((s) => key.toLowerCase().includes(s.toLowerCase()))) {
+      if (
+        sensitiveKeys.some((s) => key.toLowerCase().includes(s.toLowerCase()))
+      ) {
         sanitized[key] = '[REDACTED]';
       }
     }
@@ -57,7 +66,10 @@ export class AuditService {
         },
       });
     } catch (err: any) {
-      this.logger.error(`Failed to record audit log: ${err.message}`, err.stack);
+      this.logger.error(
+        `Failed to record audit log: ${err.message}`,
+        err.stack,
+      );
       return null;
     }
   }
@@ -77,7 +89,9 @@ export class AuditService {
     // 1. Multi-tenant organization scoping
     if (!isGlobalAuditor) {
       if (!currentUser.organizationId) {
-        throw new ForbiddenException('User must belong to an organization to view audit logs');
+        throw new ForbiddenException(
+          'User must belong to an organization to view audit logs',
+        );
       }
       where.organizationId = currentUser.organizationId;
     } else if (query.organizationId) {
@@ -202,8 +216,13 @@ export class AuditService {
       currentUser.role === UserRole.SUPER_ADMIN ||
       currentUser.role === UserRole.AUDITOR;
 
-    if (!isGlobalAuditor && auditLog.organizationId !== currentUser.organizationId) {
-      throw new ForbiddenException('Access denied to other organization audit log');
+    if (
+      !isGlobalAuditor &&
+      auditLog.organizationId !== currentUser.organizationId
+    ) {
+      throw new ForbiddenException(
+        'Access denied to other organization audit log',
+      );
     }
 
     return auditLog;
@@ -226,14 +245,18 @@ export class AuditService {
         orderBy: { name: 'asc' },
       }),
       this.prisma.auditLog.findMany({
-        where: isGlobalAuditor ? {} : { organizationId: currentUser.organizationId },
+        where: isGlobalAuditor
+          ? {}
+          : { organizationId: currentUser.organizationId },
         select: { action: true, entityType: true },
         distinct: ['action', 'entityType'],
       }),
     ]);
 
     const actions = Array.from(new Set(logs.map((l) => l.action))).sort();
-    const entityTypes = Array.from(new Set(logs.map((l) => l.entityType))).sort();
+    const entityTypes = Array.from(
+      new Set(logs.map((l) => l.entityType)),
+    ).sort();
 
     return {
       actions,

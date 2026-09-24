@@ -287,9 +287,7 @@ describe('BlockchainService', () => {
     });
 
     it('should return null when getBlock fails or block is not found', async () => {
-      jest
-        .spyOn(service.getProvider(), 'getBlock')
-        .mockResolvedValueOnce(null as any);
+      jest.spyOn(service.getProvider(), 'getBlock').mockResolvedValueOnce(null);
 
       const block = await service.getBlock('latest');
       expect(block).toBeNull();

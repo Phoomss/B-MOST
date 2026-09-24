@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import * as bcrypt from 'bcryptjs';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { OrganizationStatus, OrganizationType } from '@prisma/client';
@@ -18,10 +19,255 @@ describe('Organizations & Organization Isolation (e2e)', () => {
   let apexTechOrgId: string;
   let primeRetailOrgId: string;
 
+  const initialOrgs: any[] = [
+    {
+      id: 'org-mfg-001',
+      code: 'ORG-MFG-001',
+      name: 'Apex Tech Manufacturing',
+      type: OrganizationType.MANUFACTURER,
+      status: OrganizationStatus.ACTIVE,
+      walletAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
+      _count: { users: 2, productsManufactured: 5 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'org-rtl-001',
+      code: 'ORG-RTL-001',
+      name: 'Prime Retail',
+      type: OrganizationType.RETAILER,
+      status: OrganizationStatus.ACTIVE,
+      walletAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+      _count: { users: 1, productsManufactured: 0 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'org-aud-001',
+      code: 'ORG-AUD-001',
+      name: 'Eurofins Quality Audit',
+      type: OrganizationType.AUDITOR,
+      status: OrganizationStatus.ACTIVE,
+      walletAddress: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
+      _count: { users: 1, productsManufactured: 0 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'org-dst-001',
+      code: 'ORG-DST-001',
+      name: 'Pacific Freight Dist',
+      type: OrganizationType.DISTRIBUTOR,
+      status: OrganizationStatus.ACTIVE,
+      walletAddress: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65',
+      _count: { users: 1, productsManufactured: 0 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: 'org-whs-001',
+      code: 'ORG-WHS-001',
+      name: 'Central Warehousing',
+      type: OrganizationType.WAREHOUSE,
+      status: OrganizationStatus.ACTIVE,
+      walletAddress: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4df',
+      _count: { users: 1, productsManufactured: 0 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ];
+
+  const initialUsers: any[] = [
+    {
+      id: 'user-admin',
+      email: 'superadmin@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      organizationId: null,
+      organization: null,
+    },
+    {
+      id: 'user-orgadmin',
+      email: 'orgadmin@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'ORG_ADMIN',
+      status: 'ACTIVE',
+      organizationId: 'org-mfg-001',
+      organization: initialOrgs[0],
+    },
+    {
+      id: 'user-mfg',
+      email: 'manufacturer@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'MANUFACTURER',
+      status: 'ACTIVE',
+      organizationId: 'org-mfg-001',
+      organization: initialOrgs[0],
+    },
+    {
+      id: 'user-rtl',
+      email: 'retailer@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'RETAILER',
+      status: 'ACTIVE',
+      organizationId: 'org-rtl-001',
+      organization: initialOrgs[1],
+    },
+    {
+      id: 'user-aud',
+      email: 'auditor@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'AUDITOR',
+      status: 'ACTIVE',
+      organizationId: 'org-aud-001',
+      organization: initialOrgs[2],
+    },
+  ];
+
+  let storedOrgs = [...initialOrgs];
+  const storedLogs: any[] = [];
+
+  const mockPrisma = {
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $disconnect: jest.fn().mockResolvedValue(undefined),
+    $queryRaw: jest.fn().mockResolvedValue([{ 1: 1 }]),
+    organization: {
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        const found = storedOrgs.find(
+          (o) =>
+            (where.id && o.id === where.id) ||
+            (where.code && o.code === where.code) ||
+            (where.walletAddress &&
+              o.walletAddress?.toLowerCase() ===
+                where.walletAddress?.toLowerCase()),
+        );
+        return Promise.resolve(found ? { ...found } : null);
+      }),
+      findFirst: jest.fn().mockImplementation(({ where }) => {
+        if (where?.OR && Array.isArray(where.OR)) {
+          for (const cond of where.OR) {
+            const found = storedOrgs.find(
+              (o) =>
+                (cond.id && o.id === cond.id) ||
+                (cond.code && o.code === cond.code) ||
+                (cond.walletAddress &&
+                  o.walletAddress?.toLowerCase() ===
+                    cond.walletAddress?.toLowerCase()),
+            );
+            if (found) return Promise.resolve({ ...found });
+          }
+        }
+        const found = storedOrgs.find(
+          (o) =>
+            (where?.id && o.id === where.id) ||
+            (where?.code && o.code === where.code) ||
+            (where?.walletAddress &&
+              o.walletAddress?.toLowerCase() ===
+                where.walletAddress?.toLowerCase()),
+        );
+        return Promise.resolve(found ? { ...found } : null);
+      }),
+      findMany: jest
+        .fn()
+        .mockImplementation(({ where, skip = 0, take = 50 }) => {
+          let results = [...storedOrgs];
+          if (where?.id) {
+            results = results.filter((o) => o.id === where.id);
+          }
+          return Promise.resolve(results.slice(skip, skip + take));
+        }),
+      count: jest.fn().mockImplementation(({ where }) => {
+        let results = [...storedOrgs];
+        if (where?.id) {
+          results = results.filter((o) => o.id === where.id);
+        }
+        return Promise.resolve(results.length);
+      }),
+      create: jest.fn().mockImplementation(({ data }) => {
+        const newOrg = {
+          id: `org-gen-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          _count: { users: 0, productsManufactured: 0 },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          ...data,
+        };
+        storedOrgs.push(newOrg);
+        return Promise.resolve({ ...newOrg });
+      }),
+      update: jest.fn().mockImplementation(({ where, data }) => {
+        const idx = storedOrgs.findIndex((o) => o.id === where.id);
+        if (idx === -1) {
+          const err = new Error('Record not found');
+          Object.assign(err, { code: 'P2025' });
+          return Promise.reject(err);
+        }
+        storedOrgs[idx] = {
+          ...storedOrgs[idx],
+          ...data,
+          updatedAt: new Date(),
+        };
+        return Promise.resolve({ ...storedOrgs[idx] });
+      }),
+      deleteMany: jest.fn().mockImplementation(({ where }) => {
+        if (where?.code?.in) {
+          storedOrgs = storedOrgs.filter(
+            (o) => !where.code.in.includes(o.code),
+          );
+        }
+        return Promise.resolve({ count: 1 });
+      }),
+    },
+    user: {
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        const found = initialUsers.find(
+          (u) =>
+            (where.id && u.id === where.id) ||
+            (where.email &&
+              u.email.toLowerCase() === where.email.toLowerCase()),
+        );
+        return Promise.resolve(found ? { ...found } : null);
+      }),
+      findFirst: jest.fn().mockImplementation(({ where }) => {
+        const found = initialUsers.find(
+          (u) =>
+            (where.id && u.id === where.id) ||
+            (where.email &&
+              u.email.toLowerCase() === where.email.toLowerCase()),
+        );
+        return Promise.resolve(found ? { ...found } : null);
+      }),
+    },
+    auditLog: {
+      create: jest.fn().mockImplementation(({ data }) => {
+        const entry = {
+          id: `log-${Date.now()}`,
+          ...data,
+          createdAt: new Date(),
+        };
+        storedLogs.push(entry);
+        return Promise.resolve(entry);
+      }),
+      findFirst: jest.fn().mockImplementation(({ where }) => {
+        const found = storedLogs.find(
+          (l) =>
+            (!where.action || l.action === where.action) &&
+            (!where.entityId || l.entityId === where.entityId),
+        );
+        return Promise.resolve(found || null);
+      }),
+      findMany: jest.fn().mockImplementation(() => Promise.resolve(storedLogs)),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue(mockPrisma)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');

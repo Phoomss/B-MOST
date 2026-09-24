@@ -12,8 +12,12 @@ import { BlockchainService } from '../blockchain/blockchain.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
+import { SellProductDto } from './dto/sell-product.dto';
 import { generateProductHash } from './utils/product-hash.util';
-import { generateProductQr, generateProductQrBuffer } from './utils/qr-code.util';
+import {
+  generateProductQr,
+  generateProductQrBuffer,
+} from './utils/qr-code.util';
 import {
   OrganizationType,
   ProductStatus,
@@ -619,6 +623,128 @@ export class ProductsService {
   }
 
   /**
+   * Marks a product as sold to an end consumer (retail point of sale).
+   * Submits markAsSold to the SupplyChainRegistry smart contract and transitions database status to SOLD.
+   */
+  async sellProduct(id: string, dto: SellProductDto, currentUser: any) {
+    const product = await this.prisma.product.findFirst({
+      where: {
+        OR: [{ id }, { productCode: id }],
+      },
+      include: {
+        manufacturer: true,
+        currentOwner: true,
+      },
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product '${id}' not found`);
+    }
+
+    // Authorization: User must be SUPER_ADMIN or belong to the current owner organization
+    const isSuperAdmin = currentUser?.role === UserRole.SUPER_ADMIN;
+    if (!isSuperAdmin) {
+      if (
+        !currentUser?.organizationId ||
+        currentUser.organizationId !== product.currentOwnerId
+      ) {
+        throw new ForbiddenException(
+          'Access denied: Only the current owning organization or super admin can mark this product as sold',
+        );
+      }
+    }
+
+    // State check
+    if (product.status === ProductStatus.RECALLED) {
+      throw new BadRequestException('Cannot sell a recalled product');
+    }
+    if (product.status === ProductStatus.SOLD) {
+      throw new BadRequestException('Product is already marked as sold');
+    }
+
+    let txHash: string | null = null;
+    let blockNumber: number | null = null;
+
+    if (product.blockchainProductId) {
+      const receipt = await this.blockchainService.markAsSold(
+        BigInt(product.blockchainProductId),
+        dto?.signerPrivateKey,
+      );
+      txHash = receipt.txHash;
+      blockNumber = receipt.blockNumber;
+
+      const operatorAddress = await this.blockchainService
+        .getSigner(dto?.signerPrivateKey)
+        .getAddress()
+        .catch(() => '0x0000000000000000000000000000000000000000');
+
+      await this.prisma.blockchainTransaction
+        .upsert({
+          where: { txHash: receipt.txHash },
+          update: {
+            blockNumber: BigInt(receipt.blockNumber),
+            productId: product.id,
+            status: TxStatus.CONFIRMED,
+          },
+          create: {
+            txHash: receipt.txHash,
+            blockNumber: BigInt(receipt.blockNumber),
+            contractAddress: this.blockchainService.getContractAddress(),
+            eventType: 'ProductSold',
+            entityType: 'Product',
+            entityId: product.id,
+            productId: product.id,
+            walletAddress: operatorAddress,
+            status: TxStatus.CONFIRMED,
+          },
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to persist BlockchainTransaction for sell: ${err.message}`,
+          );
+        });
+    }
+
+    const updatedProduct = await this.prisma.product.update({
+      where: { id: product.id },
+      data: {
+        status: ProductStatus.SOLD,
+      },
+      include: {
+        manufacturer: true,
+        currentOwner: true,
+      },
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: currentUser?.id || null,
+        organizationId: currentUser?.organizationId || null,
+        action: 'PRODUCT_SOLD',
+        entityType: 'Product',
+        entityId: product.id,
+        metadata: {
+          productCode: product.productCode,
+          txHash,
+          notes: dto?.notes || null,
+        },
+      },
+    });
+
+    return {
+      message: 'Product marked as sold successfully',
+      product: updatedProduct,
+      blockchain: txHash
+        ? {
+            txHash,
+            blockNumber,
+            status: 'CONFIRMED',
+          }
+        : null,
+    };
+  }
+
+  /**
    * Retrieves complete traceability history (on-chain records, audit logs, and status transitions).
    */
   async getHistory(id: string, currentUser: any) {
@@ -894,7 +1020,8 @@ export class ProductsService {
     const computedHash = generateProductHash({
       productCode: product.productCode,
       serialNumber: product.serialNumber,
-      manufacturerId: product.manufacturerId || (product.manufacturer as any)?.id || '',
+      manufacturerId:
+        product.manufacturerId || (product.manufacturer as any)?.id || '',
       name: product.name,
       category: product.category ?? undefined,
     });
@@ -923,14 +1050,18 @@ export class ProductsService {
 
         const hashMatch =
           Boolean(onChainProduct.productHash) &&
-          (onChainProduct.productHash.toLowerCase() === product.productHash?.toLowerCase() ||
-            onChainProduct.productHash.toLowerCase() === computedHash.toLowerCase());
+          (onChainProduct.productHash.toLowerCase() ===
+            product.productHash?.toLowerCase() ||
+            onChainProduct.productHash.toLowerCase() ===
+              computedHash.toLowerCase());
 
         blockchainVerification = {
           registeredOnChain: true,
-          onChainProductId: onChainProduct.productId?.toString?.() ?? onChainProduct.productId,
+          onChainProductId:
+            onChainProduct.productId?.toString?.() ?? onChainProduct.productId,
           onChainStatus: onChainProduct.status,
-          onChainStatusName: statusNames[Number(onChainProduct.status)] || 'UNKNOWN',
+          onChainStatusName:
+            statusNames[Number(onChainProduct.status)] || 'UNKNOWN',
           manufacturerAddress: onChainProduct.manufacturer,
           currentOwnerAddress: onChainProduct.currentOwner,
           contractAddress: this.blockchainService.getContractAddress(),
@@ -942,7 +1073,9 @@ export class ProductsService {
           verified: hashMatch,
         };
       } catch (err: any) {
-        this.logger.warn(`Live blockchain check failed for ${product.productCode}: ${err.message}`);
+        this.logger.warn(
+          `Live blockchain check failed for ${product.productCode}: ${err.message}`,
+        );
         blockchainVerification = {
           registeredOnChain: true,
           blockchainTxHash: product.blockchainTxHash,
@@ -978,7 +1111,9 @@ export class ProductsService {
           id: `qc-${qc.id}`,
           eventType: 'QUALITY_CHECKED',
           title: `Quality Inspection: ${qc.result}`,
-          description: qc.notes || 'Inspection passed all quality and technical standards.',
+          description:
+            qc.notes ||
+            'Inspection passed all quality and technical standards.',
           actor: qc.inspectorName || qc.organization?.name || 'Auditor',
           organizationName: qc.organization?.name,
           timestamp: qc.createdAt,
@@ -1055,7 +1190,8 @@ export class ProductsService {
         id: `recalled-${product.id}`,
         eventType: 'PRODUCT_RECALLED',
         title: 'Product Recalled',
-        description: 'Notice: Product has been officially recalled from circulation.',
+        description:
+          'Notice: Product has been officially recalled from circulation.',
         actor: product.manufacturer?.name || 'Safety Authority',
         organizationName: product.manufacturer?.name,
         timestamp: product.updatedAt,
@@ -1065,7 +1201,10 @@ export class ProductsService {
     }
 
     // Sort timeline ascending by timestamp
-    timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    timeline.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
     // 4. Generate QR code for this product
     let qr: any = { qrCodeDataUrl: '', verificationUrl: '' };

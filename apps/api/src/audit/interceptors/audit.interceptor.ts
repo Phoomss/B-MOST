@@ -8,7 +8,10 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { AUDIT_METADATA_KEY, AuditOptions } from '../decorators/audit.decorator';
+import {
+  AUDIT_METADATA_KEY,
+  AuditOptions,
+} from '../decorators/audit.decorator';
 import { AuditService } from '../audit.service';
 
 @Injectable()

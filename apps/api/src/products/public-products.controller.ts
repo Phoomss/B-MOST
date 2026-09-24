@@ -29,7 +29,8 @@ export class PublicProductsController {
   @Get('verify/:productCode/qr')
   @ApiOperation({
     summary: 'Public QR Code PNG image streaming',
-    description: 'Streams the raw PNG QR code image for a product code or serial number.',
+    description:
+      'Streams the raw PNG QR code image for a product code or serial number.',
   })
   @ApiParam({
     name: 'productCode',
@@ -52,4 +53,3 @@ export class PublicProductsController {
     res.send(buffer);
   }
 }
-

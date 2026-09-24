@@ -9,7 +9,10 @@ describe('OrganizationIsolationGuard', () => {
     guard = new OrganizationIsolationGuard();
   });
 
-  const createMockContext = (user?: any, params: Record<string, string> = {}): ExecutionContext => {
+  const createMockContext = (
+    user?: any,
+    params: Record<string, string> = {},
+  ): ExecutionContext => {
     return {
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue({

@@ -58,7 +58,9 @@ export class DashboardService {
    * Returns exact metrics defined in docs/API.md Section 12 (GET /dashboard/statistics).
    * All metrics are strictly calculated from real database records.
    */
-  async getStatistics(currentUser?: any): Promise<DashboardStatisticsResponseDto> {
+  async getStatistics(
+    currentUser?: any,
+  ): Promise<DashboardStatisticsResponseDto> {
     const { productWhere, shipmentWhere, isGlobal, orgId } =
       this.getScoping(currentUser);
 
@@ -187,9 +189,7 @@ export class DashboardService {
     const productStatus = productStatuses.map((status, index) => {
       const count = productCountsByStatus[index];
       const percentage =
-        totalProducts > 0
-          ? Math.round((count / totalProducts) * 1000) / 10
-          : 0;
+        totalProducts > 0 ? Math.round((count / totalProducts) * 1000) / 10 : 0;
       return {
         status,
         count,
@@ -215,7 +215,10 @@ export class DashboardService {
       ),
     );
 
-    const totalShipments = shipmentCountsByStatus.reduce((acc, c) => acc + c, 0);
+    const totalShipments = shipmentCountsByStatus.reduce(
+      (acc, c) => acc + c,
+      0,
+    );
 
     const shipmentLabels: Record<string, string> = {
       PENDING: 'Pending Dispatch',
@@ -275,7 +278,11 @@ export class DashboardService {
       ? {}
       : {
           OR: [
-            { product: { OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }] } },
+            {
+              product: {
+                OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }],
+              },
+            },
             {
               shipment: {
                 OR: [
@@ -446,13 +453,15 @@ export class DashboardService {
         actor: s.sender.name,
         organizationName: s.sender.name,
         blockchainTxHash: s.blockchainTxHash,
-        badgeColor: s.status === ShipmentStatus.DELIVERED ? 'emerald' : 'purple',
+        badgeColor:
+          s.status === ShipmentStatus.DELIVERED ? 'emerald' : 'purple',
       });
     }
 
     // Sort descending by timestamp
     activity.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 
     return activity.slice(0, 10);

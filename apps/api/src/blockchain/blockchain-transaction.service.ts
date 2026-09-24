@@ -178,7 +178,8 @@ export class BlockchainTransactionService {
 
     if (!record) {
       // Check if on-chain receipt exists even if not indexed yet
-      const receipt = await this.blockchainService.getTransactionReceipt(txHash);
+      const receipt =
+        await this.blockchainService.getTransactionReceipt(txHash);
 
       if (!receipt) {
         throw new NotFoundException(
@@ -223,8 +224,8 @@ export class BlockchainTransactionService {
           gasPrice: receipt.gasPrice
             ? receipt.gasPrice.toString()
             : tx?.gasPrice
-            ? tx.gasPrice.toString()
-            : null,
+              ? tx.gasPrice.toString()
+              : null,
           nonce: tx?.nonce ?? null,
           inputData: tx?.data && tx.data !== '0x' ? tx.data : null,
           logsCount: receipt.logs ? receipt.logs.length : 0,
@@ -245,7 +246,8 @@ export class BlockchainTransactionService {
       logsCount?: number;
     } | null = null;
     try {
-      const receipt = await this.blockchainService.getTransactionReceipt(txHash);
+      const receipt =
+        await this.blockchainService.getTransactionReceipt(txHash);
       if (receipt) {
         let tx: any = null;
         try {
@@ -268,8 +270,8 @@ export class BlockchainTransactionService {
           gasPrice: receipt.gasPrice
             ? receipt.gasPrice.toString()
             : tx?.gasPrice
-            ? tx.gasPrice.toString()
-            : null,
+              ? tx.gasPrice.toString()
+              : null,
           nonce: tx?.nonce ?? null,
           inputData: tx?.data && tx.data !== '0x' ? tx.data : null,
           logsCount: receipt.logs ? receipt.logs.length : 0,

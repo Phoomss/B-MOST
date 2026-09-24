@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { PrismaService } from '../src/prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
 
 describe('Auth & RBAC (e2e)', () => {
   let app: INestApplication;
@@ -9,10 +11,70 @@ describe('Auth & RBAC (e2e)', () => {
   let superadminToken: string;
   let retailerToken: string;
 
+  const mockUsers = [
+    {
+      id: 'mfg-user-1',
+      email: 'manufacturer@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'MANUFACTURER',
+      status: 'ACTIVE',
+      organizationId: 'org-mfg-1',
+      organization: {
+        id: 'org-mfg-1',
+        name: 'Apex Tech Manufacturing',
+        code: 'ORG-MFG-001',
+      },
+    },
+    {
+      id: 'admin-user-1',
+      email: 'superadmin@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'SUPER_ADMIN',
+      status: 'ACTIVE',
+      organizationId: null,
+      organization: null,
+    },
+    {
+      id: 'ret-user-1',
+      email: 'retailer@bmost.io',
+      passwordHash: bcrypt.hashSync('password123', 10),
+      role: 'RETAILER',
+      status: 'ACTIVE',
+      organizationId: 'org-ret-1',
+      organization: {
+        id: 'org-ret-1',
+        name: 'Metro Retail',
+        code: 'ORG-RET-001',
+      },
+    },
+  ];
+
+  const mockPrisma = {
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $disconnect: jest.fn().mockResolvedValue(undefined),
+    user: {
+      findUnique: jest.fn().mockImplementation(({ where }) => {
+        const user = mockUsers.find(
+          (u) =>
+            (where.id && u.id === where.id) ||
+            (where.email &&
+              u.email.toLowerCase() === where.email.toLowerCase()),
+        );
+        return Promise.resolve(user || null);
+      }),
+    },
+    auditLog: {
+      create: jest.fn().mockResolvedValue({ id: 'log-1' }),
+    },
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PrismaService)
+      .useValue(mockPrisma)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api');
