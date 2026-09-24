@@ -1,9 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OrganizationStatus, OrganizationType, UserRole } from '@prisma/client';
 import { OrganizationsService } from './organizations.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -180,17 +176,17 @@ describe('OrganizationsService', () => {
     it('should forbid user from accessing other organization details with ForbiddenException', async () => {
       mockPrisma.organization.findUnique.mockResolvedValue(mockOrg);
 
-      await expect(
-        service.findOne('org-uuid-1', mockOtherOrgUser),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.findOne('org-uuid-1', mockOtherOrgUser)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw NotFoundException if organization does not exist', async () => {
       mockPrisma.organization.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.findOne('non-existent', mockSuperAdmin),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('non-existent', mockSuperAdmin)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

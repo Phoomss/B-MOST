@@ -73,10 +73,7 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.validateUser(
-        'admin@bmost.io',
-        'Password123!',
-      );
+      const result = await service.validateUser('admin@bmost.io', 'Password123!');
       expect(result).toBeDefined();
       expect(result.id).toBe(mockUser.id);
       expect(result.email).toBe(mockUser.email);
