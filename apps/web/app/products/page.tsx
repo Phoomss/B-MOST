@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { api, ProductItem } from '../../lib/api';
 import { THAI_PRODUCT_STATUS, getProductStatusBadge } from '../../lib/thai-locale';
+import { BoxIcon, CheckIcon } from '../../components/Icons';
 
 const STATUS_OPTIONS = [
   { value: 'ALL', label: 'สถานะทั้งหมด' },
@@ -173,7 +174,9 @@ export default function ProductsPage() {
           </div>
         ) : products.length === 0 ? (
           <div className="border border-dashed border-slate-300 bg-white rounded-xl p-12 text-center shadow-2xs">
-            <div className="text-slate-400 text-4xl mb-3">📦</div>
+            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <BoxIcon className="w-6 h-6" />
+            </div>
             <h3 className="text-base font-bold text-slate-900 mb-1">ยังไม่มีสินค้าในระบบ</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">
               เริ่มต้นด้วยการเพิ่มสินค้าเข้าสู่ระบบเพื่อเริ่มติดตามแหล่งกำเนิดและบันทึกประวัติลงบนบล็อกเชน
@@ -237,7 +240,7 @@ export default function ProductsPage() {
                       <td className="px-5 py-4 text-xs">
                         {p.blockchainProductId ? (
                           <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] font-medium border border-emerald-200">
-                            <span>✓</span> บนบล็อกเชน (#{p.blockchainProductId})
+                            <CheckIcon className="w-3 h-3 text-emerald-600 shrink-0" /> บนบล็อกเชน (#{p.blockchainProductId})
                           </span>
                         ) : (
                           <span className="text-slate-400 text-xs">รอการลงทะเบียน</span>

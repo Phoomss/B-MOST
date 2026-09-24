@@ -15,6 +15,19 @@ import {
   THAI_ORG_TYPE,
   getProductStatusBadge,
 } from '../lib/thai-locale';
+import {
+  BoxIcon,
+  TruckIcon,
+  BuildingIcon,
+  CartIcon,
+  AlertTriangleIcon,
+  MapPinIcon,
+  LinkIcon,
+  QrCodeIcon,
+  CheckIcon,
+  CopyIcon,
+  PlusIcon,
+} from '../components/Icons';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStatistics | null>(null);
@@ -149,16 +162,18 @@ export default function DashboardPage() {
 
             <Link
               href="/verify"
-              className="px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 text-xs font-semibold text-emerald-700 transition flex items-center gap-1"
+              className="px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 text-xs font-semibold text-emerald-700 transition flex items-center gap-1.5"
             >
-              <span>🔍 สแกน QR Code</span>
+              <QrCodeIcon className="w-3.5 h-3.5" />
+              <span>สแกน QR Code</span>
             </Link>
 
             <Link
               href="/products/new"
-              className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-xs transition"
+              className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-semibold text-white shadow-xs transition flex items-center gap-1"
             >
-              + เพิ่มสินค้า
+              <PlusIcon className="w-3.5 h-3.5" />
+              <span>เพิ่มสินค้า</span>
             </Link>
           </div>
         </div>
@@ -167,7 +182,7 @@ export default function DashboardPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between text-xs text-red-700">
             <div className="flex items-center gap-2">
-              <span>⚠️</span>
+              <AlertTriangleIcon className="w-4 h-4 text-red-500 shrink-0" />
               <span>{error}</span>
             </div>
             <button
@@ -198,7 +213,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">สินค้าทั้งหมด</span>
-                <span className="text-blue-600 text-xs">📦</span>
+                <BoxIcon className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.totalProducts ?? 0}
@@ -213,7 +228,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">อยู่ระหว่างขนส่ง</span>
-                <span className="text-amber-600 text-xs">🚚</span>
+                <TruckIcon className="w-4 h-4 text-amber-600" />
               </div>
               <div className="text-2xl font-bold text-amber-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.inTransit ?? 0}
@@ -228,7 +243,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">รับสินค้าแล้ว</span>
-                <span className="text-emerald-600 text-xs">🏢</span>
+                <BuildingIcon className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-bold text-emerald-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.received ?? 0}
@@ -243,7 +258,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">จำหน่ายแล้ว</span>
-                <span className="text-purple-600 text-xs">🛒</span>
+                <CartIcon className="w-4 h-4 text-purple-600" />
               </div>
               <div className="text-2xl font-bold text-purple-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.sold ?? 0}
@@ -258,7 +273,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">เรียกคืน</span>
-                <span className="text-red-600 text-xs">⚠️</span>
+                <AlertTriangleIcon className="w-4 h-4 text-red-600" />
               </div>
               <div className="text-2xl font-bold text-red-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.recalled ?? 0}
@@ -273,7 +288,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">การจัดส่งที่ดำเนินอยู่</span>
-                <span className="text-blue-600 text-xs">📍</span>
+                <MapPinIcon className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-2xl font-bold text-blue-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.activeShipments ?? 0}
@@ -288,7 +303,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-semibold text-slate-600">ธุรกรรม Blockchain</span>
-                <span className="text-blue-600 text-xs">⛓️</span>
+                <LinkIcon className="w-4 h-4 text-blue-600" />
               </div>
               <div className="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition">
                 {loading ? <span className="animate-pulse">--</span> : stats?.blockchainTransactions ?? 0}
@@ -534,7 +549,15 @@ export default function DashboardPage() {
                         className="text-[10px] text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 transition font-mono cursor-pointer"
                         title={act.blockchainTxHash}
                       >
-                        {copiedHash === act.blockchainTxHash ? '✓ คัดลอกแล้ว' : 'คัดลอก Tx Hash'}
+                        {copiedHash === act.blockchainTxHash ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                            <CheckIcon className="w-3 h-3" /> คัดลอกแล้ว
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <CopyIcon className="w-3 h-3" /> คัดลอก Tx Hash
+                          </span>
+                        )}
                       </button>
                     )}
                     <span className="text-[10px] text-slate-400 font-mono">
