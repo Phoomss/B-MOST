@@ -167,6 +167,57 @@ export interface ProductHistoryResponse {
   }>;
 }
 
+export interface TimelineEventItem {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actor: string;
+  actorRole?: string;
+  organizationName?: string;
+  timestamp: string | number;
+  blockNumber?: number | string | null;
+  blockchainTxHash?: string | null;
+  metadata?: Record<string, any>;
+  badgeColor?: 'blue' | 'emerald' | 'rose' | 'amber' | 'purple' | 'slate';
+}
+
+export interface OwnershipHistoryItem {
+  organizationId: string;
+  organizationName: string;
+  organizationCode: string;
+  organizationType: string;
+  walletAddress?: string | null;
+  acquiredAt: string;
+  eventDescription: string;
+  txHash?: string | null;
+  isCurrentOwner: boolean;
+}
+
+export interface BlockchainVerificationData {
+  verified: boolean;
+  contractAddress: string;
+  onChainProductId?: number | null;
+  productHash?: string | null;
+  computedHash?: string | null;
+  hashMatch: boolean;
+  blockchainTxHash?: string | null;
+  onChainStatus?: number | null;
+  onChainOwner?: string | null;
+  onChainManufacturer?: string | null;
+  totalOnChainEvents: number;
+  onChainEvents: any[];
+}
+
+export interface TraceabilityDetailResponse {
+  product: ProductItem;
+  currentOwner: OrganizationItem;
+  manufacturer: OrganizationItem;
+  events: TimelineEventItem[];
+  ownershipHistory: OwnershipHistoryItem[];
+  blockchainVerification: BlockchainVerificationData;
+}
+
 export interface PublicVerifyResponse {
   verified: boolean;
   productCode?: string;
@@ -445,5 +496,13 @@ export const api = {
   public: {
     verify: (productCode: string) =>
       request<PublicVerifyResponse>(`public/verify/${encodeURIComponent(productCode)}`),
+  },
+  traceability: {
+    get: (identifier: string) =>
+      request<TraceabilityDetailResponse>(`traceability/${encodeURIComponent(identifier)}`),
+    search: (query?: string) => {
+      const qs = query ? `?search=${encodeURIComponent(query)}` : '';
+      return request<ProductItem[]>(`traceability${qs}`);
+    },
   },
 };
