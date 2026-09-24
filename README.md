@@ -1,8 +1,23 @@
 # B-MOST (Blockchain Multi-Organization Supply Chain Traceability)
 
 > **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
+>
+> A production-grade web-based multi-organization supply-chain traceability platform using Ethereum Virtual Machine (EVM) Smart Contracts and PostgreSQL to record critical supply-chain events in a transparent, tamper-resistant, verifiable, and auditable manner.
 
-A web-based multi-organization supply-chain traceability platform using Blockchain (EVM / Solidity) and Smart Contracts to record critical supply-chain events in a transparent, tamper-resistant, and auditable manner.
+---
+
+## 📑 Documentation Index
+
+Comprehensive system documentation is available in the [`docs/`](file:///Users/mac/Desktop/workspace/B-MOST/docs) directory:
+
+- [Product Requirements Document (PRD)](file:///Users/mac/Desktop/workspace/B-MOST/docs/PRD.md) — Product vision, actor personas, functional/non-functional requirements, and lifecycle state machine.
+- [System Architecture](file:///Users/mac/Desktop/workspace/B-MOST/docs/ARCHITECTURE.md) — Monorepo design, dual-layer storage (PostgreSQL + EVM), indexing loop, and component interactions.
+- [Database Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/DATABASE.md) — Complete Prisma schema, relational models, enums, indexes, and isolation policies.
+- [Blockchain Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/BLOCKCHAIN.md) — `SupplyChainRegistry.sol` contract ABI, method specifications, event definitions, and gas benchmarks.
+- [Backend API Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/API.md) — RESTful API endpoints, request/response DTOs, authentication, and HTTP status codes.
+- [User Interface Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/UI.md) — Next.js 16 App Router UI routes, component hierarchy, client hooks, and responsive UX.
+- [Security Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/SECURITY.md) — Multi-tenant data isolation, RBAC matrix, EVM signer protection, and Keccak-256 data integrity.
+- [Development Plan & Progress](file:///Users/mac/Desktop/workspace/B-MOST/docs/DEVELOPMENT_PLAN.md) — Phased milestone tracking and Definition of Done.
 
 ---
 
@@ -13,13 +28,14 @@ This project is organized as a pnpm workspace monorepo:
 ```text
 B-MOST/
 ├── apps/
-│   ├── api/          # NestJS 11 REST API with Swagger & Blockchain module
-│   └── web/          # Next.js 16 (App Router) with Tailwind CSS UI
-├── packages/         # Shared libraries & contracts (Smart Contracts in Hardhat)
-├── docs/             # Product & Architecture Specifications
-├── docker-compose.yml# PostgreSQL 16 container definition
-├── pnpm-workspace.yaml
-└── tsconfig.base.json
+│   ├── api/                  # NestJS 11 REST API with Swagger, Prisma, & Blockchain module
+│   └── web/                  # Next.js 16 (App Router) with Tailwind CSS, Lucide, & TanStack Query
+├── packages/
+│   └── contracts/            # Solidity 0.8.24 Smart Contracts, Hardhat local node, & tests
+├── docs/                     # Architectural, Database, API, Blockchain, and Security specs
+├── docker-compose.yml        # PostgreSQL 16 container definition
+├── pnpm-workspace.yaml       # Monorepo workspace configuration
+└── tsconfig.base.json        # Shared TypeScript base configuration
 ```
 
 ---
@@ -28,16 +44,19 @@ B-MOST/
 
 ### 1. Prerequisites
 - **Node.js**: v20+ (tested on Node v25)
-- **pnpm**: v11+
-- **Docker & Docker Compose** (for PostgreSQL)
+- **pnpm**: v10+ or v11+
+- **Docker & Docker Compose** (for PostgreSQL 16)
 
 ### 2. Environment Setup
-Copy the environment variables template:
+Copy the environment variables template in the root, API, and Web directories:
 ```bash
 cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 ```
 
-### 3. Start PostgreSQL Database
+### 3. Launch PostgreSQL Database
+Start PostgreSQL 16 on port 5433 using Docker:
 ```bash
 pnpm docker:up
 # or: docker compose up -d
@@ -48,18 +67,36 @@ pnpm docker:up
 pnpm install
 ```
 
-### 5. Run Development Servers
-To run both backend and frontend concurrently:
+### 5. Setup Database Schema & Seed Data
+Generate the Prisma client, execute database migrations, and seed initial supply chain actors:
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+### 6. Start Local Blockchain & Deploy Smart Contract
+In a separate terminal or tab, run the local Hardhat EVM node:
+```bash
+pnpm blockchain:node
+```
+
+Deploy `SupplyChainRegistry.sol` to the local network:
+```bash
+pnpm blockchain:deploy
+```
+
+### 7. Run Development Servers
+To run both backend API and frontend Web UI concurrently:
 ```bash
 pnpm dev
 ```
 
 Or run services individually:
 ```bash
-# Backend (NestJS on port 4000)
+# Backend REST API (NestJS on port 4000)
 pnpm dev:api
 
-# Frontend (Next.js on port 3000)
+# Frontend Web Application (Next.js on port 3000)
 pnpm dev:web
 ```
 
@@ -69,31 +106,71 @@ pnpm dev:web
 
 | Service | Port | URL | Description |
 |---|---|---|---|
-| **Frontend** | `3000` | `http://localhost:3000` | Next.js Web Application & Verification |
-| **Backend API** | `4000` | `http://localhost:4000/api` | NestJS REST API |
-| **API Docs (Swagger)** | `4000` | `http://localhost:4000/api/docs` | OpenAPI / Swagger Interface |
-| **PostgreSQL** | `5433` | `localhost:5433` | Relational application database (Docker) |
+| **Frontend Web UI** | `3000` | `http://localhost:3000` | Next.js 16 Web Application & Verification |
+| **Backend API** | `4000` | `http://localhost:4000/api` | NestJS 11 REST API |
+| **API Docs (Swagger)** | `4000` | `http://localhost:4000/api/docs` | OpenAPI 3.0 Interactive Documentation |
+| **Hardhat Blockchain Node** | `8545` | `http://localhost:8545` | EVM JSON-RPC Local Node (Chain ID: 31337) |
+| **PostgreSQL Database** | `5433` | `localhost:5433` | Relational application database (Docker) |
 
 ---
 
 ## 🛠 Available Scripts
 
-- `pnpm dev`: Start all apps in parallel
-- `pnpm build`: Build all applications
-- `pnpm test`: Run unit test suites across all workspaces
-- `pnpm test:e2e`: Run end-to-end integration and RBAC test suites
-- `pnpm docker:up`: Launch PostgreSQL container in the background
-- `pnpm docker:down`: Stop PostgreSQL container
-- `pnpm db:migrate`: Run Prisma migrations on the database
-- `pnpm db:seed`: Seed initial organizations, users, and product data
-- `pnpm db:studio`: Launch Prisma Studio database GUI
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start API and Web applications concurrently |
+| `pnpm dev:api` | Start NestJS API in watch mode (`http://localhost:4000`) |
+| `pnpm dev:web` | Start Next.js Web UI in development mode (`http://localhost:3000`) |
+| `pnpm build` | Build all workspace applications for production |
+| `pnpm typecheck` | Run TypeScript type checking across all monorepo workspaces |
+| `pnpm test` | Run unit tests across all workspaces (Hardhat, NestJS, Vitest) |
+| `pnpm test:e2e` | Run API end-to-end integration and RBAC test suites |
+| `pnpm test:integration` | Execute the complete 12-stage multi-actor supply-chain lifecycle flow |
+| `pnpm blockchain:node` | Run local Hardhat EVM blockchain node on port 8545 |
+| `pnpm blockchain:deploy` | Compile and deploy `SupplyChainRegistry.sol` smart contract |
+| `pnpm blockchain:test` | Run Hardhat smart contract test suite with 100% method coverage |
+| `pnpm docker:up` | Launch PostgreSQL container in the background |
+| `pnpm docker:down` | Stop and teardown PostgreSQL container |
+| `pnpm db:migrate` | Run Prisma database migrations |
+| `pnpm db:seed` | Seed initial organizations, users, and baseline products |
+| `pnpm db:studio` | Launch Prisma Studio web GUI on port 5555 |
+
+---
+
+## 🔄 Complete Supply Chain Lifecycle Flow
+
+```text
+Manufacturer Login (Apex Manufacturing)
+        ↓
+Create Product (Deterministic Keccak-256 Hash Generated)
+        ↓
+Register on Blockchain (SupplyChainRegistry.sol)
+        ↓
+Quality Check Inspection (Passed -> QUALITY_CHECKED / Failed -> RECALLED)
+        ↓
+Create Shipment & Dispatch (READY_TO_SHIP -> SHIPPED -> IN_TRANSIT)
+        ↓
+Distributor Receives (Nexus Logistics confirms receipt -> RECEIVED)
+        ↓
+Transfer Ownership (Nexus Logistics -> Metro Warehousing)
+        ↓
+Warehouse Receives & Stores (STORED)
+        ↓
+Retailer Receives (Urban Retail Store)
+        ↓
+Sell Product to Consumer (POST /api/products/:id/sell -> SOLD)
+        ↓
+Consumer Scans QR Code (/verify/{productCode})
+        ↓
+Verify Traceability & Blockchain Authenticity (Keccak-256 cryptographic match)
+```
 
 ---
 
 ## 📋 Implemented Modules & Features
 
 - [x] **Phase 1 — Project Setup**: Monorepo with pnpm, Next.js 16, NestJS 11, PostgreSQL Docker container.
-- [x] **Phase 2 — Database**: Prisma schema, relations, indexes, migrations, and seed script.
+- [x] **Phase 2 — Database**: Prisma schema, 7 core entities, enums, relations, indexes, migrations, and seed script.
 - [x] **Phase 3 — Authentication**: JWT authentication, bcrypt password hashing, Passport strategy, RBAC guards (`@Roles`), `@CurrentUser`.
 - [x] **Phase 4 — Organizations**: Organization CRUD, RBAC management, multi-tenant organization isolation (`OrganizationIsolationGuard`), Ethereum wallet address validation & registration, audit logging.
 - [x] **Phase 5 — Smart Contract**: Solidity contract `SupplyChainRegistry.sol` with role-based access control, product lifecycle states, and 100% test coverage.
@@ -154,5 +231,25 @@ pnpm dev:web
   - Audit entry detail retrieval (`GET /api/audit-logs/:id`) with cross-tenant authorization enforcement
   - Enterprise Next.js Audit & Compliance UI (`/audit`) featuring full-text search, action/entity/organization dropdowns, date range pickers, color-coded action badges, client IP tracking, interactive JSON metadata drawer/modal, and compliance CSV/JSON exports
   - Global Navigation bar link integration to `/audit`
-
-
+- [x] **Phase 14 — Blockchain Explorer**:
+  - Blockchain explorer backend service & endpoints:
+    - `GET /api/blockchain/status` (node connectivity, chainId, block height, peer count)
+    - `GET /api/blockchain/stats` (total indexed transactions, confirmed/failed metrics, gas usage)
+    - `GET /api/blockchain/transactions` (paginated list of indexed transactions with filters)
+    - `GET /api/blockchain/transactions/:txHash` (detailed tx receipt, gas used, logs, block metadata)
+    - `GET /api/blockchain/blocks/:blockNumber` (block header inspection, timestamp, miner, tx list)
+  - Dedicated Next.js Blockchain Explorer Dashboard (`/blockchain`):
+    - Live node status indicators and EVM network health stats
+    - Real-time transaction ledger table with status pills, event badges, and block links
+    - Interactive transaction detail modal and block inspector drawer
+- [x] **Phase 15 — Automated Testing Suite**:
+  - Hardhat Smart Contract unit tests: 100% function coverage on `SupplyChainRegistry.sol`
+  - NestJS API unit tests: 23 unit test suites across all services, controllers, guards, and interceptors
+  - Next.js Web UI unit tests: 5 Vitest component suites
+  - End-to-end (e2e) test suites: 11 comprehensive suites (128 passing tests) validating authentication, RBAC, tenant isolation, products, shipments, QC, traceability, and audit logging
+- [x] **Phase 16 — Integration Testing**:
+  - Implemented `POST /api/products/:id/sell` with `SellProductDto` to support complete retail lifecycle
+  - Created end-to-end multi-actor supply-chain test (`complete-flow.e2e-spec.ts`) executing the full 12-stage custody transfer from manufacturer creation to consumer verification
+  - Added `pnpm test:integration` npm script
+- [x] **Phase 17 — Documentation**:
+  - Exhaustive documentation suite updated across README, PRD, Architecture, Database, Blockchain, API, UI, Security, and Development Plan.

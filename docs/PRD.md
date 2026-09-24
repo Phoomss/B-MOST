@@ -1,483 +1,237 @@
-# Product Requirements Document
+# Product Requirements Document (PRD)
 
 ## 1. Project Overview
 
-### Project Name
+### Project Title
+**Blockchain-Based Multi-Organization Supply Chain Traceability Platform (B-MOST)**
 
-**Blockchain-Based Multi-Organization Supply Chain Traceability Platform**
-
-### Thai Name
-
+### Thai Title
 **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
 
-### Project Type
-
-University Blockchain Project
-
-### Project Goal
-
-Develop a web-based multi-organization supply-chain traceability platform that uses Blockchain and Smart Contracts to record critical supply-chain events in a transparent, tamper-resistant, and auditable manner.
-
-The system connects multiple organizations participating in a supply chain:
+### System Vision
+B-MOST is an enterprise-grade, web-based supply-chain provenance and traceability platform. It integrates a relational PostgreSQL operational layer with an Ethereum Virtual Machine (EVM) Smart Contract ledger to deliver transparent, tamper-resistant, verifiable, and auditable tracking of physical goods as they flow through multiple independent organizations.
 
 ```text
-Manufacturer
-      ↓
-Distributor
-      ↓
-Warehouse
-      ↓
-Retailer
-      ↓
-Customer
+[ Manufacturer ] ──► [ Distributor ] ──► [ Warehouse ] ──► [ Retailer ] ──► [ Consumer ]
+       │                     │                  │               │                │
+       └─────────────────────┴──────────────────┴───────────────┴────────────────┘
+                                          │
+                            ▼───────────────────────────▼
+                            │   B-MOST Shared Platform  │
+                            │  PostgreSQL 16 + Hardhat  │
+                            │  SupplyChainRegistry.sol  │
+                            ▲───────────────────────────▲
 ```
 
-The system allows authorized organizations to create, transfer, receive, inspect, and trace products.
+---
 
-Customers can verify product information and its supply-chain history through a QR code.
+## 2. Problem Statement
+
+Traditional supply chain management systems rely on siloed, centralized databases maintained by individual corporate entities. This decentralized ownership of siloed data causes fundamental operational challenges:
+
+1. **Information Asymmetry & Disjointed Silos**: Each enterprise keeps its own records in proprietary ERPs or localized spreadsheets. Reconciling discrepancies across partners requires lengthy manual audits.
+2. **Data Tampering & Fraud Vulnerability**: Centralized databases can be modified retroactively by malicious actors or database administrators with privileged credentials. There is no cryptographic proof that records have not been altered.
+3. **Counterfeits & Gray Market Products**: Downstream retailers and end consumers cannot definitively verify product authenticity, batch provenance, or cold-chain inspection certificates.
+4. **Inefficient Recalls**: When a safety defect or contaminated batch occurs, tracing affected serial numbers back through multiple tiers of suppliers and distributors can take weeks.
+5. **Auditing Friction**: Regulators and compliance auditors must manually request and verify paper trails or export logs across distinct organizational boundaries.
 
 ---
 
-# 2. Problem Statement
+## 3. Proposed Solution
 
-Traditional supply-chain systems often store information in databases controlled by individual organizations.
+B-MOST resolves these challenges using a **Dual-Layer Storage Architecture**:
 
-This creates several problems:
-
-* Different organizations may maintain separate records.
-* Data reconciliation between organizations can be difficult.
-* Historical records may be modified by authorized database administrators.
-* Customers may have limited visibility into product history.
-* Auditors may need to collect information from multiple organizations.
-* There is no shared immutable record of critical supply-chain events.
-
-The project addresses these problems by using Blockchain as a shared ledger for critical events.
+- **Off-Chain Operational Layer (PostgreSQL 16 via Prisma ORM)**: Stores user credentials, multi-tenant organization profiles, high-velocity shipment tracking details, extended descriptions, audit logs, and search indexes for sub-millisecond query response times.
+- **On-Chain Immutable Ledger (Ethereum / EVM via `SupplyChainRegistry.sol`)**: Anchors critical lifecycle events (product registration, quality inspection certifications, custody transfers, retail sales, and safety recalls) together with a deterministic Keccak-256 cryptographic hash of product specifications.
+- **Continuous Event Synchronization (Blockchain Indexer Service)**: Automatically monitors on-chain events (`ProductRegistered`, `QualityChecked`, `ProductShipped`, `ProductReceived`, `OwnershipTransferred`, `ProductSold`, `ProductRecalled`) and updates the relational database in real time.
+- **Cryptographic Authenticity Verification**: Consumers scan a dynamic QR code (`/verify/{productCode}`) that recalculates the product's cryptographic fingerprint from current operational data and validates it against the immutable on-chain hash.
 
 ---
 
-# 3. Proposed Solution
+## 4. User Personas & Organizational Roles
 
-Create a multi-organization platform where:
+### 4.1 Organizational Types
 
-* Organizations manage their own operational data.
-* PostgreSQL stores application and operational metadata.
-* Blockchain stores critical supply-chain state and events.
-* Smart Contracts enforce important business rules.
-* Blockchain events are indexed into PostgreSQL for efficient searching.
-* Users can trace a product across multiple organizations.
-* Customers can verify products through QR codes.
+| Organization Type | Description | Primary Supply Chain Role |
+|---|---|---|
+| **MANUFACTURER** | Industrial fabricator / producer | Originates products, generates serial numbers, runs initial quality inspections. |
+| **DISTRIBUTOR** | Wholesale logistics & distribution | Receives batches from manufacturers, organizes regional dispatches. |
+| **WAREHOUSE** | Storage, cross-docking & staging | Holds inventory in staging facilities, tracks incoming/outgoing shipments. |
+| **RETAILER** | Point-of-sale merchant / storefront | Receives packaged goods from warehouses, executes consumer sales. |
+| **LOGISTICS** | Third-party carrier / freight forwarder | Transports goods between facilities without taking legal ownership. |
+| **AUDITOR** | Independent inspection / regulatory body | Inspects compliance, verifies certificates, issues recalls across any tenant. |
 
----
+### 4.2 User Roles & Access Rights
 
-# 4. Project Objectives
-
-## Primary Objectives
-
-1. Implement a real blockchain-based supply-chain system.
-2. Support multiple organizations.
-3. Implement role-based access control.
-4. Record critical product events on blockchain.
-5. Provide end-to-end product traceability.
-6. Provide public product verification.
-7. Provide blockchain transaction visibility.
-8. Provide an audit trail.
-9. Demonstrate why Blockchain is useful in multi-organization systems.
-
----
-
-# 5. Target Users
-
-## Super Administrator
-
-Manages the entire platform.
-
-## Organization Administrator
-
-Manages users and data within an organization.
-
-## Manufacturer
-
-Registers products and performs quality checks.
-
-## Distributor
-
-Receives and transfers products.
-
-## Warehouse
-
-Manages product storage and movement.
-
-## Retailer
-
-Receives products and marks them as sold.
-
-## Auditor
-
-Reviews product history and blockchain records.
-
-## Customer
-
-Verifies product authenticity and history.
+| Role | Permitted Actions |
+|---|---|
+| **SUPER_ADMIN** | Global platform administration: manage all organizations, assign wallet addresses, access global audit logs and blockchain metrics. |
+| **ORG_ADMIN** | Organization administration: create and manage staff users within their organization, view tenant-specific records and shipments. |
+| **MANUFACTURER** | Create products, register products on-chain, perform QC checks, create and ship dispatches. |
+| **DISTRIBUTOR** | Receive dispatched products, transfer product custody, create outbound shipments to warehouses or retailers. |
+| **WAREHOUSE** | Receive shipments, mark inventory as stored/warehoused, dispatch stored inventory to retail endpoints. |
+| **RETAILER** | Receive warehouse shipments, sell items to consumers via `POST /api/products/:id/sell`, inspect provenance. |
+| **AUDITOR** | Read-only inspection across all organizational tenants, trigger emergency product recalls (`POST /api/products/:id/recall`). |
+| **VIEWER** | Read-only internal observer within an organization. |
+| **CONSUMER** (Public) | Unauthenticated external actor scanning product QR codes (`/verify/[code]`) to verify authenticity. |
 
 ---
 
-# 6. User Roles
+## 5. Product Lifecycle State Machine
 
-| Role         | Main Responsibility         |
-| ------------ | --------------------------- |
-| SUPER_ADMIN  | System administration       |
-| ORG_ADMIN    | Organization administration |
-| MANUFACTURER | Product production          |
-| DISTRIBUTOR  | Distribution                |
-| WAREHOUSE    | Storage                     |
-| RETAILER     | Retail                      |
-| AUDITOR      | Auditing                    |
-| VIEWER       | Read-only access            |
-
----
-
-# 7. Core Features
-
-## 7.1 Authentication
-
-* Login
-* Logout
-* JWT authentication
-* Role-based authorization
-* Organization-based authorization
-* Password hashing
-
----
-
-## 7.2 Organization Management
-
-SUPER_ADMIN can:
-
-* Create organizations
-* Update organizations
-* Activate/deactivate organizations
-* Assign organization types
-* Register organization wallet addresses
-
----
-
-## 7.3 User Management
-
-Authorized administrators can:
-
-* Create users
-* Assign roles
-* Assign organization
-* Activate/deactivate users
-
----
-
-## 7.4 Product Management
-
-Manufacturers can:
-
-* Register products
-* Generate product code
-* Generate serial number
-* Register product on blockchain
-* Perform quality checks
-* Generate QR code
-
----
-
-## 7.5 Shipment Management
-
-Organizations can:
-
-* Create shipments
-* Select sender
-* Select receiver
-* Select carrier
-* Define origin
-* Define destination
-* Ship products
-* Receive products
-
----
-
-## 7.6 Quality Control
-
-Authorized organizations can:
-
-* Perform quality checks
-* Record PASS / FAIL
-* Add notes
-* Record inspector
-* Record timestamp
-* Store blockchain transaction reference
-
----
-
-## 7.7 Traceability
-
-Users can view:
-
-* Product lifecycle
-* Ownership history
-* Shipment history
-* Quality checks
-* Blockchain events
-* Transaction hashes
-* Participating organizations
-
----
-
-## 7.8 QR Verification
-
-Each product has a QR code.
-
-The QR code points to:
+The product lifecycle is strictly enforced by both NestJS business guards and the EVM smart contract logic:
 
 ```text
-/verify/{productCode}
+       [ REGISTERED ] ◄── (Product created & anchored on-chain)
+             │
+             ▼
+    [ QUALITY_CHECKED ] ──(Inspection Failed)──► [ RECALLED ] (Terminal)
+             │
+             ▼
+     [ READY_TO_SHIP ]
+             │
+             ▼
+        [ SHIPPED ]
+             │
+             ▼
+       [ IN_TRANSIT ]
+             │
+             ▼
+       [ RECEIVED ]
+             │
+             ▼
+        [ STORED ] ──(Can re-ship to next hop)──► [ READY_TO_SHIP ]
+             │
+             ▼
+         [ SOLD ] (Terminal - End of Supply Chain)
 ```
 
-Customers can view:
-
-* Product name
-* Product code
-* Manufacturer
-* Current status
-* Supply-chain timeline
-* Verification result
-* Blockchain references
-
----
-
-## 7.9 Blockchain Explorer
-
-Authorized users can inspect:
-
-* Transaction hash
-* Block number
-* Sender
-* Receiver
-* Contract address
-* Event type
-* Transaction status
-* Timestamp
+### State Definitions:
+1. **`REGISTERED` (0)**: Product metadata created by manufacturer and anchored to the blockchain with Keccak-256 hash.
+2. **`QUALITY_CHECKED` (1)**: Product has passed formal quality inspection with recorded inspector credentials and notes.
+3. **`READY_TO_SHIP` (2)**: Shipment record created linking sender, receiver, and carrier; waiting for physical pickup.
+4. **`SHIPPED` (3)**: Dispatched from facility; custody transfer initiated.
+5. **`IN_TRANSIT` (4)**: Carrier confirms goods are actively in transit.
+6. **`RECEIVED` (5)**: Recipient confirms physical delivery; ownership automatically transfers to receiver.
+7. **`STORED` (6)**: Goods placed in warehouse inventory or stockroom ready for downstream movement or sale.
+8. **`SOLD` (7)**: Retailer has sold the unit to the end consumer. Final positive terminal state.
+9. **`RECALLED` (8)**: Product revoked due to failed QC inspection, contamination, or safety alert. Reversible only by administrative override.
 
 ---
 
-## 7.10 Audit Log
+## 6. Functional Requirements
 
-The system records:
+### FR-01: Authentication & Identity Management
+- The system must provide secure JWT-based authentication with bcrypt-hashed passwords.
+- Users must receive an access token containing `id`, `email`, `role`, and `organizationId`.
+- An authenticated `/api/auth/me` endpoint must return the active user profile and organization details.
 
-* User
-* Organization
-* Action
-* Entity
-* Entity ID
-* Timestamp
-* IP address
-* Metadata
+### FR-02: Multi-Tenant Organization Isolation
+- Each organization must operate inside an isolated tenant boundary (`OrganizationIsolationGuard`).
+- Non-admin users cannot query, modify, ship, or inspect products owned by other organizations.
+- Organization entities must support registered Ethereum wallet addresses (`walletAddress`) for on-chain identity verification.
 
----
+### FR-03: Product Management & Deterministic Hashing
+- Manufacturers can register products with unique `productCode` and `serialNumber` values.
+- A deterministic Keccak-256 hash must be generated over product metadata (`productCode`, `serialNumber`, `name`, `manufacturerId`) and stored on-chain.
+- The system generates downloadable QR codes pointing to `/verify/{productCode}`.
 
-# 8. Product Lifecycle
+### FR-04: On-Chain Product Anchoring
+- Products must be registrable onto the `SupplyChainRegistry.sol` smart contract via `POST /api/products/:id/register-blockchain`.
+- Once confirmed on-chain, the transaction receipt, block number, gas used, and blockchain product ID are indexed in PostgreSQL.
 
-```text
-REGISTERED
-    ↓
-QUALITY_CHECKED
-    ↓
-READY_TO_SHIP
-    ↓
-SHIPPED
-    ↓
-IN_TRANSIT
-    ↓
-RECEIVED
-    ↓
-STORED
-    ↓
-SOLD
-```
+### FR-05: Quality Control & Assurance Inspections
+- Authorized inspectors (`AUDITOR`, `MANUFACTURER`, `ORG_ADMIN`) can record PASS/FAIL inspection results.
+- Successful inspections transition product status to `QUALITY_CHECKED`.
+- Failed inspections transition product status to `RECALLED` and emit on-chain `ProductRecalled` alerts.
+- Submissions create an immutable on-chain record via `recordQualityCheck(...)`.
 
-Alternative state:
+### FR-06: Shipment & Multi-Hop Custody Transfers
+- Organizations can create shipments specifying sender, recipient, carrier, origin, and destination.
+- Senders dispatch shipments via `POST /api/shipments/:id/ship`, triggering `shipProduct(...)` on-chain.
+- Receivers confirm receipt via `POST /api/shipments/:id/receive`, triggering `receiveProduct(...)` on-chain.
+- Receipt automatically updates `currentOwnerId` in PostgreSQL and `currentOwner` on-chain to the recipient organization.
 
-```text
-RECALLED
-```
+### FR-07: Retail Point of Sale Execution
+- Retailers holding units in `STORED` or `RECEIVED` status can mark items as sold to consumers via `POST /api/products/:id/sell`.
+- Executes `markAsSold(...)` on-chain and updates product status to `SOLD`.
 
-Invalid state transitions must be rejected.
+### FR-08: Emergency Recalls
+- Authorized auditors, manufacturers, or admins can recall products via `POST /api/products/:id/recall`.
+- Executes `recallProduct(...)` on-chain with documented justification.
 
----
+### FR-09: End-to-End Traceability & Provenance
+- The `/api/traceability/:code` endpoint returns the complete lifecycle history, chronological event timeline, and custodial ownership chain.
+- Performs real-time cryptographic hash verification: compares current PostgreSQL hash against on-chain smart contract hash.
 
-# 9. Functional Requirements
+### FR-10: Public Consumer QR Verification
+- A public unauthenticated endpoint `GET /api/public/verify/:productCode` allows consumers to inspect goods.
+- Exposes sanitized public metadata (product name, description, category, manufacturer, current status, verified badges, supply chain milestones).
+- Strictly filters out sensitive internal data (passwords, internal IDs, user emails, organization billing addresses).
 
-## FR-01 Authentication
+### FR-11: Blockchain Explorer & Node Inspection
+- Internal explorer endpoints expose live network status (`GET /api/blockchain/status`), node block height, gas stats, and confirmed transaction ledger (`GET /api/blockchain/transactions`).
+- Detailed transaction receipts and block headers can be inspected by hash and block number.
 
-Users must authenticate before accessing protected features.
+### FR-12: Declarative Audit Logging
+- All significant business events (logins, creates, updates, status changes, transfers) must be captured by an `AuditInterceptor` with the `@Audit()` decorator.
+- Logs capture actor ID, organization ID, action name, target entity, client IP address, and sanitized metadata payload.
 
-## FR-02 Organization Isolation
-
-Users must only access data permitted by their organization and role.
-
-## FR-03 Product Registration
-
-Manufacturers must be able to register products.
-
-## FR-04 Blockchain Registration
-
-Product registration must create a real blockchain transaction.
-
-## FR-05 Quality Check
-
-Authorized users must be able to perform quality checks.
-
-## FR-06 Shipment Creation
-
-Authorized users must be able to create shipments.
-
-## FR-07 Product Transfer
-
-Products must be transferable between organizations.
-
-## FR-08 Product Receiving
-
-Receiving organizations must be able to confirm receipt.
-
-## FR-09 Product Sale
-
-Retailers must be able to mark products as sold.
-
-## FR-10 Product Recall
-
-Authorized users must be able to recall products.
-
-## FR-11 Traceability
-
-The system must display the complete product history.
-
-## FR-12 QR Verification
-
-Customers must be able to verify products through QR codes.
-
-## FR-13 Blockchain Verification
-
-The system must verify critical information against blockchain state.
-
-## FR-14 Audit Logging
-
-Important actions must create audit records.
+### FR-13: Executive Dashboard & Analytics
+- Provides real-time operational statistics (`GET /api/dashboard/statistics`) with zero fake data.
+- Aggregates lifecycle stage distributions, shipment counts, organization participation, and 7-day transaction velocity.
 
 ---
 
-# 10. Non-Functional Requirements
+## 7. Non-Functional Requirements
 
-## Performance
+### 7.1 Security & Cryptography
+- Passwords must be hashed using bcrypt with at least 10 salt rounds.
+- Smart contract operations must enforce caller authorization via OpenZeppelin `AccessControl`.
+- Smart contract private keys must be stored strictly in environment variables, never committed to VCS.
+- Input validation must be strictly enforced using class-validator pipes with `whitelist: true` and `forbidNonWhitelisted: true`.
 
-* API should respond quickly for normal CRUD operations.
-* Database queries must use appropriate indexes.
-* Blockchain operations must expose pending/confirmed states.
+### 7.2 Performance & Responsiveness
+- Relational API queries must return within 100ms under standard loads.
+- Blockchain transactions must execute asynchronously with optimistic database updates or polling indexers to prevent HTTP request timeouts.
+- Database indexes must cover all foreign keys, status fields, codes, and serial numbers.
 
-## Reliability
+### 7.3 Reliability & Tamper Resistance
+- A supply chain action cannot be considered verified unless backed by a confirmed on-chain transaction receipt.
+- Failed blockchain transactions must revert corresponding database state changes.
+- PostgreSQL database transactions (`prisma.$transaction`) must be used for multi-table updates.
 
-* Failed blockchain transactions must not be treated as successful.
-* Database and blockchain state must be reconciled.
-
-## Security
-
-* Passwords must never be stored in plaintext.
-* JWT must be validated server-side.
-* RBAC must be enforced server-side.
-* Sensitive information must not be stored on-chain.
-
-## Maintainability
-
-* Modular backend
-* Typed API
-* Typed blockchain interface
-* Clear documentation
-* Automated tests
+### 7.4 Usability & Accessibility
+- The Web UI must follow enterprise SaaS standards: responsive Tailwind layout, accessible ARIA labels, Lucide icons, clear empty/loading/error states.
+- The consumer verification view must be mobile-optimized for instant smartphone QR code camera scans.
 
 ---
 
-# 11. Blockchain Usage
+## 8. On-Chain vs. Off-Chain Data Matrix
 
-Blockchain is responsible for:
-
-* Product registration
-* Product hash
-* Ownership
-* Product status
-* Critical supply-chain events
-* Immutable event history
-
-PostgreSQL is responsible for:
-
-* Users
-* Organizations
-* Product metadata
-* Shipment metadata
-* Audit metadata
-* Search/indexing
-* Analytics
+| Data Item | Off-Chain (PostgreSQL) | On-Chain (EVM Contract) | Rationale |
+|---|:---:|:---:|---|
+| User Credentials & Passwords | ✅ | ❌ | High security, confidentiality, GDPR compliance |
+| Organization Contact & Billing | ✅ | ❌ | High velocity, mutable operational information |
+| Organization Wallet Address | ✅ | ✅ | Used to verify signature on-chain |
+| Product Code & Serial Number | ✅ | ✅ | Unique identification across both systems |
+| Product Full Description & Images | ✅ | ❌ | Heavy payload; prohibitively expensive for gas |
+| Deterministic Keccak-256 Hash | ✅ | ✅ | Cryptographic anchor proving off-chain data integrity |
+| Current Product Owner (Address) | ✅ | ✅ | Legal custody transfer proof |
+| Product Lifecycle State Enum | ✅ | ✅ | Business rule enforcement on-chain |
+| Quality Inspection Notes & Result | ✅ | ✅ | Tamper-proof compliance record |
+| Shipment Logistics Details (Origin/Dest) | ✅ | ❌ | High operational detail |
+| Audit Trail & Client IP Addresses | ✅ | ❌ | Sensitive compliance log |
+| Historical Event Sequence | ✅ | ✅ | Immutable audit trail on smart contract |
 
 ---
 
-# 12. MVP Scope
+## 9. Success Criteria & Verification
 
-The MVP must include:
-
-* Authentication
-* RBAC
-* Multi-organization support
-* Product registration
-* Smart Contract
-* Blockchain integration
-* Shipment
-* Product receiving
-* Ownership transfer
-* Quality check
-* Traceability
-* QR verification
-* Dashboard
-* Audit log
-
----
-
-# 13. Out of Scope
-
-Do not implement in the initial version:
-
-* Real IoT sensors
-* Real GPS tracking
-* Real payment processing
-* Real logistics provider integration
-* AI forecasting
-* Cryptocurrency payments
-* NFT marketplace
-* Mobile application
-
-These may be future extensions.
-
----
-
-# 14. Success Criteria
-
-The project is successful when a complete workflow can be demonstrated:
-
-```text
-Manufacturer
-→ Register Product
-→ Blockchain Transaction
-→ Quality Check
-→ Create Shipment
-→ Distributor Receives
-→ Transfer Ownership
-→ Warehouse Receives
-→ Retailer Receives
-→ Product Sold
-→ Customer Scans QR
-→ Customer Views Traceability
-```
-
-All critical blockchain actions must use real transactions.
-
+The B-MOST platform meets all defined success criteria when:
+1. A manufacturer can register a physical product and anchor its deterministic hash on-chain.
+2. An auditor or manufacturer can record a formal quality inspection that is confirmed on-chain.
+3. Multi-hop shipments can be dispatched, tracked in transit, and received with automatic custody transfer across at least three distinct organizations (Manufacturer → Distributor → Warehouse → Retailer).
+4. A retailer can finalize the product lifecycle by marking the item as `SOLD`.
+5. An unauthenticated consumer can scan a generated QR code on a mobile device and receive instant verification confirming that the physical goods match the smart contract state with 100% hash parity.
+6. The entire automated test suite (contract tests, API unit tests, e2e suites, and complete integration flow) passes with 100% success.
