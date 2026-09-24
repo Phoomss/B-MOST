@@ -6,6 +6,13 @@ import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { api, ProductItem, QualityCheckItem } from '../../lib/api';
 import { getQcBadge, THAI_PRODUCT_STATUS } from '../../lib/thai-locale';
+import {
+  CheckIcon,
+  XIcon,
+  ShieldCheckIcon,
+  DocumentTextIcon,
+  AlertTriangleIcon,
+} from '../../components/Icons';
 
 function QualityPageContent() {
   const searchParams = useSearchParams();
@@ -132,7 +139,8 @@ function QualityPageContent() {
           <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between shadow-2xs">
             <div>
               <div className="font-bold flex items-center gap-1.5">
-                <span>✓</span> {successData.message}
+                <CheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{successData.message}</span>
               </div>
               <div className="text-xs mt-1">
                 รหัสสินค้า: <span className="font-mono font-semibold">{successData.productCode}</span> |
@@ -149,9 +157,10 @@ function QualityPageContent() {
             </div>
             <button
               onClick={() => setSuccessData(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
+              aria-label="ปิดการแจ้งเตือน"
             >
-              ✕
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -159,15 +168,19 @@ function QualityPageContent() {
         {/* Error Alert */}
         {errorMessage && (
           <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between shadow-2xs">
-            <div>
-              <div className="font-bold">เกิดข้อผิดพลาด</div>
-              <div className="text-xs mt-1">{errorMessage}</div>
+            <div className="flex items-start gap-2">
+              <AlertTriangleIcon className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold">เกิดข้อผิดพลาด</div>
+                <div className="text-xs mt-0.5">{errorMessage}</div>
+              </div>
             </div>
             <button
               onClick={() => setErrorMessage(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-red-100 transition cursor-pointer"
+              aria-label="ปิดการแจ้งเตือน"
             >
-              ✕
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -177,7 +190,8 @@ function QualityPageContent() {
           {/* Left Form */}
           <div className="lg:col-span-1 border border-slate-200 bg-white rounded-xl p-5 shadow-2xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-              <span>🛡️</span> บันทึกผลการตรวจสอบใหม่
+              <ShieldCheckIcon className="w-5 h-5 text-indigo-600 shrink-0" />
+              <span>บันทึกผลการตรวจสอบใหม่</span>
             </h2>
 
             <form onSubmit={handleSubmitQC} className="space-y-4 text-xs">
@@ -222,24 +236,26 @@ function QualityPageContent() {
                   <button
                     type="button"
                     onClick={() => setResultVerdict('PASSED')}
-                    className={`py-2 rounded-lg font-bold text-xs transition cursor-pointer border ${
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition cursor-pointer border flex items-center justify-center gap-1.5 ${
                       resultVerdict === 'PASSED'
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-2 ring-emerald-500/20'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    ✓ ผ่าน (PASS)
+                    <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>ผ่าน (PASS)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setResultVerdict('FAILED')}
-                    className={`py-2 rounded-lg font-bold text-xs transition cursor-pointer border ${
+                    className={`py-2 px-3 rounded-lg font-bold text-xs transition cursor-pointer border flex items-center justify-center gap-1.5 ${
                       resultVerdict === 'FAILED'
                         ? 'bg-red-50 text-red-700 border-red-300 ring-2 ring-red-500/20'
                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    ✕ ไม่ผ่าน (FAIL)
+                    <XIcon className="w-3.5 h-3.5 text-red-600" />
+                    <span>ไม่ผ่าน (FAIL)</span>
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -265,7 +281,14 @@ function QualityPageContent() {
                 disabled={submitting}
                 className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
               >
-                {submitting ? 'กำลังส่งธุรกรรมลง Blockchain...' : 'บันทึกผลการตรวจสอบ (Submit QC)'}
+                {submitting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>กำลังส่งธุรกรรมลง Blockchain...</span>
+                  </>
+                ) : (
+                  <span>บันทึกผลการตรวจสอบ</span>
+                )}
               </button>
             </form>
           </div>
@@ -274,7 +297,8 @@ function QualityPageContent() {
           <div className="lg:col-span-2 border border-slate-200 bg-white rounded-xl p-5 shadow-2xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>📋</span> ประวัติการตรวจสอบคุณภาพล่าสุด
+                <DocumentTextIcon className="w-5 h-5 text-blue-600 shrink-0" />
+                <span>ประวัติการตรวจสอบคุณภาพล่าสุด</span>
               </h2>
               <div className="flex items-center gap-1 text-xs">
                 {['ALL', 'PASSED', 'FAILED'].map((tab) => (

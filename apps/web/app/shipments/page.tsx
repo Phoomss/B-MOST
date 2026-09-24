@@ -15,6 +15,14 @@ import {
   THAI_SHIPMENT_STATUS,
   THAI_PRODUCT_STATUS,
 } from '../../lib/thai-locale';
+import {
+  TruckIcon,
+  CheckIcon,
+  XIcon,
+  AlertTriangleIcon,
+  BoxIcon,
+  PlusIcon,
+} from '../../components/Icons';
 
 function ShipmentsPageContent() {
   const searchParams = useSearchParams();
@@ -22,6 +30,7 @@ function ShipmentsPageContent() {
 
   // Form states
   const [showCreateModal, setShowCreateModal] = useState<boolean>(Boolean(preselectedProductId));
+  const [confirmReceiveShipment, setConfirmReceiveShipment] = useState<ShipmentItem | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<string>(preselectedProductId);
@@ -212,43 +221,52 @@ function ShipmentsPageContent() {
             onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition cursor-pointer self-start sm:self-auto"
           >
-            <span>+ Create Shipment (สร้างการจัดส่ง)</span>
+            <PlusIcon className="w-4 h-4" />
+            <span>สร้างการจัดส่งใหม่</span>
           </button>
         </div>
 
         {/* Success Alert */}
         {successMessage && (
-          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between">
-            <div>
-              <div className="font-bold">{successMessage.title}</div>
-              <div className="text-xs mt-0.5">{successMessage.details}</div>
-              {successMessage.txHash && (
-                <div className="mt-2 text-xs font-mono text-blue-700 break-all">
-                  Tx: {successMessage.txHash}
-                </div>
-              )}
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between shadow-2xs">
+            <div className="flex items-start gap-2.5">
+              <CheckIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold">{successMessage.title}</div>
+                <div className="text-xs mt-0.5">{successMessage.details}</div>
+                {successMessage.txHash && (
+                  <div className="mt-2 text-xs font-mono text-blue-700 break-all">
+                    Tx: {successMessage.txHash}
+                  </div>
+                )}
+              </div>
             </div>
             <button
               onClick={() => setSuccessMessage(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
+              aria-label="ปิดการแจ้งเตือน"
             >
-              ✕
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
         )}
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between">
-            <div>
-              <div className="font-bold">เกิดข้อผิดพลาดในการดำเนินการ</div>
-              <div className="text-xs mt-0.5">{errorMessage}</div>
+          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between shadow-2xs">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold">เกิดข้อผิดพลาดในการดำเนินการ</div>
+                <div className="text-xs mt-0.5">{errorMessage}</div>
+              </div>
             </div>
             <button
               onClick={() => setErrorMessage(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-red-100 transition cursor-pointer"
+              aria-label="ปิดการแจ้งเตือน"
             >
-              ✕
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -260,7 +278,7 @@ function ShipmentsPageContent() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    สร้างการจัดส่งใหม่ (Create New Shipment Reference)
+                    สร้างการจัดส่งใหม่ (Create Shipment)
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     บันทึกข้อมูลการจัดส่งและผูกโยงกับบล็อกเชน
@@ -269,9 +287,10 @@ function ShipmentsPageContent() {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                  aria-label="ปิดหน้าต่าง"
                 >
-                  ✕
+                  <XIcon className="w-4 h-4" />
                 </button>
               </div>
 
@@ -429,7 +448,8 @@ function ShipmentsPageContent() {
         <div className="border border-slate-200 bg-white rounded-xl p-5 shadow-2xs">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>📋</span> รายการการจัดส่งสินค้า (Active &amp; Completed Shipments)
+              <TruckIcon className="w-5 h-5 text-blue-600 shrink-0" />
+              <span>รายการการจัดส่งสินค้า (Shipments)</span>
             </h2>
             <span className="text-xs text-slate-500 font-mono">
               แสดง {filteredShipments.length} รายการ
@@ -516,7 +536,7 @@ function ShipmentsPageContent() {
                           )}
                           {(shp.status === 'SHIPPED' || shp.status === 'IN_TRANSIT') && (
                             <button
-                              onClick={() => shp.id && handleReceive(shp.id)}
+                              onClick={() => setConfirmReceiveShipment(shp)}
                               disabled={isActing}
                               className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] disabled:opacity-50 transition cursor-pointer"
                             >
@@ -524,7 +544,10 @@ function ShipmentsPageContent() {
                             </button>
                           )}
                           {shp.status === 'DELIVERED' && (
-                            <span className="text-emerald-700 font-medium text-[11px]">✓ รับแล้ว</span>
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[11px]">
+                              <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>รับสินค้าแล้ว</span>
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -535,6 +558,63 @@ function ShipmentsPageContent() {
             </div>
           )}
         </div>
+
+        {/* Confirmation Modal for Receiving Shipment */}
+        {confirmReceiveShipment && (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
+                  <CheckIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    ยืนยันการรับสินค้า
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    รหัสการจัดส่ง: <span className="font-mono font-semibold text-slate-800">{confirmReceiveShipment.shipmentCode}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                <div>
+                  <span className="text-slate-500">สินค้า: </span>
+                  <span className="font-semibold text-slate-900">{confirmReceiveShipment.product?.name || 'สินค้า'}</span>
+                  <span className="font-mono text-slate-500 ml-1">({confirmReceiveShipment.product?.productCode})</span>
+                </div>
+                <div>
+                  <span className="text-slate-500">เส้นทาง: </span>
+                  <span className="text-slate-700">{confirmReceiveShipment.origin} &rarr; {confirmReceiveShipment.destination}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 pt-1.5 border-t border-slate-200">
+                  หลังจากดำเนินการแล้ว สถานะจะถูกเปลี่ยนเป็น &ldquo;ส่งมอบสำเร็จ (DELIVERED)&rdquo; และบันทึกยืนยันลงบน Blockchain ทันที
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmReceiveShipment(null)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sid = confirmReceiveShipment.id;
+                    setConfirmReceiveShipment(null);
+                    if (sid) handleReceive(sid);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
+                >
+                  ยืนยันการรับสินค้า
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
