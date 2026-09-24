@@ -76,21 +76,21 @@ B-MOST/
 │   │   └── test/                     # End-to-end (e2e) test suites & integration
 │   │
 │   └── web/                          # Next.js 16 (App Router) Frontend
-│       ├── src/
-│       │   ├── app/                  # Next.js App Router pages
-│       │   │   ├── (auth)/login/     # Login view
-│       │   │   ├── audit/            # Compliance & audit trail UI
-│       │   │   ├── blockchain/       # Live blockchain explorer UI
-│       │   │   ├── page.tsx          # Executive dashboard UI
-│       │   │   ├── products/         # Product catalog, new product, detail
-│       │   │   ├── quality/          # Quality control portal
-│       │   │   ├── shipments/        # Logistics & shipment tracking
-│       │   │   ├── traceability/     # Multi-actor provenance search
-│       │   │   └── verify/           # Public QR consumer verification
-│       │   ├── components/           # Reusable UI components & modals
-│       │   ├── hooks/                # React custom hooks & auth context
-│       │   ├── lib/                  # Axios API client, utils, formatters
-│       │   └── types/                # Frontend TypeScript models
+│       ├── app/                      # Next.js App Router pages
+│       │   ├── audit/                # Compliance & audit trail UI
+│       │   ├── blockchain/           # Live blockchain explorer UI
+│       │   ├── login/                # Authentication & login portal
+│       │   ├── page.tsx              # Executive dashboard UI (ภาพรวมระบบ)
+│       │   ├── products/             # Product catalog, new product, detail
+│       │   ├── quality/              # Quality control portal
+│       │   ├── shipments/            # Logistics & shipment tracking
+│       │   ├── traceability/         # Multi-actor provenance search
+│       │   └── verify/               # Public QR consumer verification
+│       ├── components/               # Reusable UI components, Navbar, modals
+│       ├── hooks/                    # React custom hooks (useAuth)
+│       ├── lib/                      # Axios API client, utils, thai-locale
+│       ├── middleware.ts             # Route guard & authentication middleware
+│       └── test/                     # Vitest UI test suites
 │
 ├── packages/
 │   └── contracts/                    # Smart Contracts Workspace
@@ -215,6 +215,40 @@ Every database write and state modification verifies that the caller's organizat
 - Manufacturers can only register products under their own organization ID.
 - Organizations can only create shipments for products currently in their legal ownership.
 - Only the declared shipment receiver can execute the `receive` action to transfer custody.
+
+### 6.1 Frontend Edge Route Guarding & Authentication Lifecycle
+```text
+Browser Client                           Next.js Edge Middleware                       NestJS API
+     │                                            │                                        │
+     │ 1. Navigates to /products                  │                                        │
+     ├───────────────────────────────────────────►│                                        │
+     │                                            │ 2. Check cookie: bmost_token           │
+     │                                            │    or Authorization header             │
+     │                                            ├───┐                                    │
+     │                                            │   │ Unauthenticated                    │
+     │                                            │◄──┘                                    │
+     │ 3. Redirect 307: /login?redirect=/products │                                        │
+     │◄───────────────────────────────────────────┤                                        │
+     │                                            │                                        │
+     │ 4. Submits Login Form                      │                                        │
+     ├────────────────────────────────────────────┼───────────────────────────────────────►│ 5. POST /api/auth/login
+     │                                            │                                        │ 6. Validates credentials
+     │                                            │                                        │ 7. Signs JWT token
+     │ 8. Response 200 OK: { access_token, user } │                                        │
+     │◄───────────────────────────────────────────┼────────────────────────────────────────┤
+     │                                            │                                        │
+     │ 9. Sets document.cookie ('bmost_token')    │                                        │
+     │    Sets localStorage ('token')             │                                        │
+     │    Redirects to target /products           │                                        │
+     ├───────────────────────────────────────────►│                                        │
+     │                                            │ 10. bmost_token Present                │
+     │                                            │     Allows Request Next()              │
+     │ 11. Renders Protected Products Page        │                                        │
+     │◄───────────────────────────────────────────┤                                        │
+```
+- **Public Whitelist**: `/login`, `/verify`, `/verify/:code`, static assets (`/_next`, `/favicon.ico`) bypass Edge middleware.
+- **Route Aliasing**: Middleware automatically rewrites legacy paths (e.g., `/dashboard` ──► `/`, `/quality-checks` ──► `/quality`).
+- **Profile Synchronization**: The client `useAuth` hook validates the active session on initial load against `GET /api/auth/me`. If the token is invalid or expired, the user is cleanly logged out and redirected.
 
 ---
 

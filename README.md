@@ -114,6 +114,23 @@ pnpm dev:web
 
 ---
 
+## 👥 Default Demo Accounts (บัญชีทดสอบในระบบ)
+
+Password for all pre-seeded demo accounts is: `Password123!`
+
+| Role / บทบาท | Email | Organization / องค์กร | Access / สิทธิ์การเข้าถึง |
+|---|---|---|---|
+| **Super Admin** | `admin@b-most.io` | Global Platform Admin | Full system administration, audit logs, node status |
+| **Manufacturer** | `manufacturer@b-most.io` | Apex Manufacturing Ltd. | Register products, anchor to blockchain, initiate QC |
+| **Auditor** | `auditor@b-most.io` | Global Quality Certification | Perform QC inspections, compliance audits |
+| **Logistics** | `logistics@b-most.io` | Nexus Logistics Corp | Create shipments, mark in-transit, dispatch manifests |
+| **Warehouse** | `warehouse@b-most.io` | Metro Warehousing Solutions | Receive shipments, store products, inventory transfers |
+| **Retailer** | `retailer@b-most.io` | Urban Retail Store | Receive inventory, execute consumer retail sales (`SOLD`) |
+
+*One-click quick login buttons for all these roles are available directly on the `/login` page.*
+
+---
+
 ## 🛠 Available Scripts
 
 | Command | Description |
@@ -254,4 +271,10 @@ Verify Traceability & Blockchain Authenticity (Keccak-256 cryptographic match)
 - [x] **Phase 17 — Documentation**:
   - Exhaustive documentation suite updated across README, PRD, Architecture, Database, Blockchain, API, UI, Security, and Development Plan.
 - [x] **Phase 18 — Final Audit**:
-  - Comprehensive project-wide code audit: verified zero fake responses, zero hardcoded dashboard metrics, authentic EVM state and transaction hashes, no plaintext passwords or committed secrets, 100% test pass rate across all suites (362 total tests passing), and clean production builds across NestJS and Next.js.
+  - Comprehensive project-wide code audit: verified zero fake responses, zero hardcoded dashboard metrics, authentic EVM state and transaction hashes, no plaintext passwords or committed secrets, 100% test pass rate across all suites, and clean production builds across NestJS and Next.js.
+- [x] **Phase 19 — UI Refinement & Authentication**:
+  - Enterprise White / Light Theme (`#FFFFFF`, `#F8FAFC`, `#E2E8F0`, `#0F172A`, `#64748B`) across all web interfaces.
+  - Thai-first enterprise localization across all user-facing pages, cards, tables, forms, buttons, dialogs, toasts, error messages, and consumer QR verification.
+  - Dedicated `/login` authentication page consuming the existing `POST /api/auth/login` endpoint with email validation, password visibility toggle, quick demo logins, and loading states.
+  - Route protection via Next.js Edge Middleware (`apps/web/middleware.ts`) enforcing session authentication for dashboard, products, shipments, QC, traceability, blockchain, and audit pages while preserving public unauthenticated access for `/login` and `/verify`.
+  - Global `useAuth` React hook providing session synchronization with `document.cookie` and `localStorage`, dynamic profile fetching (`GET /api/auth/me`), and clean logout handling.
