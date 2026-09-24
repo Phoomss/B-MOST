@@ -274,6 +274,30 @@ describe("SupplyChainRegistry", function () {
         contract.connect(unauthorized).receiveProduct(1, 1)
       ).to.be.revertedWith("UNAUTHORIZED_ACTION");
     });
+
+    it("should reject creating shipment if product is only REGISTERED without QC pass", async function () {
+      const uninspectedCode = "PROD-UNINSPECTED-01";
+      const uninspectedHash = ethers.keccak256(ethers.toUtf8Bytes(uninspectedCode));
+      await contract.connect(manufacturer).registerProduct(uninspectedCode, uninspectedHash);
+
+      await expect(
+        contract.connect(manufacturer).createShipment("SHIP-INVALID", 2, distributor.address, carrier.address)
+      ).to.be.revertedWith("INVALID_STATE_TRANSITION");
+    });
+
+    it("should reject receiving shipment if shipment has not been dispatched", async function () {
+      await contract.connect(manufacturer).createShipment(
+        testShipmentCode,
+        1,
+        distributor.address,
+        carrier.address
+      );
+
+      // Attempting to receive before shipProduct was called
+      await expect(
+        contract.connect(distributor).receiveProduct(1, 1)
+      ).to.be.revertedWith("INVALID_STATE_TRANSITION");
+    });
   });
 
   describe("Warehouse Storage & Retail Sale", function () {

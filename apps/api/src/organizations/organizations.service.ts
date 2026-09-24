@@ -302,6 +302,12 @@ export class OrganizationsService {
     updateStatusDto: UpdateOrganizationStatusDto,
     currentUser: any,
   ) {
+    if (currentUser?.role && currentUser.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException(
+        'Access denied: Only SUPER_ADMIN can modify organization status',
+      );
+    }
+
     const existing = await this.prisma.organization.findUnique({
       where: { id },
     });
