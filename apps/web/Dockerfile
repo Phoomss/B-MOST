@@ -53,7 +53,7 @@ COPY --from=builder /app/apps/web/package.json ./package.json
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/.next ./.next
 
-RUN chown -R nextjs:nodejs /app
+RUN mkdir -p /app/apps/web/.next/cache && chown -R nextjs:nodejs /app/apps/web/.next
 
 USER nextjs
 

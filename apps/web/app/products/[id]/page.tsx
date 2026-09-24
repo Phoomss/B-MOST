@@ -12,6 +12,14 @@ import {
   getProductStatusBadge,
   THAI_PRODUCT_STATUS,
 } from '../../../lib/thai-locale';
+import {
+  LinkIcon,
+  ShieldCheckIcon,
+  TruckIcon,
+  DocumentTextIcon,
+  DownloadIcon,
+  SearchIcon,
+} from '../../../components/Icons';
 
 export default function ProductDetailPage({
   params,
@@ -158,7 +166,10 @@ export default function ProductDetailPage({
                     กำลังลงทะเบียน...
                   </>
                 ) : (
-                  <>🔗 บันทึกลง Blockchain</>
+                  <>
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    <span>บันทึกลง Blockchain</span>
+                  </>
                 )}
               </button>
             ) : (
@@ -173,7 +184,8 @@ export default function ProductDetailPage({
                 href={`/quality?productId=${encodeURIComponent(product.id)}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition"
               >
-                🛡️ ตรวจสอบคุณภาพ
+                <ShieldCheckIcon className="w-3.5 h-3.5" />
+                <span>ตรวจสอบคุณภาพ</span>
               </Link>
             )}
 
@@ -184,7 +196,8 @@ export default function ProductDetailPage({
                 href={`/shipments?productId=${encodeURIComponent(product.id)}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
               >
-                🚢 จัดส่งสินค้า
+                <TruckIcon className="w-3.5 h-3.5" />
+                <span>จัดส่งสินค้า</span>
               </Link>
             )}
 
@@ -211,7 +224,8 @@ export default function ProductDetailPage({
             {/* Product Information Card */}
             <div className="border border-slate-200 bg-white rounded-xl p-6 shadow-2xs">
               <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <span>📋</span> ข้อมูลจำเพาะของสินค้า (Product Specifications)
+                <DocumentTextIcon className="w-5 h-5 text-blue-600 shrink-0" />
+                <span>ข้อมูลจำเพาะของสินค้า (Product Specifications)</span>
               </h2>
 
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -257,7 +271,8 @@ export default function ProductDetailPage({
             {/* Blockchain Details Card */}
             <div className="border border-slate-200 bg-white rounded-xl p-6 shadow-2xs">
               <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <span>⛓️</span> ข้อมูลบล็อกเชนและการเข้ารหัส (Blockchain &amp; Cryptography)
+                <LinkIcon className="w-5 h-5 text-indigo-600 shrink-0" />
+                <span>ข้อมูลบล็อกเชนและการเข้ารหัส (Blockchain &amp; Cryptography)</span>
               </h2>
 
               <div className="space-y-3.5 text-xs">
@@ -332,15 +347,17 @@ export default function ProductDetailPage({
                 <a
                   href={`/api/public/verify/${encodeURIComponent(product.productCode)}/qr`}
                   download={`${product.productCode}-QR.png`}
-                  className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+                  className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                 >
-                  📥 ดาวน์โหลดภาพ QR Code
+                  <DownloadIcon className="w-3.5 h-3.5" />
+                  <span>ดาวน์โหลดภาพ QR Code</span>
                 </a>
                 <Link
                   href={`/verify/${encodeURIComponent(product.productCode)}`}
-                  className="px-3.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition"
+                  className="px-3.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                 >
-                  🔍 เปิดหน้าตรวจสอบสินค้า
+                  <SearchIcon className="w-3.5 h-3.5" />
+                  <span>เปิดหน้าตรวจสอบสินค้า</span>
                 </Link>
               </div>
             </div>
