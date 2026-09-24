@@ -134,7 +134,8 @@ describe('Product Management API Endpoints (e2e)', () => {
       findUnique: jest.fn().mockImplementation(({ where }) => {
         if (
           where.id === 'prod-uuid-1' ||
-          where.productCode === 'PRD-APEX-001'
+          where.productCode === 'PRD-APEX-001' ||
+          where.serialNumber === 'SN-APEX-001'
         ) {
           return Promise.resolve(mockProductRecord);
         }
@@ -278,7 +279,8 @@ describe('Product Management API Endpoints (e2e)', () => {
 
   describe('POST /api/products (Product Creation)', () => {
     it('creates product for manufacturer and computes deterministic hash', async () => {
-      mockPrisma.product.findUnique.mockResolvedValueOnce(null); // uniqueness check
+      mockPrisma.product.findUnique.mockResolvedValueOnce(null); // code uniqueness check
+      mockPrisma.product.findUnique.mockResolvedValueOnce(null); // serial uniqueness check
 
       const res = await request(app.getHttpServer())
         .post('/api/products')
@@ -459,8 +461,22 @@ describe('Product Management API Endpoints (e2e)', () => {
       expect(res.body.product.productCode).toEqual('PRD-APEX-001');
       expect(res.body.blockchain.registeredOnChain).toBe(true);
       expect(res.body.blockchain.hashMatch).toBe(true);
+      expect(res.body.timeline).toBeInstanceOf(Array);
+      expect(res.body.timeline.length).toBeGreaterThan(0);
+      expect(res.body.timeline[0].eventType).toEqual('PRODUCT_REGISTERED');
+      expect(res.body.qrCode).toContain('data:image/png;base64');
+      expect(res.body.verificationUrl).toContain('/verify/PRD-APEX-001');
       // Ensure sensitive internal IDs like password hashes are absent
       expect(res.body.product).not.toHaveProperty('passwordHash');
+    });
+
+    it('verifies product by serial number', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/public/verify/SN-APEX-001')
+        .expect(200);
+
+      expect(res.body.verified).toBe(true);
+      expect(res.body.product.serialNumber).toEqual('SN-APEX-001');
     });
 
     it('returns verified: false for non-existent product code', async () => {
@@ -469,6 +485,17 @@ describe('Product Management API Endpoints (e2e)', () => {
         .expect(200);
 
       expect(res.body.verified).toBe(false);
+      expect(res.body.message).toContain('not registered');
+    });
+
+    it('streams raw PNG QR image via GET /api/public/verify/:productCode/qr', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/public/verify/PRD-APEX-001/qr')
+        .expect(200);
+
+      expect(res.headers['content-type']).toEqual('image/png');
+      expect(res.body).toBeDefined();
     });
   });
 });
+

@@ -47,6 +47,12 @@ export function Navbar() {
           >
             Traceability
           </Link>
+          <Link
+            href="/verify"
+            className="px-3 py-1.5 rounded-md text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition flex items-center gap-1.5"
+          >
+            <span>Verify QR</span>
+          </Link>
         </nav>
       </div>
 
