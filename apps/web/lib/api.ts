@@ -492,6 +492,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
+  auth: {
+    login: (credentials: { email: string; password: string }) =>
+      request<{ accessToken: string; user: any }>('auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      }),
+    me: () => request<any>('auth/me'),
+  },
   products: {
     list: (params?: {
       search?: string;
