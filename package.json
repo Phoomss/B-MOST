@@ -9,6 +9,7 @@
     "dev:web": "pnpm --filter @b-most/web run dev",
     "build": "pnpm --filter @b-most/api run build && pnpm --filter @b-most/web run build",
     "lint": "pnpm -r run lint",
+    "typecheck": "pnpm --filter @b-most/web exec tsc --noEmit && pnpm --filter @b-most/api exec tsc --noEmit -p tsconfig.build.json",
     "test": "pnpm -r run test",
     "test:e2e": "pnpm --filter @b-most/api run test:e2e",
     "docker:up": "docker compose up -d",
