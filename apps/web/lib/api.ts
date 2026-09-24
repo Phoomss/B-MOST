@@ -257,6 +257,78 @@ export interface PublicVerifyResponse {
   verificationUrl?: string;
 }
 
+export interface DashboardStatistics {
+  totalProducts: number;
+  inTransit: number;
+  received: number;
+  sold: number;
+  recalled: number;
+  activeShipments: number;
+  blockchainTransactions: number;
+}
+
+export interface ProductStatusMetric {
+  status: string;
+  count: number;
+  label: string;
+  percentage: number;
+}
+
+export interface ShipmentStatusMetric {
+  status: string;
+  count: number;
+  label: string;
+  percentage: number;
+}
+
+export interface OrganizationTypeMetric {
+  type: string;
+  count: number;
+  label: string;
+}
+
+export interface DailyTransactionMetric {
+  date: string;
+  count: number;
+}
+
+export interface RecentTransactionMetric {
+  id: string;
+  txHash: string;
+  eventType?: string | null;
+  status: string;
+  blockNumber?: number | string | null;
+  createdAt: string;
+}
+
+export interface BlockchainActivityMetrics {
+  totalTransactions: number;
+  confirmedTransactions: number;
+  pendingTransactions: number;
+  failedTransactions: number;
+  recentTransactions: RecentTransactionMetric[];
+  dailyTrend: DailyTransactionMetric[];
+}
+
+export interface DashboardCharts {
+  productStatus: ProductStatusMetric[];
+  shipmentActivity: ShipmentStatusMetric[];
+  organizationActivity: OrganizationTypeMetric[];
+  blockchainActivity: BlockchainActivityMetrics;
+}
+
+export interface DashboardRecentActivityItem {
+  id: string;
+  type: 'PRODUCT_CREATED' | 'QUALITY_CHECK' | 'SHIPMENT_UPDATE' | 'BLOCKCHAIN_TX';
+  title: string;
+  description: string;
+  timestamp: string;
+  actor?: string;
+  organizationName?: string;
+  blockchainTxHash?: string | null;
+  badgeColor: 'blue' | 'emerald' | 'amber' | 'purple' | 'rose' | 'slate';
+}
+
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('bmost_token');
@@ -526,5 +598,11 @@ export const api = {
       const qs = query ? `?search=${encodeURIComponent(query)}` : '';
       return request<ProductItem[]>(`traceability${qs}`);
     },
+  },
+  dashboard: {
+    getStatistics: () => request<DashboardStatistics>('dashboard/statistics'),
+    getCharts: () => request<DashboardCharts>('dashboard/charts'),
+    getRecentActivity: () =>
+      request<DashboardRecentActivityItem[]>('dashboard/recent-activity'),
   },
 };
