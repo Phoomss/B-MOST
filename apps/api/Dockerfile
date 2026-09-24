@@ -49,7 +49,7 @@ COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/apps/api/prisma ./prisma
 COPY --from=builder /app/apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x ./docker-entrypoint.sh && chown -R nestjs:nodejs /app
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh && chown -R nestjs:nodejs /app
 
 USER nestjs
 
