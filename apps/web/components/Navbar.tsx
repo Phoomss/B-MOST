@@ -44,7 +44,7 @@ export function Navbar() {
   const primaryNavItems = [
     {
       href: '/',
-      label: 'ภาพรวม',
+      label: 'ภาพรวมระบบ',
       exact: true,
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -63,6 +63,16 @@ export function Navbar() {
       ),
     },
     {
+      href: '/quality',
+      label: 'การตรวจสอบคุณภาพ',
+      exact: false,
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+    },
+    {
       href: '/shipments',
       label: 'การจัดส่ง',
       exact: false,
@@ -74,18 +84,8 @@ export function Navbar() {
       ),
     },
     {
-      href: '/quality',
-      label: 'ตรวจคุณภาพ',
-      exact: false,
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-    },
-    {
       href: '/traceability',
-      label: 'สืบย้อนกลับ',
+      label: 'การติดตามสินค้า',
       exact: false,
       icon: (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -98,8 +98,8 @@ export function Navbar() {
   const ledgerItems = [
     {
       href: '/blockchain',
-      title: 'ธุรกรรม Blockchain',
-      subtitle: 'รายการบันทึกบน EVM Ledger',
+      title: 'Blockchain',
+      subtitle: 'ธุรกรรมและบล็อกบน EVM Ledger',
       icon: (
         <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -108,7 +108,7 @@ export function Navbar() {
     },
     {
       href: '/audit',
-      title: 'บันทึกการตรวจสอบ',
+      title: 'ประวัติการตรวจสอบ',
       subtitle: 'Audit Log กิจกรรมทั้งหมดในระบบ',
       icon: (
         <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -227,7 +227,7 @@ export function Navbar() {
                 );
               })}
 
-              {/* Dropdown: บันทึก & บล็อกเชน */}
+              {/* Dropdown: การตรวจสอบ */}
               <div className="relative" ref={ledgerDropdownRef}>
                 <button
                   type="button"
@@ -241,7 +241,7 @@ export function Navbar() {
                   <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                   </svg>
-                  <span>บันทึก & บล็อกเชน</span>
+                  <span>การตรวจสอบ</span>
                   <svg
                     className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
                       ledgerDropdownOpen ? 'rotate-180 text-indigo-600' : ''
@@ -257,7 +257,7 @@ export function Navbar() {
                 {ledgerDropdownOpen && (
                   <div className="absolute left-0 mt-2 w-72 rounded-xl bg-white border border-slate-200 shadow-lg py-2 z-50 animate-fadeIn">
                     <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
-                      ระบบบันทึกและการตรวจสอบ
+                      การตรวจสอบและบล็อกเชน
                     </div>
                     {ledgerItems.map((sub) => {
                       const isSubActive = pathname.startsWith(sub.href);
@@ -514,7 +514,7 @@ export function Navbar() {
           {/* Primary Operations Group */}
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-2">
-              เมนูการทำงานหลัก
+              การจัดการ
             </div>
             <div className="space-y-1">
               {primaryNavItems.map((item) => {
@@ -546,7 +546,7 @@ export function Navbar() {
           {/* Trust & Ledger Group */}
           <div className="pt-2 border-t border-slate-100">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-2">
-              บันทึกและความโปร่งใส
+              การตรวจสอบ
             </div>
             <div className="space-y-1">
               {ledgerItems.map((sub) => {

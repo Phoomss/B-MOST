@@ -4,6 +4,15 @@ import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { api, PublicVerifyResponse, PublicTimelineEvent } from '../../../lib/api';
 import { getProductStatusBadge, THAI_PRODUCT_STATUS } from '../../../lib/thai-locale';
+import {
+  CheckIcon,
+  XIcon,
+  AlertTriangleIcon,
+  CopyIcon,
+  LinkIcon,
+  QrCodeIcon,
+  ShieldCheckIcon,
+} from '../../../components/Icons';
 
 export default function PublicVerifyPage({
   params,
@@ -151,7 +160,7 @@ export default function PublicVerifyPage({
           >
             {copiedLink ? (
               <>
-                <span className="text-emerald-600 text-xs font-bold">✓</span>
+                <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="text-emerald-700 text-xs">คัดลอกแล้ว!</span>
               </>
             ) : (
@@ -188,8 +197,8 @@ export default function PublicVerifyPage({
         {/* Verification Status Card */}
         {error ? (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-6 sm:p-8 text-center space-y-3">
-            <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl mx-auto mb-2 font-bold">
-              ✕
+            <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-2 font-bold">
+              <XIcon className="w-7 h-7" />
             </div>
             <h1 className="text-xl font-bold text-red-800">
               ไม่สามารถตรวจสอบสินค้าได้
@@ -208,8 +217,8 @@ export default function PublicVerifyPage({
           <div className="space-y-6">
             {/* Authenticity Badge */}
             <div className="bg-white border border-emerald-200 rounded-2xl p-6 sm:p-8 text-center relative overflow-hidden shadow-xs">
-              <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-4 font-bold shadow-xs">
-                ✓
+              <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto mb-4 font-bold shadow-xs">
+                <CheckIcon className="w-8 h-8" />
               </div>
               <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold tracking-wide uppercase mb-2 border border-emerald-200">
                 Official Authenticity Verified
@@ -279,10 +288,14 @@ export default function PublicVerifyPage({
                       onClick={() =>
                         copyToClipboard(product?.productCode || '', 'hash')
                       }
-                      className="text-[10px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                      className="text-[10px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer inline-flex items-center gap-1"
                       title="คัดลอกรหัส"
                     >
-                      {copiedHash === product?.productCode ? '✓' : 'คัดลอก'}
+                      {copiedHash === product?.productCode ? (
+                        <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        'คัดลอก'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -297,10 +310,14 @@ export default function PublicVerifyPage({
                       onClick={() =>
                         copyToClipboard(product?.serialNumber || '', 'hash')
                       }
-                      className="text-[10px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                      className="text-[10px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer inline-flex items-center gap-1"
                       title="คัดลอกซีเรียล"
                     >
-                      {copiedHash === product?.serialNumber ? '✓' : 'คัดลอก'}
+                      {copiedHash === product?.serialNumber ? (
+                        <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        'คัดลอก'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -398,12 +415,17 @@ export default function PublicVerifyPage({
                                 onClick={() =>
                                   copyToClipboard(event.blockchainTxHash || '', 'hash')
                                 }
-                                className="font-mono text-[10px] text-blue-700 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded transition cursor-pointer"
+                                className="font-mono text-[10px] text-blue-700 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded transition cursor-pointer inline-flex items-center gap-1"
                                 title="คลิกเพื่อคัดลอก Transaction Hash"
                               >
-                                {copiedHash === event.blockchainTxHash
-                                  ? '✓ คัดลอกแล้ว'
-                                  : `Tx: ${event.blockchainTxHash.substring(0, 10)}...`}
+                                {copiedHash === event.blockchainTxHash ? (
+                                  <>
+                                    <CheckIcon className="w-3 h-3 text-emerald-600" />
+                                    <span>คัดลอกแล้ว</span>
+                                  </>
+                                ) : (
+                                  `Tx: ${event.blockchainTxHash.substring(0, 10)}...`
+                                )}
                               </button>
                             )}
                           </div>
@@ -450,9 +472,16 @@ export default function PublicVerifyPage({
                         onClick={() =>
                           copyToClipboard(blockchain.contractAddress || '', 'hash')
                         }
-                        className="text-[10px] text-blue-600 hover:text-blue-700 ml-2 shrink-0 font-semibold cursor-pointer"
+                        className="text-[10px] text-blue-600 hover:text-blue-700 ml-2 shrink-0 font-semibold cursor-pointer inline-flex items-center gap-1"
                       >
-                        {copiedHash === blockchain.contractAddress ? '✓ คัดลอกแล้ว' : 'คัดลอก'}
+                        {copiedHash === blockchain.contractAddress ? (
+                          <>
+                            <CheckIcon className="w-3 h-3 text-emerald-600" />
+                            <span>คัดลอกแล้ว</span>
+                          </>
+                        ) : (
+                          'คัดลอก'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -471,9 +500,16 @@ export default function PublicVerifyPage({
                         onClick={() =>
                           copyToClipboard(blockchain.blockchainTxHash || '', 'hash')
                         }
-                        className="text-[10px] text-blue-600 hover:text-blue-700 ml-2 shrink-0 font-semibold cursor-pointer"
+                        className="text-[10px] text-blue-600 hover:text-blue-700 ml-2 shrink-0 font-semibold cursor-pointer inline-flex items-center gap-1"
                       >
-                        {copiedHash === blockchain.blockchainTxHash ? '✓ คัดลอกแล้ว' : 'คัดลอก'}
+                        {copiedHash === blockchain.blockchainTxHash ? (
+                          <>
+                            <CheckIcon className="w-3 h-3 text-emerald-600" />
+                            <span>คัดลอกแล้ว</span>
+                          </>
+                        ) : (
+                          'คัดลอก'
+                        )}
                       </button>
                     </div>
                   </div>
@@ -556,8 +592,8 @@ export default function PublicVerifyPage({
           </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center space-y-4 shadow-xs">
-            <div className="w-16 h-16 rounded-full bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center text-3xl mx-auto mb-2 font-bold">
-              ⚠️
+            <div className="w-16 h-16 rounded-full bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-2 font-bold">
+              <AlertTriangleIcon className="w-8 h-8 text-amber-600" />
             </div>
             <span className="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold tracking-wide uppercase border border-amber-200">
               Unverified Item

@@ -12,6 +12,11 @@ import {
   BlockchainTransactionDetail,
   QueryBlockchainParams,
 } from '../../lib/api';
+import {
+  CheckIcon,
+  AlertTriangleIcon,
+  XIcon,
+} from '../../components/Icons';
 
 // Format timestamp helper
 function formatTimestamp(isoOrUnix: string | number): {
@@ -478,16 +483,19 @@ function BlockchainExplorerContent() {
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="font-bold">
-                {syncFeedback.type === 'success' ? '✓' : '⚠'}
-              </span>
+              {syncFeedback.type === 'success' ? (
+                <CheckIcon className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertTriangleIcon className="w-4 h-4 text-red-600 shrink-0" />
+              )}
               <span>{syncFeedback.message}</span>
             </div>
             <button
               onClick={() => setSyncFeedback(null)}
-              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              aria-label="ปิดการแจ้งเตือน"
             >
-              &times;
+              <XIcon className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -715,7 +723,10 @@ function BlockchainExplorerContent() {
                 ) : error ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-red-600">
-                      <div className="mb-2">⚠ {error}</div>
+                      <div className="mb-2 flex items-center justify-center gap-1.5 font-medium">
+                        <AlertTriangleIcon className="w-4 h-4 text-red-500 shrink-0" />
+                        <span>{error}</span>
+                      </div>
                       <button
                         onClick={fetchTransactions}
                         className="text-xs text-blue-600 hover:underline font-semibold cursor-pointer"
@@ -761,7 +772,7 @@ function BlockchainExplorerContent() {
                               title="คัดลอก Transaction Hash"
                             >
                               {copiedKey === tx.txHash ? (
-                                <span className="text-emerald-600 text-[10px] font-bold">✓</span>
+                                <CheckIcon className="w-3.5 h-3.5 text-emerald-600 inline" />
                               ) : (
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -1165,7 +1176,10 @@ function BlockchainExplorerContent() {
                   </div>
                 ) : blockError ? (
                   <div className="py-8 text-center text-red-600">
-                    <div className="mb-2 font-bold">⚠ {blockError}</div>
+                    <div className="mb-2 font-bold flex items-center justify-center gap-1.5">
+                      <AlertTriangleIcon className="w-4 h-4 text-red-500 shrink-0" />
+                      <span>{blockError}</span>
+                    </div>
                     <p className="text-xs text-slate-500">
                       บล็อกนี้อาจยังไม่ได้ถูกขุด หรือไม่สามารถเชื่อมต่อไปยังโหนดได้
                     </p>

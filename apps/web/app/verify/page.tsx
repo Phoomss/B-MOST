@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
+import { ShieldCheckIcon, LinkIcon, SmartphoneIcon } from '../../components/Icons';
 
 export default function VerifyLandingPage() {
   const router = useRouter();
@@ -122,8 +123,8 @@ export default function VerifyLandingPage() {
         {/* Feature Explanations */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl w-full">
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold text-base mb-3 border border-blue-200">
-              #
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center mb-3 border border-blue-200">
+              <ShieldCheckIcon className="w-5 h-5 text-blue-600" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 mb-1.5">
               Deterministic Keccak-256
@@ -134,8 +135,8 @@ export default function VerifyLandingPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-base mb-3 border border-emerald-200">
-              ⛓️
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-3 border border-emerald-200">
+              <LinkIcon className="w-5 h-5 text-emerald-600" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 mb-1.5">
               On-Chain Immutability
@@ -146,8 +147,8 @@ export default function VerifyLandingPage() {
           </div>
 
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-            <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-base mb-3 border border-purple-200">
-              📱
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-3 border border-purple-200">
+              <SmartphoneIcon className="w-5 h-5 text-purple-600" />
             </div>
             <h3 className="text-sm font-bold text-slate-900 mb-1.5">
               Instant Smartphone Scan
