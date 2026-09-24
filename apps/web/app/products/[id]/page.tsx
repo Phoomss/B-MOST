@@ -3,7 +3,14 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../../../components/Navbar';
-import { api, ProductItem, ProductHistoryResponse, HistoryEventRecord, QualityCheckItem } from '../../../lib/api';
+import {
+  api,
+  ProductItem,
+  ProductHistoryResponse,
+  HistoryEventRecord,
+  QualityCheckItem,
+  ShipmentItem,
+} from '../../../lib/api';
 
 export default function ProductDetailPage({
   params,
@@ -159,6 +166,17 @@ export default function ProductDetailPage({
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition"
               >
                 🛡️ Conduct QC
+              </Link>
+            )}
+
+            {(product.status === 'QUALITY_CHECKED' ||
+              product.status === 'STORED' ||
+              product.status === 'READY_TO_SHIP') && (
+              <Link
+                href={`/shipments?productId=${encodeURIComponent(product.id)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow transition"
+              >
+                🚢 Ship Product
               </Link>
             )}
 
@@ -420,6 +438,65 @@ export default function ProductDetailPage({
                     {qc.blockchainTxHash && (
                       <p className="text-xs font-mono text-blue-400 mt-1 break-all">
                         Tx: {qc.blockchainTxHash}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ),
+            )}
+
+            {/* Shipment Lifecycle Milestones */}
+            {(history?.shipments || product.shipments)?.map(
+              (shp: ShipmentItem, idx: number) => (
+                <div key={`shp-${idx}`} className="relative">
+                  <div
+                    className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-slate-900 ${
+                      shp.status === 'DELIVERED'
+                        ? 'bg-emerald-500'
+                        : shp.status === 'SHIPPED'
+                        ? 'bg-blue-500'
+                        : 'bg-amber-500'
+                    }`}
+                  ></div>
+                  <div>
+                    <span className="text-xs font-mono text-slate-400">
+                      {new Date(shp.createdAt).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <h3 className="text-sm font-semibold text-white">
+                        Shipment: {shp.shipmentCode}
+                      </h3>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          shp.status === 'DELIVERED'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : shp.status === 'SHIPPED'
+                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                        }`}
+                      >
+                        {shp.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Route:{' '}
+                      <strong className="text-white">
+                        {shp.origin} &rarr; {shp.destination}
+                      </strong>
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Sender: {shp.sender?.name || shp.senderOrganizationId} | Receiver:{' '}
+                      {shp.receiver?.name || shp.receiverOrganizationId}
+                      {shp.carrier && <span> | Carrier: {shp.carrier.name}</span>}
+                    </p>
+                    {shp.status === 'DELIVERED' && (
+                      <p className="text-xs text-emerald-400 font-medium mt-1">
+                        ✓ Delivery confirmed & product ownership transferred to recipient
+                      </p>
+                    )}
+                    {shp.blockchainTxHash && (
+                      <p className="text-xs font-mono text-blue-400 mt-1 break-all">
+                        Tx: {shp.blockchainTxHash}
                       </p>
                     )}
                   </div>

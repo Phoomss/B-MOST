@@ -115,5 +115,14 @@ pnpm dev:web
   - Quality check listing and filtering API (`GET /api/quality-checks` & `GET /api/products/:id/quality-checks`)
   - Next.js Quality Control & Assurance Dashboard (`/quality`) with PASS/FAIL forms, on-chain transaction receipt display, and historical inspection audits table
   - Integrated QC milestone visualization on Product Traceability Timeline (`/products/[id]`)
+- [x] **Phase 9 — Shipment**:
+  - Shipment creation and smart contract reference registration (`POST /api/shipments`)
+  - Shipment dispatch with on-chain execution (`POST /api/shipments/:id/ship` and `POST /api/products/:id/ship`)
+  - Delivery receipt confirmation with automatic product ownership transfer to recipient organization (`POST /api/shipments/:id/receive` and `POST /api/products/:id/receive`)
+  - Manual ownership transfer endpoint (`POST /api/products/:id/transfer`)
+  - Multi-tenant shipment tracking & isolation queries (`GET /api/shipments` and `GET /api/products/:id/shipments`)
+  - Next.js Shipment Operations & Tracking Dashboard (`/shipments`) with shipment creator modal, status tracking, inline dispatch & receive triggers, and on-chain tx receipts
+  - Interactive shipment milestones integration in the Product Traceability Timeline (`/products/[id]`)
+
 
 

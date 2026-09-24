@@ -3,6 +3,7 @@ import { ProductsController } from './products.controller';
 import { PublicProductsController } from './public-products.controller';
 import { ProductsService } from './products.service';
 import { QualityChecksService } from '../quality-checks/quality-checks.service';
+import { ShipmentsService } from '../shipments/shipments.service';
 import { UserRole } from '@prisma/client';
 
 describe('ProductsController & PublicProductsController', () => {
@@ -52,11 +53,19 @@ describe('ProductsController & PublicProductsController', () => {
       findByProductId: jest.fn().mockResolvedValue({ data: [], meta: {} }),
     };
 
+    const shipmentsService = {
+      shipByProductId: jest.fn().mockResolvedValue({ status: 'SHIPPED' }),
+      receiveByProductId: jest.fn().mockResolvedValue({ status: 'RECEIVED' }),
+      transferOwnership: jest.fn().mockResolvedValue({ success: true }),
+      findByProductId: jest.fn().mockResolvedValue({ data: [], meta: {} }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProductsController, PublicProductsController],
       providers: [
         { provide: ProductsService, useValue: service },
         { provide: QualityChecksService, useValue: qcService },
+        { provide: ShipmentsService, useValue: shipmentsService },
       ],
     }).compile();
 
