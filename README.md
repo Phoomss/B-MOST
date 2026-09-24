@@ -123,6 +123,11 @@ pnpm dev:web
   - Multi-tenant shipment tracking & isolation queries (`GET /api/shipments` and `GET /api/products/:id/shipments`)
   - Next.js Shipment Operations & Tracking Dashboard (`/shipments`) with shipment creator modal, status tracking, inline dispatch & receive triggers, and on-chain tx receipts
   - Interactive shipment milestones integration in the Product Traceability Timeline (`/products/[id]`)
-
-
-
+- [x] **Phase 10 — Traceability**:
+  - Authoritative end-to-end traceability endpoint (`GET /api/traceability/:productCode`, serialNumber, or UUID)
+  - Quick multi-tenant product search endpoint (`GET /api/traceability?search=...`)
+  - Deterministic Keccak-256 hash verification comparing calculated off-chain hashes against on-chain smart contract hashes
+  - Authoritative smart contract state querying (`getProduct`, `getProductHistory`) on `SupplyChainRegistry.sol`
+  - Chronological event timeline uniting registration, quality inspections, shipment dispatch, custody receipt, and terminal states
+  - Multi-tenant ownership provenance chain tracking the sequence of custodians from manufacturer to current owner
+  - Dedicated Next.js Traceability Dashboard (`/traceability`) with instant code lookup, live hash integrity badges, ownership provenance cards, and interactive milestone timeline

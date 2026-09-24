@@ -7,6 +7,7 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { ProductsModule } from './products/products.module';
 import { QualityChecksModule } from './quality-checks/quality-checks.module';
 import { ShipmentsModule } from './shipments/shipments.module';
+import { TraceabilityModule } from './traceability/traceability.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -23,6 +24,7 @@ import { AppService } from './app.service';
     ProductsModule,
     QualityChecksModule,
     ShipmentsModule,
+    TraceabilityModule,
   ],
   controllers: [AppController],
   providers: [AppService],
