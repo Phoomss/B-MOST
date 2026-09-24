@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsController } from './products.controller';
 import { PublicProductsController } from './public-products.controller';
 import { ProductsService } from './products.service';
+import { QualityChecksService } from '../quality-checks/quality-checks.service';
 import { UserRole } from '@prisma/client';
 
 describe('ProductsController & PublicProductsController', () => {
   let controller: ProductsController;
   let publicController: PublicProductsController;
   let service: any;
+  let qcService: any;
 
   const mockUser = {
     id: 'user-1',
@@ -43,9 +45,19 @@ describe('ProductsController & PublicProductsController', () => {
         .mockResolvedValue({ verified: true, product: mockProduct }),
     };
 
+    qcService = {
+      performQualityCheck: jest
+        .fn()
+        .mockResolvedValue({ status: 'QUALITY_CHECKED' }),
+      findByProductId: jest.fn().mockResolvedValue({ data: [], meta: {} }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ProductsController, PublicProductsController],
-      providers: [{ provide: ProductsService, useValue: service }],
+      providers: [
+        { provide: ProductsService, useValue: service },
+        { provide: QualityChecksService, useValue: qcService },
+      ],
     }).compile();
 
     controller = module.get<ProductsController>(ProductsController);
@@ -111,6 +123,23 @@ describe('ProductsController & PublicProductsController', () => {
     const res = await controller.getQr('prod-1', mockUser);
     expect(res.qrCode).toBeDefined();
     expect(service.getQr).toHaveBeenCalledWith('prod-1', mockUser);
+  });
+
+  it('should call qualityCheck service with id, dto, and current user', async () => {
+    const dto: any = { result: 'PASSED', notes: 'Checked OK' };
+    const res = await controller.qualityCheck('prod-1', dto, mockUser);
+    expect(res).toEqual({ status: 'QUALITY_CHECKED' });
+    expect(qcService.performQualityCheck).toHaveBeenCalledWith(
+      'prod-1',
+      dto,
+      mockUser,
+    );
+  });
+
+  it('should call getProductQualityChecks service with product id and current user', async () => {
+    const res = await controller.getProductQualityChecks('prod-1', mockUser);
+    expect(res).toEqual({ data: [], meta: {} });
+    expect(qcService.findByProductId).toHaveBeenCalledWith('prod-1', mockUser);
   });
 
   it('should call remove service', async () => {

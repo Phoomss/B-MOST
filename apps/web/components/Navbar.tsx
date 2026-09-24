@@ -32,9 +32,12 @@ export function Navbar() {
           <span className="px-3 py-1.5 rounded-md text-slate-500 cursor-not-allowed">
             Shipments
           </span>
-          <span className="px-3 py-1.5 rounded-md text-slate-500 cursor-not-allowed">
+          <Link
+            href="/quality"
+            className="px-3 py-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/60 transition"
+          >
             Quality
-          </span>
+          </Link>
           <span className="px-3 py-1.5 rounded-md text-slate-500 cursor-not-allowed">
             Traceability
           </span>

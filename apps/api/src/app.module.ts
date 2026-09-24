@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { ProductsModule } from './products/products.module';
+import { QualityChecksModule } from './quality-checks/quality-checks.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -19,6 +20,7 @@ import { AppService } from './app.service';
     OrganizationsModule,
     BlockchainModule,
     ProductsModule,
+    QualityChecksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

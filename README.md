@@ -106,4 +106,14 @@ pnpm dev:web
   - Traceability history endpoint combining on-chain events and PostgreSQL audit logs
   - Public consumer QR verification endpoint (`GET /api/public/verify/:productCode`)
   - Next.js Web UI for product listing, product creation, detailed provenance inspection, and mobile QR verification page (`/verify/[code]`)
+- [x] **Phase 8 — Quality Control**:
+  - Quality inspection submission endpoints (`POST /api/products/:id/quality-check` and `POST /api/quality-checks`)
+  - On-chain transaction execution via `recordQualityCheck` on `SupplyChainRegistry.sol`
+  - Lifecycle state transitions (`QUALITY_CHECKED` for PASS, `RECALLED` for FAIL)
+  - Auto-registration on blockchain when inspecting unregistered products
+  - Role-based permissions (`AUDITOR`, `MANUFACTURER`, `SUPER_ADMIN`, `ORG_ADMIN`) and multi-tenant data isolation
+  - Quality check listing and filtering API (`GET /api/quality-checks` & `GET /api/products/:id/quality-checks`)
+  - Next.js Quality Control & Assurance Dashboard (`/quality`) with PASS/FAIL forms, on-chain transaction receipt display, and historical inspection audits table
+  - Integrated QC milestone visualization on Product Traceability Timeline (`/products/[id]`)
+
 

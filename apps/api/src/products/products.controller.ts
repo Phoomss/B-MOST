@@ -24,6 +24,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { RegisterBlockchainDto } from './dto/register-blockchain.dto';
+import { CreateQualityCheckDto } from '../quality-checks/dto/create-quality-check.dto';
+import { QualityChecksService } from '../quality-checks/quality-checks.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -34,7 +36,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly qualityChecksService: QualityChecksService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -166,6 +171,59 @@ export class ProductsController {
       user,
       registerDto?.signerPrivateKey,
     );
+  }
+
+  @Post(':id/quality-check')
+  @UseGuards(RolesGuard)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ORG_ADMIN,
+    UserRole.AUDITOR,
+    UserRole.MANUFACTURER,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Perform quality check (FR-05 & Phase 8)',
+    description:
+      'Records quality check inspection verdict (PASS / FAIL), executes on-chain verification on SupplyChainRegistry smart contract, and transitions product status.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or unique productCode' })
+  @ApiResponse({
+    status: 200,
+    description: 'Quality check verified and recorded on blockchain',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid result or recalled product',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - User not authorized to perform quality check',
+  })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async qualityCheck(
+    @Param('id') id: string,
+    @Body() dto: CreateQualityCheckDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.qualityChecksService.performQualityCheck(id, dto, user);
+  }
+
+  @Get(':id/quality-checks')
+  @ApiOperation({
+    summary: 'Get quality checks for product',
+    description:
+      'Retrieves all historical quality check inspections conducted on this product.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID' })
+  @ApiResponse({ status: 200, description: 'Quality checks retrieved' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async getProductQualityChecks(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.qualityChecksService.findByProductId(id, user);
   }
 
   @Get(':id/history')
