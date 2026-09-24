@@ -14,7 +14,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get('b_most_auth_token')?.value;
+  const token =
+    request.cookies.get('bmost_token')?.value ||
+    request.cookies.get('b_most_auth_token')?.value;
 
   // Public routes: /verify, /verify/:code, /login
   const isPublicRoute = pathname === '/login' || pathname.startsWith('/verify');

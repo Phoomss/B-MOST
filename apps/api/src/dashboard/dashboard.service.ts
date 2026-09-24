@@ -277,22 +277,9 @@ export class DashboardService {
     const txWhere = isGlobal
       ? {}
       : {
-          OR: [
-            {
-              product: {
-                OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }],
-              },
-            },
-            {
-              shipment: {
-                OR: [
-                  { senderOrganizationId: orgId },
-                  { receiverOrganizationId: orgId },
-                  { carrierOrganizationId: orgId },
-                ],
-              },
-            },
-          ],
+          product: {
+            OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }],
+          },
         };
 
     const [

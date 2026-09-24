@@ -462,6 +462,7 @@ export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('bmost_token', token);
     document.cookie = `bmost_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `b_most_auth_token=${token}; path=/; max-age=604800; SameSite=Lax`;
   }
 }
 
@@ -470,6 +471,7 @@ export function clearAuthToken() {
     localStorage.removeItem('bmost_token');
     localStorage.removeItem('bmost_user');
     document.cookie = 'bmost_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie = 'b_most_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
   }
 }
 
@@ -508,6 +510,21 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      !endpoint.includes('auth/login')
+    ) {
+      clearAuthToken();
+      if (
+        !window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/verify')
+      ) {
+        window.location.href = `/login?redirect=${encodeURIComponent(
+          window.location.pathname,
+        )}`;
+      }
+    }
     const errorData = (await response.json().catch(() => ({}))) as { message?: string };
     throw new Error(
       errorData.message || `API request failed with status ${response.status}`,

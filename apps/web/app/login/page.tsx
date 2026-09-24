@@ -19,6 +19,11 @@ export default function LoginPage() {
     redirectUrl = '/';
   }
 
+  const safeRedirectUrl =
+    !redirectUrl || redirectUrl === '/login' || redirectUrl.startsWith('/login')
+      ? '/'
+      : redirectUrl;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,9 +33,9 @@ export default function LoginPage() {
   // If already logged in, redirect to dashboard
   useEffect(() => {
     if (getAuthToken()) {
-      router.replace(redirectUrl);
+      router.replace(safeRedirectUrl);
     }
-  }, [redirectUrl, router]);
+  }, [safeRedirectUrl, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +68,8 @@ export default function LoginPage() {
         if (res.user) {
           setStoredUser(res.user);
         }
-        router.push(redirectUrl);
+        router.push(safeRedirectUrl);
+        router.refresh?.();
       } else {
         throw new Error('ไม่ได้รับ Access Token จากระบบ');
       }
