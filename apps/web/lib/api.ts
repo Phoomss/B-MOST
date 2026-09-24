@@ -461,6 +461,32 @@ export function getAuthToken(): string | null {
 export function setAuthToken(token: string) {
   if (typeof window !== 'undefined') {
     localStorage.setItem('bmost_token', token);
+    document.cookie = `bmost_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+  }
+}
+
+export function clearAuthToken() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bmost_token');
+    localStorage.removeItem('bmost_user');
+    document.cookie = 'bmost_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+  }
+}
+
+export function getStoredUser(): any | null {
+  if (typeof window === 'undefined') return null;
+  const userJson = localStorage.getItem('bmost_user');
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: any) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('bmost_user', JSON.stringify(user));
   }
 }
 

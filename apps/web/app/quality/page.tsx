@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { api, ProductItem, QualityCheckItem } from '../../lib/api';
+import { getQcBadge, THAI_PRODUCT_STATUS } from '../../lib/thai-locale';
 
 function QualityPageContent() {
   const searchParams = useSearchParams();
@@ -51,7 +52,7 @@ function QualityPageContent() {
         }
       } catch (err: unknown) {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'Failed to load initial data';
+          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลการตรวจสอบได้';
           setErrorMessage(msg);
         }
       } finally {
@@ -71,7 +72,7 @@ function QualityPageContent() {
   const handleSubmitQC = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductId) {
-      setErrorMessage('Please select a product for inspection.');
+      setErrorMessage('กรุณาเลือกสินค้าที่ต้องการตรวจสอบ');
       return;
     }
 
@@ -88,22 +89,18 @@ function QualityPageContent() {
       });
 
       setSuccessData({
-        message: res.message,
+        message: 'บันทึกผลการตรวจสอบคุณภาพเรียบร้อยแล้ว',
         txHash: res.blockchain?.txHash || '',
         productCode: res.product?.productCode || '',
         newStatus: res.product?.status || (resultVerdict === 'PASSED' ? 'QUALITY_CHECKED' : 'RECALLED'),
       });
 
-      // Clear input notes
       setNotes('');
 
-      // Refresh recent inspections
-      const updatedQc = await api.qualityChecks.list({ limit: 30 }).catch(() => null);
-      if (updatedQc?.data) {
-        setQcList(updatedQc.data);
-      }
+      const qcRes = await api.qualityChecks.list({ limit: 30 });
+      setQcList(qcRes.data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Quality check submission failed';
+      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกผลการตรวจสอบ';
       setErrorMessage(msg);
     } finally {
       setSubmitting(false);
@@ -116,377 +113,253 @@ function QualityPageContent() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-6 py-8 flex-1 w-full space-y-8">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🛡️</span>
-              <h1 className="text-2xl font-bold tracking-tight text-white">
-                Quality Control & Assurance
-              </h1>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Phase 8 — Execute formal quality verification, record cryptographic verdicts on-chain, and maintain audit provenance.
-            </p>
-          </div>
-          <Link
-            href="/products"
-            className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition"
-          >
-            &larr; View Products Catalog
-          </Link>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+        {/* Header */}
+        <div className="pb-6 border-b border-slate-200">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            การตรวจสอบคุณภาพสินค้า (Quality Control)
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            บันทึกผลการตรวจรับรองมาตรฐานสินค้า พร้อมส่งธุรกรรมยืนยันความถูกต้องลงบน Smart Contract
+          </p>
         </div>
 
-        {/* Success Alert Banner with Blockchain Receipt */}
+        {/* Success Alert */}
         {successData && (
-          <div className="p-5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-200 space-y-2.5 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 font-semibold text-sm text-emerald-300">
-                <span className="text-emerald-400 text-base">✓</span>
-                <span>{successData.message}</span>
-              </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Status: {successData.newStatus}
-              </span>
-            </div>
-            <div className="text-xs text-slate-300 space-y-1 font-mono pt-1 border-t border-emerald-800/40">
-              <div>
-                <span className="text-slate-400">Product Code:</span>{' '}
-                <span className="text-white font-semibold">{successData.productCode}</span>
-              </div>
-              <div className="break-all">
-                <span className="text-slate-400">Blockchain Tx Hash:</span>{' '}
-                <span className="text-blue-400 font-semibold">{successData.txHash}</span>
-              </div>
-            </div>
-            <div className="pt-1">
-              <Link
-                href={`/products/${encodeURIComponent(selectedProductId)}`}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition"
-              >
-                Inspect Product Traceability &rarr;
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* Error Alert */}
-        {errorMessage && (
-          <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-center justify-between">
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between shadow-2xs">
             <div>
-              <span className="font-semibold block mb-0.5">Inspection Failed</span>
-              <span>{errorMessage}</span>
+              <div className="font-bold flex items-center gap-1.5">
+                <span>✓</span> {successData.message}
+              </div>
+              <div className="text-xs mt-1">
+                รหัสสินค้า: <span className="font-mono font-semibold">{successData.productCode}</span> |
+                สถานะใหม่:{' '}
+                <span className="font-semibold text-emerald-700">
+                  {THAI_PRODUCT_STATUS[successData.newStatus] || successData.newStatus}
+                </span>
+              </div>
+              {successData.txHash && (
+                <div className="mt-2 text-xs font-mono text-blue-700 break-all">
+                  Tx: {successData.txHash}
+                </div>
+              )}
             </div>
             <button
-              onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-rose-200 text-sm ml-4"
+              onClick={() => setSuccessData(null)}
+              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* 2-Column Layout: Form & Guidelines */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column (2 spans): Quality Check Submission Form */}
-          <div className="lg:col-span-2 border border-slate-800 bg-slate-950/60 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                <span>📝</span> Record Quality Inspection
-              </h2>
-              <span className="text-xs text-slate-400 font-mono">
-                EVM Smart Contract Verified
-              </span>
+        {/* Error Alert */}
+        {errorMessage && (
+          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between shadow-2xs">
+            <div>
+              <div className="font-bold">เกิดข้อผิดพลาด</div>
+              <div className="text-xs mt-1">{errorMessage}</div>
             </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="text-slate-400 hover:text-slate-600 font-bold ml-4 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
-            <form onSubmit={handleSubmitQC} className="space-y-5">
-              {/* Product Selection */}
+        {/* 2-Column: Left Form, Right History */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Form */}
+          <div className="lg:col-span-1 border border-slate-200 bg-white rounded-xl p-5 shadow-2xs space-y-4">
+            <h2 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <span>🛡️</span> บันทึกผลการตรวจสอบใหม่
+            </h2>
+
+            <form onSubmit={handleSubmitQC} className="space-y-4 text-xs">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Select Product to Inspect <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  เลือกสินค้าที่ต้องการตรวจสอบ <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedProductId}
                   onChange={(e) => setSelectedProductId(e.target.value)}
                   required
-                  className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3.5 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
                 >
-                  <option value="">-- Choose a Product --</option>
+                  <option value="">-- เลือกสินค้า --</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
-                      [{p.productCode}] {p.name} — Status: {p.status}
+                      {p.productCode} — {p.name} [{THAI_PRODUCT_STATUS[p.status] || p.status}]
                     </option>
                   ))}
                 </select>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Only products in non-recalled and non-sold states can undergo inspection.
-                </p>
               </div>
 
-              {/* Inspector Name */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Inspector Name & Designation
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ชื่อผู้ตรวจสอบ <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  required
                   value={inspectorName}
                   onChange={(e) => setInspectorName(e.target.value)}
-                  placeholder="e.g. Dr. Jane Smith, Senior QA Engineer"
-                  className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition"
+                  placeholder="เช่น ดร. อริส หรือ แผนก QC"
+                  className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
                 />
               </div>
 
-              {/* Inspection Verdict (PASS / FAIL) */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-2">
-                  Inspection Result Verdict <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  ผลการตรวจสอบ (Verdict) <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setResultVerdict('PASSED')}
-                    className={`py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold transition ${
+                    className={`py-2 rounded-lg font-bold text-xs transition cursor-pointer border ${
                       resultVerdict === 'PASSED'
-                        ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/10'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 ring-2 ring-emerald-500/20'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                    PASS (Quality Checked)
+                    ✓ ผ่าน (PASS)
                   </button>
                   <button
                     type="button"
                     onClick={() => setResultVerdict('FAILED')}
-                    className={`py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold transition ${
+                    className={`py-2 rounded-lg font-bold text-xs transition cursor-pointer border ${
                       resultVerdict === 'FAILED'
-                        ? 'bg-rose-600/20 border-rose-500 text-rose-400 shadow-md shadow-rose-500/10'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-red-50 text-red-700 border-red-300 ring-2 ring-red-500/20'
+                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-400"></span>
-                    FAIL (Recall Product)
+                    ✕ ไม่ผ่าน (FAIL)
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1.5">
-                  {resultVerdict === 'PASSED'
-                    ? 'Product status will advance to QUALITY_CHECKED, allowing downstream logistics and shipping.'
-                    : 'Product status will immediately lock to RECALLED, permanently halting supply chain movement.'}
+                <p className="text-[11px] text-slate-400 mt-1">
+                  * หากไม่ผ่าน ระบบจะเปลี่ยนสถานะสินค้าเป็น &ldquo;เรียกคืน (RECALLED)&rdquo; อัตโนมัติ
                 </p>
               </div>
 
-              {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Inspection Notes & Test Observations
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  หมายเหตุ / ผลการตรวจทางเทคนิค
                 </label>
                 <textarea
+                  rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  placeholder="Record optical calibration tests, thermal limits, voltage tolerance, or failure defects..."
-                  className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3.5 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition"
+                  placeholder="บันทึกผลการทดสอบค่าความคลาดเคลื่อน ข้อมูลความปลอดภัย..."
+                  className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
                 />
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={submitting || !selectedProductId}
-                  className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Signing & Broadcasting Blockchain Transaction...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>⛓️ Sign Quality Check On-Chain</span>
-                    </>
-                  )}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {submitting ? 'กำลังส่งธุรกรรมลง Blockchain...' : 'บันทึกผลการตรวจสอบ (Submit QC)'}
+              </button>
             </form>
           </div>
 
-          {/* Right Column: QC Protocol Guidelines */}
-          <div className="space-y-6">
-            <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-5 text-xs space-y-3">
-              <h3 className="text-sm font-semibold text-white flex items-center gap-1.5">
-                <span>📋</span> Inspection Protocol
-              </h3>
-              <p className="text-slate-400 leading-relaxed">
-                Under ISO 9001 and B-MOST smart contract specifications, all registered products must receive formal inspection before entering shipping logistics.
-              </p>
-              <div className="space-y-2 pt-1 border-t border-slate-800/80">
-                <div className="flex items-start gap-2">
-                  <span className="text-emerald-400 font-bold">1.</span>
-                  <span className="text-slate-300">
-                    <strong className="text-white">PASS Verdict:</strong> Emits on-chain event{' '}
-                    <code className="text-blue-400">QualityChecked(productId, true)</code>.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-rose-400 font-bold">2.</span>
-                  <span className="text-slate-300">
-                    <strong className="text-white">FAIL Verdict:</strong> Automatically invokes product recall on the Ethereum ledger.
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-purple-400 font-bold">3.</span>
-                  <span className="text-slate-300">
-                    <strong className="text-white">Immutability:</strong> All inspector signatures and timestamped records become tamper-evident.
-                  </span>
-                </div>
+          {/* Right History Table */}
+          <div className="lg:col-span-2 border border-slate-200 bg-white rounded-xl p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>📋</span> ประวัติการตรวจสอบคุณภาพล่าสุด
+              </h2>
+              <div className="flex items-center gap-1 text-xs">
+                {['ALL', 'PASSED', 'FAILED'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setFilterResult(tab)}
+                    className={`px-2.5 py-1 rounded text-xs font-medium cursor-pointer transition ${
+                      filterResult === tab
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {tab === 'ALL' ? 'ทั้งหมด' : tab === 'PASSED' ? 'ผ่าน' : 'ไม่ผ่าน'}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-5 text-xs text-slate-400 space-y-2">
-              <div className="font-semibold text-slate-200">Authorized Roles</div>
-              <p>
-                Only certified independent Auditors, accredited Manufacturers, and Super Administrators hold permissions to post quality verification records.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Quality Check Inspection History Table */}
-        <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                <span>📜</span> Historical Quality Inspections
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Audited inspection reports synchronized from PostgreSQL and EVM smart contract events.
-              </p>
-            </div>
-
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <button
-                onClick={() => setFilterResult('ALL')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                  filterResult === 'ALL'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-900 text-slate-400 hover:text-white'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilterResult('PASSED')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                  filterResult === 'PASSED'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-900 text-slate-400 hover:text-white'
-                }`}
-              >
-                Passed
-              </button>
-              <button
-                onClick={() => setFilterResult('FAILED')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition ${
-                  filterResult === 'FAILED'
-                    ? 'bg-rose-600 text-white'
-                    : 'bg-slate-900 text-slate-400 hover:text-white'
-                }`}
-              >
-                Failed
-              </button>
-            </div>
-          </div>
-
-          {loadingHistory ? (
-            <div className="py-12 flex flex-col items-center justify-center text-slate-400 text-xs">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-              Loading inspection records...
-            </div>
-          ) : filteredQcList.length === 0 ? (
-            <div className="py-12 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-lg">
-              No quality check inspections found matching current criteria.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900/60 text-slate-400 border-b border-slate-800">
-                  <tr>
-                    <th className="py-3 px-4 font-medium">Product</th>
-                    <th className="py-3 px-4 font-medium">Verdict</th>
-                    <th className="py-3 px-4 font-medium">Inspector</th>
-                    <th className="py-3 px-4 font-medium">Notes</th>
-                    <th className="py-3 px-4 font-medium">Blockchain Tx</th>
-                    <th className="py-3 px-4 font-medium">Date</th>
-                    <th className="py-3 px-4 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredQcList.map((item, idx) => (
-                    <tr key={item.id || idx} className="hover:bg-slate-900/40 transition">
-                      <td className="py-3 px-4">
-                        <div className="font-semibold text-white">
-                          {item.product?.productCode || item.productId || 'Unknown'}
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          {item.product?.name || 'Item'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] ${
-                            item.result === 'PASSED'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              item.result === 'PASSED' ? 'bg-emerald-400' : 'bg-rose-400'
-                            }`}
-                          ></span>
-                          {item.result}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-slate-300 font-medium">
-                        {item.inspectorName || 'Lead Auditor'}
-                      </td>
-                      <td className="py-3 px-4 text-slate-400 max-w-xs truncate">
-                        {item.notes || '—'}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-[11px] text-blue-400">
-                        {item.blockchainTxHash ? (
-                          <span title={item.blockchainTxHash}>
-                            {item.blockchainTxHash.slice(0, 10)}...{item.blockchainTxHash.slice(-6)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">Pending</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-slate-400 whitespace-nowrap">
-                        {new Date(item.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        {item.product?.id && (
-                          <Link
-                            href={`/products/${item.product.id}`}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition font-medium"
-                          >
-                            View &rarr;
-                          </Link>
-                        )}
-                      </td>
+            {loadingHistory ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2 mx-auto"></div>
+                กำลังโหลดประวัติการตรวจสอบ...
+              </div>
+            ) : filteredQcList.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                ยังไม่มีประวัติการตรวจสอบคุณภาพ
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
+                    <tr>
+                      <th scope="col" className="px-3.5 py-3">สินค้า</th>
+                      <th scope="col" className="px-3.5 py-3">ผู้ตรวจสอบ</th>
+                      <th scope="col" className="px-3.5 py-3">ผลการตรวจ</th>
+                      <th scope="col" className="px-3.5 py-3">หมายเหตุ</th>
+                      <th scope="col" className="px-3.5 py-3">วันที่</th>
+                      <th scope="col" className="px-3.5 py-3">Blockchain</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredQcList.map((item) => {
+                      const badge = getQcBadge(item.result);
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/80 transition">
+                          <td className="px-3.5 py-3">
+                            <div className="font-mono font-bold text-blue-600">
+                              {item.product?.productCode || 'สินค้า'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {item.product?.name}
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-3">
+                            <div className="font-semibold text-slate-900">{item.inspectorName || '-'}</div>
+                            <div className="text-[10px] text-slate-400">{item.organization?.name}</div>
+                          </td>
+                          <td className="px-3.5 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badge.bg}`}>
+                              {badge.text}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-3 text-slate-600 max-w-xs truncate" title={item.notes || ''}>
+                            {item.notes || '-'}
+                          </td>
+                          <td className="px-3.5 py-3 text-slate-400 font-mono text-[10px]">
+                            {new Date(item.createdAt).toLocaleDateString('th-TH')}
+                          </td>
+                          <td className="px-3.5 py-3 font-mono text-[10px]">
+                            {item.blockchainTxHash ? (
+                              <span className="text-blue-600" title={item.blockchainTxHash}>
+                                {item.blockchainTxHash.slice(0, 8)}...{item.blockchainTxHash.slice(-6)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       </main>
     </div>
@@ -495,16 +368,7 @@ function QualityPageContent() {
 
 export default function QualityPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
-          <Navbar />
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-xs">
-            Loading Quality Control Interface...
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">กำลังโหลด...</div>}>
       <QualityPageContent />
     </Suspense>
   );

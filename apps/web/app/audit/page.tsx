@@ -10,6 +10,7 @@ import {
   AuditFilterOptions,
   QueryAuditParams,
 } from '../../lib/api';
+import { THAI_USER_ROLE, THAI_ORG_TYPE } from '../../lib/thai-locale';
 
 function formatTimestamp(isoString: string): { date: string; time: string; full: string } {
   try {
@@ -17,12 +18,12 @@ function formatTimestamp(isoString: string): { date: string; time: string; full:
     if (isNaN(d.getTime())) {
       return { date: isoString, time: '', full: isoString };
     }
-    const date = d.toLocaleDateString('en-US', {
+    const date = d.toLocaleDateString('th-TH', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-    const time = d.toLocaleTimeString('en-US', {
+    const time = d.toLocaleTimeString('th-TH', {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -38,48 +39,48 @@ function getActionBadgeStyle(action: string): { bg: string; text: string; border
   const upper = action.toUpperCase();
   if (upper.includes('CREATE') || upper.includes('REGISTER') || upper.includes('CONFIRM')) {
     return {
-      bg: 'bg-emerald-500/10',
-      text: 'text-emerald-400',
-      border: 'border-emerald-500/20',
-      dot: 'bg-emerald-400',
+      bg: 'bg-emerald-50',
+      text: 'text-emerald-700',
+      border: 'border-emerald-200',
+      dot: 'bg-emerald-500',
     };
   }
   if (upper.includes('UPDATE') || upper.includes('STATUS') || upper.includes('EDIT')) {
     return {
-      bg: 'bg-blue-500/10',
-      text: 'text-blue-400',
-      border: 'border-blue-500/20',
-      dot: 'bg-blue-400',
+      bg: 'bg-blue-50',
+      text: 'text-blue-700',
+      border: 'border-blue-200',
+      dot: 'bg-blue-500',
     };
   }
   if (upper.includes('QUALITY') || upper.includes('CHECK') || upper.includes('INSPECT')) {
     return {
-      bg: 'bg-purple-500/10',
-      text: 'text-purple-400',
-      border: 'border-purple-500/20',
-      dot: 'bg-purple-400',
+      bg: 'bg-purple-50',
+      text: 'text-purple-700',
+      border: 'border-purple-200',
+      dot: 'bg-purple-500',
     };
   }
   if (upper.includes('RECALL') || upper.includes('FAIL') || upper.includes('DELETE')) {
     return {
-      bg: 'bg-rose-500/10',
-      text: 'text-rose-400',
-      border: 'border-rose-500/20',
-      dot: 'bg-rose-400',
+      bg: 'bg-red-50',
+      text: 'text-red-700',
+      border: 'border-red-200',
+      dot: 'bg-red-500',
     };
   }
   if (upper.includes('LOGIN') || upper.includes('AUTH') || upper.includes('TRANSFER')) {
     return {
-      bg: 'bg-amber-500/10',
-      text: 'text-amber-400',
-      border: 'border-amber-500/20',
-      dot: 'bg-amber-400',
+      bg: 'bg-amber-50',
+      text: 'text-amber-700',
+      border: 'border-amber-200',
+      dot: 'bg-amber-500',
     };
   }
   return {
-    bg: 'bg-slate-500/10',
-    text: 'text-slate-300',
-    border: 'border-slate-500/20',
+    bg: 'bg-slate-50',
+    text: 'text-slate-700',
+    border: 'border-slate-200',
     dot: 'bg-slate-400',
   };
 }
@@ -87,18 +88,18 @@ function getActionBadgeStyle(action: string): { bg: string; text: string; border
 function getEntityTypeBadgeStyle(type: string): string {
   switch (type.toUpperCase()) {
     case 'PRODUCT':
-      return 'bg-blue-900/40 text-blue-300 border-blue-700/50';
+      return 'bg-blue-50 text-blue-700 border-blue-200';
     case 'SHIPMENT':
-      return 'bg-amber-900/40 text-amber-300 border-amber-700/50';
+      return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'QUALITYCHECK':
     case 'QUALITY_CHECK':
-      return 'bg-purple-900/40 text-purple-300 border-purple-700/50';
+      return 'bg-purple-50 text-purple-700 border-purple-200';
     case 'ORGANIZATION':
-      return 'bg-cyan-900/40 text-cyan-300 border-cyan-700/50';
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200';
     case 'USER':
-      return 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50';
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     default:
-      return 'bg-slate-800 text-slate-300 border-slate-700';
+      return 'bg-slate-100 text-slate-700 border-slate-200';
   }
 }
 
@@ -107,14 +108,14 @@ function AuditPageContent() {
   const router = useRouter();
 
   // URL state initialization
-  const initialSearch = searchParams.get('search') || '';
-  const initialAction = searchParams.get('action') || '';
-  const initialEntityType = searchParams.get('entityType') || '';
-  const initialOrgId = searchParams.get('organizationId') || '';
-  const initialDateFrom = searchParams.get('dateFrom') || '';
-  const initialDateTo = searchParams.get('dateTo') || '';
-  const initialPage = parseInt(searchParams.get('page') || '1', 10);
-  const initialLimit = parseInt(searchParams.get('limit') || '15', 10);
+  const initialSearch = searchParams?.get('search') || '';
+  const initialAction = searchParams?.get('action') || '';
+  const initialEntityType = searchParams?.get('entityType') || '';
+  const initialOrgId = searchParams?.get('organizationId') || '';
+  const initialDateFrom = searchParams?.get('dateFrom') || '';
+  const initialDateTo = searchParams?.get('dateTo') || '';
+  const initialPage = parseInt(searchParams?.get('page') || '1', 10);
+  const initialLimit = parseInt(searchParams?.get('limit') || '15', 10);
 
   // Filter states
   const [searchInput, setSearchInput] = useState<string>(initialSearch);
@@ -193,7 +194,7 @@ function AuditPageContent() {
         }
       } catch (err: unknown) {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'Failed to load audit logs';
+          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดประวัติการตรวจสอบได้';
           setErrorMessage(msg);
         }
       } finally {
@@ -302,22 +303,24 @@ function AuditPageContent() {
   }, [searchInput, selectedAction, selectedEntityType, selectedOrgId, dateFrom, dateTo]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 w-full flex-1">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-3">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h1 className="text-2xl font-bold tracking-tight text-white">System Audit Logs</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                Compliance & Traceability
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                ประวัติการตรวจสอบระบบ (Audit Logs)
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                Compliance &amp; Traceability
               </span>
             </div>
-            <p className="text-sm text-slate-400 mt-1">
-              Immutable event log recording all critical administrative, operational, and multi-tenant actions.
+            <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+              บันทึกกิจกรรมและเหตุการณ์สำคัญในระบบอย่างโปร่งใส ตรวจสอบย้อนกลับได้ และไม่สามารถแก้ไขย้อนหลังได้
             </p>
           </div>
 
@@ -325,46 +328,46 @@ function AuditPageContent() {
             <button
               onClick={handleExportCSV}
               disabled={logs.length === 0}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-              title="Export current view to CSV"
+              className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="ส่งออกมุมมองปัจจุบันเป็นไฟล์ CSV"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export CSV
+              ส่งออก CSV
             </button>
             <button
               onClick={handleExportJSON}
               disabled={logs.length === 0}
-              className="px-3.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
-              title="Export current view to JSON"
+              className="px-3.5 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="ส่งออกมุมมองปัจจุบันเป็นไฟล์ JSON"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
-              Export JSON
+              ส่งออก JSON
             </button>
           </div>
         </div>
 
         {/* Filter Section */}
-        <div className="mt-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-sm">
+        <div className="mt-6 bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs">
           <form onSubmit={handleSearchSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               {/* Keyword Search */}
               <div className="lg:col-span-2">
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Search Keywords
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ค้นหาคำสำคัญ (Search Keywords)
                 </label>
                 <div className="relative">
                   <input
                     type="text"
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="Search by Entity ID, user email, action, IP..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    placeholder="ค้นหาด้วย Entity ID, อีเมลผู้ใช้, การกระทำ, IP..."
+                    className="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 transition"
                   />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -374,8 +377,8 @@ function AuditPageContent() {
 
               {/* Action Dropdown */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Action Type
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ประเภทการกระทำ (Action Type)
                 </label>
                 <select
                   value={selectedAction}
@@ -383,15 +386,14 @@ function AuditPageContent() {
                     setSelectedAction(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-600 transition"
                 >
-                  <option value="">All Actions</option>
+                  <option value="">ทุกการกระทำ (All Actions)</option>
                   {filterOptions.actions.map((act) => (
                     <option key={act} value={act}>
                       {act}
                     </option>
                   ))}
-                  {/* Fallback default actions if dynamic options list empty */}
                   {filterOptions.actions.length === 0 && (
                     <>
                       <option value="PRODUCT_CREATED">PRODUCT_CREATED</option>
@@ -409,8 +411,8 @@ function AuditPageContent() {
 
               {/* Entity Type Dropdown */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Entity Type
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ประเภทข้อมูล (Entity Type)
                 </label>
                 <select
                   value={selectedEntityType}
@@ -418,9 +420,9 @@ function AuditPageContent() {
                     setSelectedEntityType(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-600 transition"
                 >
-                  <option value="">All Entities</option>
+                  <option value="">ทุกประเภทข้อมูล (All Entities)</option>
                   {filterOptions.entityTypes.map((et) => (
                     <option key={et} value={et}>
                       {et}
@@ -428,11 +430,11 @@ function AuditPageContent() {
                   ))}
                   {filterOptions.entityTypes.length === 0 && (
                     <>
-                      <option value="Product">Product</option>
-                      <option value="Shipment">Shipment</option>
-                      <option value="QualityCheck">QualityCheck</option>
-                      <option value="Organization">Organization</option>
-                      <option value="User">User</option>
+                      <option value="Product">Product (สินค้า)</option>
+                      <option value="Shipment">Shipment (การจัดส่ง)</option>
+                      <option value="QualityCheck">QualityCheck (ตรวจสอบคุณภาพ)</option>
+                      <option value="Organization">Organization (องค์กร)</option>
+                      <option value="User">User (ผู้ใช้งาน)</option>
                     </>
                   )}
                 </select>
@@ -443,8 +445,8 @@ function AuditPageContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
               {/* Organization Dropdown */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  Organization
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  องค์กร (Organization)
                 </label>
                 <select
                   value={selectedOrgId}
@@ -452,9 +454,9 @@ function AuditPageContent() {
                     setSelectedOrgId(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-600 transition"
                 >
-                  <option value="">All Organizations</option>
+                  <option value="">ทุกองค์กร (All Organizations)</option>
                   {filterOptions.organizations.map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name} ({org.code})
@@ -465,8 +467,8 @@ function AuditPageContent() {
 
               {/* Date From */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  From Date
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ตั้งแต่วันที่ (Date From)
                 </label>
                 <input
                   type="date"
@@ -475,14 +477,14 @@ function AuditPageContent() {
                     setDateFrom(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-600 transition"
                 />
               </div>
 
               {/* Date To */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">
-                  To Date
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  ถึงวันที่ (Date To)
                 </label>
                 <input
                   type="date"
@@ -491,7 +493,7 @@ function AuditPageContent() {
                     setDateTo(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-600 transition"
                 />
               </div>
 
@@ -499,18 +501,21 @@ function AuditPageContent() {
               <div className="flex items-end gap-2">
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold shadow transition"
+                  className="flex-1 py-2 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Apply Filters
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  ค้นหาและกรอง
                 </button>
                 {activeFiltersCount > 0 && (
                   <button
                     type="button"
                     onClick={handleResetFilters}
-                    className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-sm transition"
-                    title="Clear all filters"
+                    className="py-2 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs"
+                    title="ล้างตัวกรอง"
                   >
-                    Reset
+                    ล้าง
                   </button>
                 )}
               </div>
@@ -518,50 +523,45 @@ function AuditPageContent() {
           </form>
         </div>
 
-        {/* Status / Error Banner */}
+        {/* Error message */}
         {errorMessage && (
-          <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm flex items-center justify-between">
+          <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              <span className="font-bold">เกิดข้อผิดพลาด:</span>
               <span>{errorMessage}</span>
             </div>
             <button
-              onClick={() => {
-                setPage(1);
-                setErrorMessage(null);
-              }}
-              className="text-xs underline hover:text-white font-medium"
+              onClick={() => setErrorMessage(null)}
+              className="text-red-500 hover:text-red-700 font-bold ml-4 cursor-pointer"
             >
-              Retry
+              &times;
             </button>
           </div>
         )}
 
         {/* Results Metadata Bar */}
-        <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 px-1">
           <div className="flex items-center gap-2">
             <span>
-              Showing <strong className="text-slate-200">{logs.length}</strong> of{' '}
-              <strong className="text-slate-200">{totalCount}</strong> total audit records
+              แสดง <strong className="text-slate-900">{logs.length}</strong> จากทั้งหมด{' '}
+              <strong className="text-slate-900">{totalCount}</strong> รายการ
             </span>
             {activeFiltersCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
-                {activeFiltersCount} active {activeFiltersCount === 1 ? 'filter' : 'filters'}
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                ใช้งาน {activeFiltersCount} ตัวกรอง
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
+            <span>แสดงหน้าละ:</span>
             <select
               value={limit}
               onChange={(e) => {
                 setLimit(Number(e.target.value));
                 setPage(1);
               }}
-              className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:border-blue-500"
+              className="bg-white border border-slate-300 rounded px-2 py-1 text-slate-900 text-xs focus:outline-none focus:border-blue-600 cursor-pointer"
             >
               <option value={10}>10</option>
               <option value={15}>15</option>
@@ -573,62 +573,62 @@ function AuditPageContent() {
         </div>
 
         {/* Audit Table */}
-        <div className="mt-3 bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+        <div className="mt-3 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-950/70 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider font-semibold">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider font-semibold">
                 <tr>
                   <th scope="col" className="px-5 py-3.5">
-                    Timestamp
+                    เวลาบันทึก
                   </th>
                   <th scope="col" className="px-5 py-3.5">
-                    User / Actor
+                    ผู้ดำเนินการ
                   </th>
                   <th scope="col" className="px-5 py-3.5">
-                    Organization
+                    องค์กร
                   </th>
                   <th scope="col" className="px-5 py-3.5">
-                    Action
+                    การกระทำ (Action)
                   </th>
                   <th scope="col" className="px-5 py-3.5">
-                    Entity
+                    เอนทิตี (Entity)
                   </th>
                   <th scope="col" className="px-5 py-3.5">
                     IP Address
                   </th>
                   <th scope="col" className="px-5 py-3.5 text-right">
-                    Details
+                    การดำเนินการ
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-normal">
+              <tbody className="divide-y divide-slate-100 font-normal">
                 {loading ? (
                   // Loading skeletons
                   Array.from({ length: 6 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
                       <td className="px-5 py-4">
-                        <div className="h-4 bg-slate-800 rounded w-28 mb-1" />
-                        <div className="h-3 bg-slate-800/60 rounded w-20" />
+                        <div className="h-4 bg-slate-200 rounded w-28 mb-1" />
+                        <div className="h-3 bg-slate-100 rounded w-20" />
                       </td>
                       <td className="px-5 py-4">
-                        <div className="h-4 bg-slate-800 rounded w-32 mb-1" />
-                        <div className="h-3 bg-slate-800/60 rounded w-24" />
+                        <div className="h-4 bg-slate-200 rounded w-32 mb-1" />
+                        <div className="h-3 bg-slate-100 rounded w-24" />
                       </td>
                       <td className="px-5 py-4">
-                        <div className="h-4 bg-slate-800 rounded w-28" />
+                        <div className="h-4 bg-slate-200 rounded w-28" />
                       </td>
                       <td className="px-5 py-4">
-                        <div className="h-6 bg-slate-800 rounded-full w-32" />
+                        <div className="h-6 bg-slate-100 rounded-full w-32" />
                       </td>
                       <td className="px-5 py-4">
-                        <div className="h-4 bg-slate-800 rounded w-24 mb-1" />
-                        <div className="h-3 bg-slate-800/60 rounded w-36" />
+                        <div className="h-4 bg-slate-200 rounded w-24 mb-1" />
+                        <div className="h-3 bg-slate-100 rounded w-36" />
                       </td>
                       <td className="px-5 py-4">
-                        <div className="h-4 bg-slate-800 rounded w-20" />
+                        <div className="h-4 bg-slate-200 rounded w-20" />
                       </td>
                       <td className="px-5 py-4 text-right">
-                        <div className="h-7 bg-slate-800 rounded w-16 ml-auto" />
+                        <div className="h-7 bg-slate-200 rounded w-16 ml-auto" />
                       </td>
                     </tr>
                   ))
@@ -637,22 +637,22 @@ function AuditPageContent() {
                   <tr>
                     <td colSpan={7} className="px-5 py-12 text-center">
                       <div className="max-w-sm mx-auto flex flex-col items-center">
-                        <div className="h-12 w-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
+                        <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
                           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
-                        <h3 className="text-base font-medium text-slate-200">No audit logs found</h3>
-                        <p className="text-xs text-slate-400 mt-1">
-                          No audit activity matches your selected filters. Try broadening your search or resetting filters.
+                        <h3 className="text-base font-bold text-slate-900">ไม่พบประวัติการตรวจสอบ</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          ไม่มีบันทึกกิจกรรมที่ตรงกับเงื่อนไขตัวกรองที่คุณเลือก ลองปรับเปลี่ยนหรือล้างเงื่อนไขการค้นหา
                         </p>
                         {activeFiltersCount > 0 && (
                           <button
                             type="button"
                             onClick={handleResetFilters}
-                            className="mt-4 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition"
+                            className="mt-4 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
                           >
-                            Clear All Filters
+                            ล้างตัวกรองทั้งหมด
                           </button>
                         )}
                       </div>
@@ -668,38 +668,38 @@ function AuditPageContent() {
                     return (
                       <tr
                         key={log.id}
-                        className="hover:bg-slate-800/40 transition group cursor-pointer"
+                        className="hover:bg-slate-50/80 transition group cursor-pointer"
                         onClick={() => setSelectedLog(log)}
                       >
                         {/* Timestamp */}
                         <td className="px-5 py-3.5 whitespace-nowrap">
-                          <div className="font-medium text-slate-200 text-xs">{timeInfo.date}</div>
-                          <div className="text-[11px] font-mono text-slate-500">{timeInfo.time}</div>
+                          <div className="font-semibold text-slate-900 text-xs">{timeInfo.date}</div>
+                          <div className="text-[11px] font-mono text-slate-400">{timeInfo.time}</div>
                         </td>
 
                         {/* User / Actor */}
                         <td className="px-5 py-3.5">
                           {isSystem ? (
                             <div className="flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-semibold text-slate-400">
+                              <div className="h-7 w-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
                                 SYS
                               </div>
                               <div>
-                                <div className="text-xs font-medium text-slate-300">System Actor</div>
-                                <div className="text-[11px] text-slate-500">Automated Event</div>
+                                <div className="text-xs font-semibold text-slate-700">ระบบอัตโนมัติ</div>
+                                <div className="text-[11px] text-slate-400">Automated Event</div>
                               </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <div className="h-7 w-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-[10px] font-bold text-blue-300">
+                              <div className="h-7 w-7 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-[10px] font-bold text-blue-700">
                                 {log.user?.firstName?.[0] || 'U'}
                                 {log.user?.lastName?.[0] || ''}
                               </div>
                               <div>
-                                <div className="text-xs font-medium text-slate-200">
+                                <div className="text-xs font-bold text-slate-900">
                                   {log.user?.firstName} {log.user?.lastName}
                                 </div>
-                                <div className="text-[11px] text-slate-400 truncate max-w-[160px]">
+                                <div className="text-[11px] text-slate-500 truncate max-w-[160px]">
                                   {log.user?.email}
                                 </div>
                               </div>
@@ -711,22 +711,22 @@ function AuditPageContent() {
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           {log.organization ? (
                             <div>
-                              <div className="text-xs font-medium text-slate-200">
+                              <div className="text-xs font-semibold text-slate-800">
                                 {log.organization.name}
                               </div>
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-400 border border-slate-700">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
                                 {log.organization.code}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-500 italic">None / Global</span>
+                            <span className="text-xs text-slate-400 italic">ส่วนกลาง / Global</span>
                           )}
                         </td>
 
                         {/* Action */}
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border ${badgeStyle.bg} ${badgeStyle.text} ${badgeStyle.border}`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${badgeStyle.dot}`} />
                             {log.action}
@@ -744,7 +744,7 @@ function AuditPageContent() {
                               {log.entityType}
                             </span>
                             <span
-                              className="text-[11px] font-mono text-slate-400 hover:text-blue-400 transition truncate max-w-[140px]"
+                              className="text-[11px] font-mono text-slate-500 hover:text-blue-600 transition truncate max-w-[140px]"
                               title={log.entityId}
                             >
                               {log.entityId}
@@ -753,27 +753,23 @@ function AuditPageContent() {
                         </td>
 
                         {/* IP Address */}
-                        <td className="px-5 py-3.5 whitespace-nowrap font-mono text-xs text-slate-400">
-                          {log.ipAddress ? (
-                            <span className="inline-flex items-center gap-1">
-                              <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                              </svg>
-                              {log.ipAddress}
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
+                        <td className="px-5 py-3.5 whitespace-nowrap">
+                          <span className="text-xs font-mono text-slate-600">
+                            {log.ipAddress || '—'}
+                          </span>
                         </td>
 
-                        {/* Inspect Details Button */}
-                        <td className="px-5 py-3.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        {/* Actions */}
+                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
                           <button
                             type="button"
-                            onClick={() => setSelectedLog(log)}
-                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300 hover:text-white transition"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLog(log);
+                            }}
+                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
                           >
-                            Inspect
+                            ดูรายละเอียด
                           </button>
                         </td>
                       </tr>
@@ -785,20 +781,22 @@ function AuditPageContent() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-5 py-3.5 bg-slate-950/70 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+          <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
             <div>
-              Page <strong className="text-slate-200">{page}</strong> of{' '}
-              <strong className="text-slate-200">{Math.max(totalPages, 1)}</strong>
+              <span>หน้า </span>
+              <strong className="text-slate-900">{page}</strong>
+              <span> จาก </span>
+              <strong className="text-slate-900">{totalPages}</strong>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page <= 1 || loading}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer shadow-2xs"
               >
-                &larr; Previous
+                &larr; ก่อนหน้า
               </button>
 
               {/* Page numbers indicator */}
@@ -810,10 +808,10 @@ function AuditPageContent() {
                       key={pNum}
                       type="button"
                       onClick={() => setPage(pNum)}
-                      className={`h-7 w-7 rounded text-xs font-medium transition ${
+                      className={`h-7 w-7 rounded text-xs font-semibold transition cursor-pointer ${
                         page === pNum
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                          ? 'bg-blue-600 text-white shadow-2xs'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
                       }`}
                     >
                       {pNum}
@@ -826,9 +824,9 @@ function AuditPageContent() {
                 type="button"
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 disabled={page >= totalPages || loading}
-                className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer shadow-2xs"
               >
-                Next &rarr;
+                ถัดไป &rarr;
               </button>
             </div>
           </div>
@@ -840,15 +838,15 @@ function AuditPageContent() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs"
           onClick={() => setSelectedLog(null)}
         >
           <div
-            className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-scaleIn"
+            className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
@@ -859,11 +857,11 @@ function AuditPageContent() {
                 >
                   {selectedLog.action}
                 </span>
-                <h3 className="text-base font-semibold text-white">Audit Entry Details</h3>
+                <h3 className="text-base font-bold text-slate-900">รายละเอียดบันทึกการตรวจสอบ</h3>
               </div>
               <button
                 onClick={() => setSelectedLog(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -874,18 +872,18 @@ function AuditPageContent() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6 text-sm">
               {/* Record Summary Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800/80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
                   <span className="block text-xs text-slate-500 uppercase font-semibold">Audit Record ID</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="font-mono text-xs text-slate-300 break-all">{selectedLog.id}</span>
+                    <span className="font-mono text-xs text-slate-800 break-all font-semibold">{selectedLog.id}</span>
                     <button
                       onClick={() => handleCopy(selectedLog.id, 'id')}
-                      className="text-slate-500 hover:text-slate-300"
-                      title="Copy ID"
+                      className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title="คัดลอก ID"
                     >
                       {copiedKey === 'id' ? (
-                        <span className="text-[10px] text-emerald-400 font-sans">Copied!</span>
+                        <span className="text-[10px] text-emerald-600 font-bold font-sans">คัดลอกแล้ว!</span>
                       ) : (
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -896,50 +894,50 @@ function AuditPageContent() {
                 </div>
 
                 <div>
-                  <span className="block text-xs text-slate-500 uppercase font-semibold">Timestamp</span>
-                  <span className="font-mono text-xs text-slate-300 mt-0.5 block">
+                  <span className="block text-xs text-slate-500 uppercase font-semibold">เวลาบันทึก (Timestamp)</span>
+                  <span className="font-mono text-xs text-slate-800 mt-0.5 block font-semibold">
                     {formatTimestamp(selectedLog.createdAt).full}
                   </span>
                 </div>
 
                 <div>
-                  <span className="block text-xs text-slate-500 uppercase font-semibold">Actor (User)</span>
-                  <div className="text-xs text-slate-300 mt-0.5">
+                  <span className="block text-xs text-slate-500 uppercase font-semibold">ผู้ดำเนินการ (Actor)</span>
+                  <div className="text-xs text-slate-700 mt-0.5">
                     {selectedLog.user ? (
                       <>
-                        <span className="font-medium text-white">
+                        <span className="font-bold text-slate-900">
                           {selectedLog.user.firstName} {selectedLog.user.lastName}
                         </span>{' '}
-                        <span className="text-slate-400">({selectedLog.user.email})</span>
-                        <div className="text-[11px] text-blue-400 font-mono mt-0.5">
-                          Role: {selectedLog.user.role}
+                        <span className="text-slate-500">({selectedLog.user.email})</span>
+                        <div className="text-[11px] text-blue-700 font-mono mt-0.5">
+                          บทบาท: {THAI_USER_ROLE[selectedLog.user.role] || selectedLog.user.role}
                         </div>
                       </>
                     ) : (
-                      <span className="text-slate-500 italic">System Process / Unauthenticated</span>
+                      <span className="text-slate-500 italic">ระบบอัตโนมัติ / System Process</span>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <span className="block text-xs text-slate-500 uppercase font-semibold">Organization</span>
-                  <div className="text-xs text-slate-300 mt-0.5">
+                  <span className="block text-xs text-slate-500 uppercase font-semibold">องค์กร (Organization)</span>
+                  <div className="text-xs text-slate-700 mt-0.5">
                     {selectedLog.organization ? (
                       <>
-                        <span className="font-medium text-white">{selectedLog.organization.name}</span>{' '}
-                        <span className="text-slate-400">[{selectedLog.organization.code}]</span>
+                        <span className="font-bold text-slate-900">{selectedLog.organization.name}</span>{' '}
+                        <span className="text-slate-500 font-mono">[{selectedLog.organization.code}]</span>
                         <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                          Type: {selectedLog.organization.type}
+                          ประเภท: {THAI_ORG_TYPE[selectedLog.organization.type] || selectedLog.organization.type}
                         </div>
                       </>
                     ) : (
-                      <span className="text-slate-500 italic">None / Global</span>
+                      <span className="text-slate-500 italic">ส่วนกลาง / Global</span>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <span className="block text-xs text-slate-500 uppercase font-semibold">Target Entity</span>
+                  <span className="block text-xs text-slate-500 uppercase font-semibold">เอนทิตีเป้าหมาย (Target Entity)</span>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span
                       className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getEntityTypeBadgeStyle(
@@ -948,39 +946,39 @@ function AuditPageContent() {
                     >
                       {selectedLog.entityType}
                     </span>
-                    <span className="font-mono text-xs text-slate-300 break-all">{selectedLog.entityId}</span>
+                    <span className="font-mono text-xs text-slate-800 break-all font-semibold">{selectedLog.entityId}</span>
                   </div>
                   {/* Entity contextual quick links */}
                   {selectedLog.entityType.toUpperCase() === 'PRODUCT' && (
                     <Link
                       href={`/traceability?search=${encodeURIComponent(selectedLog.entityId)}`}
-                      className="inline-block text-[11px] text-blue-400 hover:text-blue-300 underline mt-1"
+                      className="inline-block text-[11px] text-blue-600 hover:text-blue-800 underline mt-1 font-semibold"
                     >
-                      View in Traceability &rarr;
+                      ดูประวัติย้อนกลับ &rarr;
                     </Link>
                   )}
                   {selectedLog.entityType.toUpperCase() === 'SHIPMENT' && (
                     <Link
                       href="/shipments"
-                      className="inline-block text-[11px] text-amber-400 hover:text-amber-300 underline mt-1"
+                      className="inline-block text-[11px] text-amber-600 hover:text-amber-800 underline mt-1 font-semibold"
                     >
-                      View in Shipments &rarr;
+                      ดูในการจัดส่ง &rarr;
                     </Link>
                   )}
                   {selectedLog.entityType.toUpperCase().includes('QUALITY') && (
                     <Link
                       href="/quality"
-                      className="inline-block text-[11px] text-purple-400 hover:text-purple-300 underline mt-1"
+                      className="inline-block text-[11px] text-purple-600 hover:text-purple-800 underline mt-1 font-semibold"
                     >
-                      View in Quality Checks &rarr;
+                      ดูในการตรวจสอบคุณภาพ &rarr;
                     </Link>
                   )}
                 </div>
 
                 <div>
-                  <span className="block text-xs text-slate-500 uppercase font-semibold">Client IP & Origin</span>
-                  <span className="font-mono text-xs text-slate-300 mt-0.5 block">
-                    {selectedLog.ipAddress || 'Not recorded'}
+                  <span className="block text-xs text-slate-500 uppercase font-semibold">Client IP &amp; Origin</span>
+                  <span className="font-mono text-xs text-slate-800 mt-0.5 block font-semibold">
+                    {selectedLog.ipAddress || 'ไม่มีข้อมูล'}
                   </span>
                 </div>
               </div>
@@ -988,39 +986,39 @@ function AuditPageContent() {
               {/* Event Metadata / Payload */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                    Metadata & Payload
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    ข้อมูล Metadata &amp; Payload (JSON)
                   </span>
                   {selectedLog.metadata && (
                     <button
                       onClick={() => handleCopy(JSON.stringify(selectedLog.metadata, null, 2), 'metadata')}
-                      className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                      className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-semibold cursor-pointer"
                     >
-                      {copiedKey === 'metadata' ? 'Copied JSON!' : 'Copy JSON'}
+                      {copiedKey === 'metadata' ? 'คัดลอก JSON แล้ว!' : 'คัดลอก JSON'}
                     </button>
                   )}
                 </div>
 
                 {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 ? (
-                  <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 overflow-x-auto max-h-64 leading-relaxed">
+                  <pre className="bg-slate-900 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto max-h-64 leading-relaxed">
                     {JSON.stringify(selectedLog.metadata, null, 2)}
                   </pre>
                 ) : (
-                  <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800 text-xs text-slate-500 italic text-center">
-                    No extra metadata associated with this audit entry.
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-500 italic text-center">
+                    ไม่มีข้อมูล Metadata เพิ่มเติมสำหรับรายการนี้
                   </div>
                 )}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-slate-800 bg-slate-950/50 flex justify-end">
+            <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50 flex justify-end">
               <button
                 type="button"
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+                className="px-4 py-2 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
               >
-                Close
+                ปิด
               </button>
             </div>
           </div>
@@ -1034,10 +1032,10 @@ export default function AuditPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
           <Navbar />
           <div className="flex-1 flex items-center justify-center">
-            <div className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         </div>
       }

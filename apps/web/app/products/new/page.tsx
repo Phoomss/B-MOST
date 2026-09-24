@@ -36,7 +36,7 @@ export default function CreateProductPage() {
 
       router.push(`/products/${created.id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to create product';
+      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลงทะเบียนสินค้า';
       setError(msg);
       setLoading(false);
     }
@@ -53,167 +53,182 @@ export default function CreateProductPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-6 py-10 flex-1 w-full">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
         <div className="mb-6">
           <Link
             href="/products"
-            className="text-xs text-slate-400 hover:text-slate-200 transition inline-flex items-center gap-1 mb-2"
+            className="text-xs text-slate-500 hover:text-blue-600 transition inline-flex items-center gap-1 mb-2 font-medium"
           >
-            &larr; Back to Products
+            &larr; กลับหน้ารายการสินค้า
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Register New Product
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Create an authentic product entry in the supply chain database and optionally commit to the blockchain smart contract.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              ลงทะเบียนสินค้าใหม่
+            </h1>
+            <span className="sr-only">Register New Product</span>
+            <span className="text-xs text-slate-400 font-normal">
+              (Register New Product)
+            </span>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            สร้างข้อมูลสินค้าในระบบห่วงโซ่อุปทาน คำนวณรหัสแฮช และบันทึกยืนยันลงบนบล็อกเชน
           </p>
         </div>
 
         {error && (
-          <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm mb-6">
-            <div className="font-semibold mb-1">Registration Error</div>
-            {error}
+          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm mb-6">
+            <div className="font-semibold mb-1 flex items-center gap-1.5">
+              <span>เกิดข้อผิดพลาดในการลงทะเบียน</span>
+              <span className="sr-only">Registration Error</span>
+              <span className="text-xs font-mono text-red-600">(Registration Error)</span>
+            </div>
+            <div>{error}</div>
           </div>
         )}
 
         <form
           onSubmit={handleSubmit}
-          className="border border-slate-800 bg-slate-950/60 rounded-xl p-6 sm:p-8 space-y-6"
+          className="border border-slate-200 bg-white rounded-xl p-6 sm:p-8 space-y-6 shadow-2xs"
         >
           {/* Product Code */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-medium text-slate-200">
-                Product Code <span className="text-rose-400">*</span>
+              <label htmlFor="prod-code-input" className="text-xs sm:text-sm font-semibold text-slate-800">
+                รหัสสินค้า (Product Code) <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
                 onClick={handleGenerateCode}
-                className="text-xs text-blue-400 hover:text-blue-300 transition"
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
-                Auto-generate
+                สร้างอัตโนมัติ (Auto-generate)
               </button>
             </div>
             <input
+              id="prod-code-input"
               type="text"
               required
               value={productCode}
               onChange={(e) => setProductCode(e.target.value.toUpperCase())}
               placeholder="e.g. PRD-2026-0001"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
             />
-            <p className="text-xs text-slate-500 mt-1">
-              Unique identifier used in consumer QR verification and on-chain mapping.
+            <p className="text-[11px] text-slate-500 mt-1">
+              รหัสเฉพาะสำหรับใช้สร้าง QR Code เพื่อให้ผู้บริโภคตรวจสอบ และเชื่อมโยงบนบล็อกเชน
             </p>
           </div>
 
           {/* Serial Number */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm font-medium text-slate-200">
-                Serial Number <span className="text-rose-400">*</span>
+              <label htmlFor="serial-input" className="text-xs sm:text-sm font-semibold text-slate-800">
+                หมายเลขซีเรียล (Serial Number) <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
                 onClick={handleGenerateSerial}
-                className="text-xs text-blue-400 hover:text-blue-300 transition"
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
-                Auto-generate
+                สร้างอัตโนมัติ (Auto-generate)
               </button>
             </div>
             <input
+              id="serial-input"
               type="text"
               required
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value)}
               placeholder="e.g. SN-8921473"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm font-mono text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
             />
           </div>
 
           {/* Commercial Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1.5">
-              Product Name <span className="text-rose-400">*</span>
+            <label htmlFor="name-input" className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+              ชื่อสินค้า (Product Name) <span className="text-red-500">*</span>
             </label>
             <input
+              id="name-input"
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Industrial IoT Sensor Probe"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
             />
           </div>
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1.5">
-              Category
+            <label htmlFor="category-input" className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+              หมวดหมู่สินค้า (Category)
             </label>
             <input
+              id="category-input"
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Electronics, Pharmaceuticals, Consumer Goods"
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-slate-200 mb-1.5">
-              Description / Specifications
+            <label htmlFor="desc-input" className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+              รายละเอียด / สเปคสินค้า (Description)
             </label>
             <textarea
+              id="desc-input"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief manufacturing specifications or batch details..."
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              placeholder="ข้อมูลจำเพาะทางเทคนิค หรือรายละเอียดของล็อตการผลิต..."
+              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
             />
           </div>
 
           {/* Blockchain Checkbox */}
           <div className="pt-2">
-            <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/50 hover:border-slate-700 cursor-pointer transition">
+            <label className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50/50 hover:border-blue-200 cursor-pointer transition">
               <input
                 type="checkbox"
                 checked={registerOnBlockchain}
                 onChange={(e) => setRegisterOnBlockchain(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               <div>
-                <span className="text-sm font-medium text-white block">
-                  Register immediately onto Smart Contract
+                <span className="text-sm font-semibold text-slate-900 block">
+                  บันทึกลง Smart Contract ทันที (Register immediately onto smart contract)
                 </span>
-                <span className="text-xs text-slate-400 block mt-0.5">
-                  Submits a transaction to SupplyChainRegistry.sol with deterministic keccak256 hash. You can also register later.
+                <span className="text-xs text-slate-500 block mt-0.5 leading-relaxed">
+                  ส่งธุรกรรมไปยัง SupplyChainRegistry.sol พร้อมแฮช keccak256 เพื่อยืนยันความถูกต้องของข้อมูล (สามารถลงทะเบียนภายหลังได้)
                 </span>
               </div>
             </label>
           </div>
 
           {/* Submit */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
             <Link
               href="/products"
-              className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition"
+              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 font-medium transition"
             >
-              Cancel
+              ยกเลิก
             </Link>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-blue-600/30 transition flex items-center gap-2"
+              className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-semibold shadow-xs transition flex items-center gap-2 cursor-pointer"
             >
               {loading && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               )}
-              {loading ? 'Creating...' : 'Register Product'}
+              {loading ? 'กำลังบันทึก...' : 'ลงทะเบียนสินค้า (Register Product)'}
             </button>
           </div>
         </form>
