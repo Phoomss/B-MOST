@@ -501,6 +501,51 @@ export class BlockchainService implements OnModuleDestroy {
     return this.provider.getTransactionReceipt(txHash);
   }
 
+  async getBlock(blockHashOrNumber: number | string): Promise<{
+    number: number;
+    hash: string | null;
+    parentHash: string;
+    timestamp: number;
+    miner: string;
+    gasLimit: string;
+    gasUsed: string;
+    baseFeePerGas: string | null;
+    transactionCount: number;
+    transactions: string[];
+  } | null> {
+    try {
+      const target =
+        blockHashOrNumber === 'latest'
+          ? 'latest'
+          : typeof blockHashOrNumber === 'string' &&
+            blockHashOrNumber.startsWith('0x')
+          ? blockHashOrNumber
+          : Number(blockHashOrNumber);
+      const block = await this.provider.getBlock(target);
+      if (!block) return null;
+
+      return {
+        number: block.number,
+        hash: block.hash,
+        parentHash: block.parentHash,
+        timestamp: block.timestamp,
+        miner: block.miner,
+        gasLimit: block.gasLimit.toString(),
+        gasUsed: block.gasUsed.toString(),
+        baseFeePerGas: block.baseFeePerGas
+          ? block.baseFeePerGas.toString()
+          : null,
+        transactionCount: block.transactions.length,
+        transactions: [...block.transactions],
+      };
+    } catch (error: any) {
+      this.logger.warn(
+        `Failed to retrieve block ${blockHashOrNumber}: ${error.message}`,
+      );
+      return null;
+    }
+  }
+
   async grantRole(
     roleName: keyof typeof CONTRACT_ROLES,
     account: string,
@@ -522,3 +567,4 @@ export class BlockchainService implements OnModuleDestroy {
     return contract.hasRole(roleHash, account);
   }
 }
+

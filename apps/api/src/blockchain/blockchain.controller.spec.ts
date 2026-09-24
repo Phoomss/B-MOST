@@ -144,4 +144,50 @@ describe('BlockchainController', () => {
       expect(indexerService.syncHistoricalEvents).toHaveBeenCalledWith(0, 10);
     });
   });
+
+  describe('getStats', () => {
+    it('should return transaction statistics from service', async () => {
+      mockTransactionService.getStats = jest.fn().mockResolvedValue({
+        total: 10,
+        confirmed: 8,
+        pending: 2,
+        failed: 0,
+      });
+
+      const stats = await controller.getStats();
+      expect(stats.total).toBe(10);
+      expect(stats.confirmed).toBe(8);
+      expect(mockTransactionService.getStats).toHaveBeenCalled();
+    });
+  });
+
+  describe('getBlock', () => {
+    it('should return block details when found', async () => {
+      mockBlockchainService.getBlock = jest.fn().mockResolvedValue({
+        number: 42,
+        hash: '0xblockhash',
+        parentHash: '0xparenthash',
+        timestamp: 1672531199,
+        miner: '0xminer',
+        gasLimit: '30000000',
+        gasUsed: '21000',
+        baseFeePerGas: '1000000000',
+        transactionCount: 1,
+        transactions: ['0x123'],
+      });
+
+      const block = await controller.getBlock('42');
+      expect(block.number).toBe(42);
+      expect(block.hash).toBe('0xblockhash');
+      expect(mockBlockchainService.getBlock).toHaveBeenCalledWith('42');
+    });
+
+    it('should throw NotFoundException when block is not found', async () => {
+      mockBlockchainService.getBlock = jest.fn().mockResolvedValue(null);
+
+      await expect(controller.getBlock('999')).rejects.toThrow(
+        'Block 999 not found',
+      );
+    });
+  });
 });

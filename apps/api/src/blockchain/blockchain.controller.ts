@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -55,6 +56,39 @@ export class BlockchainController {
       ...status,
       listenerActive: listener.isListening,
     };
+  }
+
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Get blockchain transaction statistics',
+    description:
+      'Returns counts of total, confirmed, pending, and failed indexed transactions.',
+  })
+  @ApiResponse({ status: 200, description: 'Stats returned successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getStats() {
+    return this.transactionService.getStats();
+  }
+
+  @Get('blocks/:blockNumber')
+  @ApiOperation({
+    summary: 'Get block details by block number or latest',
+    description:
+      'Retrieves block headers, timestamps, gas details, and included transactions from the blockchain node.',
+  })
+  @ApiParam({
+    name: 'blockNumber',
+    description: 'Block number or hash or "latest"',
+  })
+  @ApiResponse({ status: 200, description: 'Block details returned' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Block not found' })
+  async getBlock(@Param('blockNumber') blockNumber: string) {
+    const block = await this.blockchainService.getBlock(blockNumber);
+    if (!block) {
+      throw new NotFoundException(`Block ${blockNumber} not found`);
+    }
+    return block;
   }
 
   @Get('transactions')

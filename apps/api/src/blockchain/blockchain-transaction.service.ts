@@ -46,6 +46,8 @@ export class BlockchainTransactionService {
       productId,
       walletAddress,
       status,
+      blockNumber,
+      search,
       page = 1,
       limit = 20,
     } = query;
@@ -71,6 +73,22 @@ export class BlockchainTransactionService {
     }
     if (status) {
       where.status = status;
+    }
+    if (blockNumber) {
+      try {
+        where.blockNumber = BigInt(blockNumber);
+      } catch {
+        // ignore invalid bigint
+      }
+    }
+    if (search && search.trim()) {
+      const term = search.trim();
+      where.OR = [
+        { txHash: { contains: term, mode: 'insensitive' } },
+        { walletAddress: { contains: term, mode: 'insensitive' } },
+        { eventType: { contains: term, mode: 'insensitive' } },
+        { entityId: { contains: term, mode: 'insensitive' } },
+      ];
     }
 
     const [total, records] = await Promise.all([
@@ -108,6 +126,28 @@ export class BlockchainTransactionService {
     };
   }
 
+  async getStats(): Promise<{
+    total: number;
+    confirmed: number;
+    pending: number;
+    failed: number;
+  }> {
+    const [total, confirmed, pending, failed] = await Promise.all([
+      this.prisma.blockchainTransaction.count(),
+      this.prisma.blockchainTransaction.count({
+        where: { status: TxStatus.CONFIRMED },
+      }),
+      this.prisma.blockchainTransaction.count({
+        where: { status: TxStatus.PENDING },
+      }),
+      this.prisma.blockchainTransaction.count({
+        where: { status: TxStatus.FAILED },
+      }),
+    ]);
+
+    return { total, confirmed, pending, failed };
+  }
+
   async findByHash(txHash: string): Promise<
     FormattedTransaction & {
       onChainReceipt?: {
@@ -116,6 +156,10 @@ export class BlockchainTransactionService {
         from: string;
         to: string | null;
         gasUsed: string;
+        gasPrice?: string | null;
+        nonce?: number | null;
+        inputData?: string | null;
+        logsCount?: number;
       } | null;
     }
   > {
@@ -134,12 +178,24 @@ export class BlockchainTransactionService {
 
     if (!record) {
       // Check if on-chain receipt exists even if not indexed yet
-      const receipt =
-        await this.blockchainService.getTransactionReceipt(txHash);
+      const receipt = await this.blockchainService.getTransactionReceipt(txHash);
+
       if (!receipt) {
         throw new NotFoundException(
           `Blockchain transaction with hash ${txHash} not found`,
         );
+      }
+
+      let tx: any = null;
+      try {
+        if (typeof this.blockchainService.getProvider === 'function') {
+          const provider = this.blockchainService.getProvider();
+          if (provider && typeof provider.getTransaction === 'function') {
+            tx = await provider.getTransaction(txHash);
+          }
+        }
+      } catch {
+        tx = null;
       }
 
       return {
@@ -163,7 +219,15 @@ export class BlockchainTransactionService {
           status: receipt.status,
           from: receipt.from,
           to: receipt.to,
-          gasUsed: receipt.gasUsed.toString(),
+          gasUsed: receipt.gasUsed ? receipt.gasUsed.toString() : '0',
+          gasPrice: receipt.gasPrice
+            ? receipt.gasPrice.toString()
+            : tx?.gasPrice
+            ? tx.gasPrice.toString()
+            : null,
+          nonce: tx?.nonce ?? null,
+          inputData: tx?.data && tx.data !== '0x' ? tx.data : null,
+          logsCount: receipt.logs ? receipt.logs.length : 0,
         },
       };
     }
@@ -175,17 +239,40 @@ export class BlockchainTransactionService {
       from: string;
       to: string | null;
       gasUsed: string;
+      gasPrice?: string | null;
+      nonce?: number | null;
+      inputData?: string | null;
+      logsCount?: number;
     } | null = null;
     try {
-      const receipt =
-        await this.blockchainService.getTransactionReceipt(txHash);
+      const receipt = await this.blockchainService.getTransactionReceipt(txHash);
       if (receipt) {
+        let tx: any = null;
+        try {
+          if (typeof this.blockchainService.getProvider === 'function') {
+            const provider = this.blockchainService.getProvider();
+            if (provider && typeof provider.getTransaction === 'function') {
+              tx = await provider.getTransaction(txHash);
+            }
+          }
+        } catch {
+          tx = null;
+        }
+
         onChainReceipt = {
           blockNumber: receipt.blockNumber,
           status: receipt.status,
           from: receipt.from,
           to: receipt.to,
-          gasUsed: receipt.gasUsed.toString(),
+          gasUsed: receipt.gasUsed ? receipt.gasUsed.toString() : '0',
+          gasPrice: receipt.gasPrice
+            ? receipt.gasPrice.toString()
+            : tx?.gasPrice
+            ? tx.gasPrice.toString()
+            : null,
+          nonce: tx?.nonce ?? null,
+          inputData: tx?.data && tx.data !== '0x' ? tx.data : null,
+          logsCount: receipt.logs ? receipt.logs.length : 0,
         };
       }
     } catch {
