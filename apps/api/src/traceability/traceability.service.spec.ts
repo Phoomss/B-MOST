@@ -196,7 +196,10 @@ describe('TraceabilityService', () => {
 
     it('allows access to SUPER_ADMIN', async () => {
       const superAdminUser = { id: 'admin-1', role: UserRole.SUPER_ADMIN };
-      const result = await service.getTraceability('PRD-APEX-001', superAdminUser);
+      const result = await service.getTraceability(
+        'PRD-APEX-001',
+        superAdminUser,
+      );
       expect(result).toBeDefined();
       expect(result.product.productCode).toBe('PRD-APEX-001');
     });
@@ -273,11 +276,15 @@ describe('TraceabilityService', () => {
 
       expect(result.ownershipHistory).toHaveLength(2);
       // 1. Initial manufacturer
-      expect(result.ownershipHistory[0].organizationId).toBe(mockManufacturerOrg.id);
+      expect(result.ownershipHistory[0].organizationId).toBe(
+        mockManufacturerOrg.id,
+      );
       expect(result.ownershipHistory[0].isCurrentOwner).toBe(false);
 
       // 2. Transferred receiver
-      expect(result.ownershipHistory[1].organizationId).toBe(mockDistributorOrg.id);
+      expect(result.ownershipHistory[1].organizationId).toBe(
+        mockDistributorOrg.id,
+      );
       expect(result.ownershipHistory[1].isCurrentOwner).toBe(true);
     });
 
@@ -298,7 +305,9 @@ describe('TraceabilityService', () => {
 
     it('handles blockchain query failures gracefully without crashing', async () => {
       blockchain.getProduct.mockRejectedValue(new Error('RPC Provider Error'));
-      blockchain.getProductHistory.mockRejectedValue(new Error('RPC Provider Error'));
+      blockchain.getProductHistory.mockRejectedValue(
+        new Error('RPC Provider Error'),
+      );
 
       const result = await service.getTraceability('PRD-APEX-001', {
         role: UserRole.SUPER_ADMIN,

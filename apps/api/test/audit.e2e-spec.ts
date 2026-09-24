@@ -70,9 +70,11 @@ describe('Audit Logs API Endpoints (e2e)', () => {
     $disconnect: jest.fn().mockResolvedValue(undefined),
     user: {
       findUnique: jest.fn().mockImplementation(({ where }) => {
-        if (where.id === mockAdminUser.id) return Promise.resolve(mockAdminUser);
+        if (where.id === mockAdminUser.id)
+          return Promise.resolve(mockAdminUser);
         if (where.id === mockMfgUser.id) return Promise.resolve(mockMfgUser);
-        if (where.id === mockOtherUser.id) return Promise.resolve(mockOtherUser);
+        if (where.id === mockOtherUser.id)
+          return Promise.resolve(mockOtherUser);
         return Promise.resolve(null);
       }),
     },
@@ -84,7 +86,8 @@ describe('Audit Logs API Endpoints (e2e)', () => {
       count: jest.fn().mockResolvedValue(1),
       findMany: jest.fn().mockResolvedValue([sampleAuditLog]),
       findUnique: jest.fn().mockImplementation(({ where }) => {
-        if (where.id === sampleAuditLog.id) return Promise.resolve(sampleAuditLog);
+        if (where.id === sampleAuditLog.id)
+          return Promise.resolve(sampleAuditLog);
         return Promise.resolve(null);
       }),
     },
@@ -143,9 +146,7 @@ describe('Audit Logs API Endpoints (e2e)', () => {
 
   describe('GET /api/audit-logs', () => {
     it('rejects unauthenticated request with 401', async () => {
-      await request(app.getHttpServer())
-        .get('/api/audit-logs')
-        .expect(401);
+      await request(app.getHttpServer()).get('/api/audit-logs').expect(401);
     });
 
     it('returns paginated audit logs for SUPER_ADMIN', async () => {
@@ -178,7 +179,9 @@ describe('Audit Logs API Endpoints (e2e)', () => {
 
     it('applies query filters by action and entityType', async () => {
       await request(app.getHttpServer())
-        .get('/api/audit-logs?action=PRODUCT_CREATED&entityType=Product&page=1&limit=10')
+        .get(
+          '/api/audit-logs?action=PRODUCT_CREATED&entityType=Product&page=1&limit=10',
+        )
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(200);
 

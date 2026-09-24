@@ -38,10 +38,7 @@ export class TraceabilityController {
     description: 'List of matching products accessible to user',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async search(
-    @Query() query: TraceabilityQueryDto,
-    @CurrentUser() user: any,
-  ) {
+  async search(@Query() query: TraceabilityQueryDto, @CurrentUser() user: any) {
     return this.traceabilityService.search(query, user);
   }
 
@@ -54,15 +51,20 @@ export class TraceabilityController {
   })
   @ApiParam({
     name: 'identifier',
-    description: 'Product Code (e.g. PRD-APEX-001), Serial Number, or Product UUID',
+    description:
+      'Product Code (e.g. PRD-APEX-001), Serial Number, or Product UUID',
     example: 'PRD-APEX-001',
   })
   @ApiResponse({
     status: 200,
-    description: 'Traceability history, timeline events, and blockchain verification payload',
+    description:
+      'Traceability history, timeline events, and blockchain verification payload',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden: Product belongs to another tenant' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden: Product belongs to another tenant',
+  })
   @ApiResponse({ status: 404, description: 'Product not found' })
   async getTraceability(
     @Param('identifier') identifier: string,

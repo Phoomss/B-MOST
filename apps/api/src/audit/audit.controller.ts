@@ -39,10 +39,7 @@ export class AuditController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async findAll(
-    @Query() query: QueryAuditLogDto,
-    @CurrentUser() user: any,
-  ) {
+  async findAll(@Query() query: QueryAuditLogDto, @CurrentUser() user: any) {
     return this.auditService.findAll(query, user);
   }
 

@@ -67,7 +67,8 @@ describe('AuditService', () => {
         count: jest.fn().mockResolvedValue(1),
         findMany: jest.fn().mockResolvedValue([sampleAuditLog]),
         findUnique: jest.fn().mockImplementation(({ where }) => {
-          if (where.id === sampleAuditLog.id) return Promise.resolve(sampleAuditLog);
+          if (where.id === sampleAuditLog.id)
+            return Promise.resolve(sampleAuditLog);
           return Promise.resolve(null);
         }),
       },
@@ -77,10 +78,7 @@ describe('AuditService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AuditService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [AuditService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<AuditService>(AuditService);

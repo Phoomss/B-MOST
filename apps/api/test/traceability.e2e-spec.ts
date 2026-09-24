@@ -211,34 +211,45 @@ describe('Traceability API (e2e)', () => {
       findUnique: jest.fn().mockImplementation(({ where }) => {
         if (where.id === mockMfgUser.id) return Promise.resolve(mockMfgUser);
         if (where.id === mockDistUser.id) return Promise.resolve(mockDistUser);
-        if (where.id === mockAuditorUser.id) return Promise.resolve(mockAuditorUser);
-        if (where.id === mockSuperAdminUser.id) return Promise.resolve(mockSuperAdminUser);
-        if (where.id === mockIntruderUser.id) return Promise.resolve(mockIntruderUser);
+        if (where.id === mockAuditorUser.id)
+          return Promise.resolve(mockAuditorUser);
+        if (where.id === mockSuperAdminUser.id)
+          return Promise.resolve(mockSuperAdminUser);
+        if (where.id === mockIntruderUser.id)
+          return Promise.resolve(mockIntruderUser);
         return Promise.resolve(null);
       }),
     },
     organization: {
       findFirst: jest.fn().mockImplementation(({ where }) => {
         const id = where?.OR?.[0]?.id || where?.id;
-        if (id === mockManufacturerOrg.id) return Promise.resolve(mockManufacturerOrg);
-        if (id === mockDistributorOrg.id) return Promise.resolve(mockDistributorOrg);
+        if (id === mockManufacturerOrg.id)
+          return Promise.resolve(mockManufacturerOrg);
+        if (id === mockDistributorOrg.id)
+          return Promise.resolve(mockDistributorOrg);
         if (id === mockCarrierOrg.id) return Promise.resolve(mockCarrierOrg);
         if (id === mockAuditorOrg.id) return Promise.resolve(mockAuditorOrg);
         if (id === mockIntruderOrg.id) return Promise.resolve(mockIntruderOrg);
         return Promise.resolve(null);
       }),
       findUnique: jest.fn().mockImplementation(({ where }) => {
-        if (where.id === mockManufacturerOrg.id) return Promise.resolve(mockManufacturerOrg);
-        if (where.id === mockDistributorOrg.id) return Promise.resolve(mockDistributorOrg);
-        if (where.id === mockCarrierOrg.id) return Promise.resolve(mockCarrierOrg);
-        if (where.id === mockAuditorOrg.id) return Promise.resolve(mockAuditorOrg);
-        if (where.id === mockIntruderOrg.id) return Promise.resolve(mockIntruderOrg);
+        if (where.id === mockManufacturerOrg.id)
+          return Promise.resolve(mockManufacturerOrg);
+        if (where.id === mockDistributorOrg.id)
+          return Promise.resolve(mockDistributorOrg);
+        if (where.id === mockCarrierOrg.id)
+          return Promise.resolve(mockCarrierOrg);
+        if (where.id === mockAuditorOrg.id)
+          return Promise.resolve(mockAuditorOrg);
+        if (where.id === mockIntruderOrg.id)
+          return Promise.resolve(mockIntruderOrg);
         return Promise.resolve(null);
       }),
     },
     product: {
       findFirst: jest.fn().mockImplementation(({ where }) => {
-        const term = where?.OR?.[0]?.productCode || where?.productCode || where?.id;
+        const term =
+          where?.OR?.[0]?.productCode || where?.productCode || where?.id;
         if (
           term === mockProductRecord.productCode ||
           term === mockProductRecord.serialNumber ||
@@ -426,15 +437,21 @@ describe('Traceability API (e2e)', () => {
 
       // Ownership history
       expect(res.body.ownershipHistory).toHaveLength(2);
-      expect(res.body.ownershipHistory[0].organizationName).toBe(mockManufacturerOrg.name);
-      expect(res.body.ownershipHistory[1].organizationName).toBe(mockDistributorOrg.name);
+      expect(res.body.ownershipHistory[0].organizationName).toBe(
+        mockManufacturerOrg.name,
+      );
+      expect(res.body.ownershipHistory[1].organizationName).toBe(
+        mockDistributorOrg.name,
+      );
       expect(res.body.ownershipHistory[1].isCurrentOwner).toBe(true);
 
       // Blockchain verification
       const bcv = res.body.blockchainVerification;
       expect(bcv.verified).toBe(true);
       expect(bcv.hashMatch).toBe(true);
-      expect(bcv.contractAddress).toBe('0x5FbDB2315678afecb367f032d93F642f64180aa3');
+      expect(bcv.contractAddress).toBe(
+        '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+      );
       expect(bcv.onChainProductId).toBe(1);
     });
 

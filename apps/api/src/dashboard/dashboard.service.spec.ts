@@ -33,13 +33,19 @@ describe('DashboardService', () => {
     prisma = {
       product: {
         count: jest.fn().mockImplementation(({ where }) => {
-          if (where?.status?.in?.includes(ProductStatus.SHIPPED)) return Promise.resolve(5);
-          if (where?.status?.in?.includes(ProductStatus.RECEIVED)) return Promise.resolve(10);
+          if (where?.status?.in?.includes(ProductStatus.SHIPPED))
+            return Promise.resolve(5);
+          if (where?.status?.in?.includes(ProductStatus.RECEIVED))
+            return Promise.resolve(10);
           if (where?.status === ProductStatus.SOLD) return Promise.resolve(3);
-          if (where?.status === ProductStatus.RECALLED) return Promise.resolve(1);
-          if (where?.status === ProductStatus.REGISTERED) return Promise.resolve(8);
-          if (where?.status === ProductStatus.QUALITY_CHECKED) return Promise.resolve(4);
-          if (where?.status === ProductStatus.IN_TRANSIT) return Promise.resolve(3);
+          if (where?.status === ProductStatus.RECALLED)
+            return Promise.resolve(1);
+          if (where?.status === ProductStatus.REGISTERED)
+            return Promise.resolve(8);
+          if (where?.status === ProductStatus.QUALITY_CHECKED)
+            return Promise.resolve(4);
+          if (where?.status === ProductStatus.IN_TRANSIT)
+            return Promise.resolve(3);
           return Promise.resolve(25); // totalProducts
         }),
         findMany: jest.fn().mockResolvedValue([
@@ -56,11 +62,16 @@ describe('DashboardService', () => {
       shipment: {
         count: jest.fn().mockImplementation(({ where }) => {
           if (where?.status?.in) return Promise.resolve(4); // active shipments
-          if (where?.status === ShipmentStatus.DELIVERED) return Promise.resolve(12);
-          if (where?.status === ShipmentStatus.PENDING) return Promise.resolve(2);
-          if (where?.status === ShipmentStatus.SHIPPED) return Promise.resolve(1);
-          if (where?.status === ShipmentStatus.IN_TRANSIT) return Promise.resolve(1);
-          if (where?.status === ShipmentStatus.CANCELLED) return Promise.resolve(0);
+          if (where?.status === ShipmentStatus.DELIVERED)
+            return Promise.resolve(12);
+          if (where?.status === ShipmentStatus.PENDING)
+            return Promise.resolve(2);
+          if (where?.status === ShipmentStatus.SHIPPED)
+            return Promise.resolve(1);
+          if (where?.status === ShipmentStatus.IN_TRANSIT)
+            return Promise.resolve(1);
+          if (where?.status === ShipmentStatus.CANCELLED)
+            return Promise.resolve(0);
           return Promise.resolve(16);
         }),
         findMany: jest.fn().mockResolvedValue([
@@ -80,11 +91,16 @@ describe('DashboardService', () => {
       },
       organization: {
         count: jest.fn().mockImplementation(({ where }) => {
-          if (where?.type === OrganizationType.MANUFACTURER) return Promise.resolve(4);
-          if (where?.type === OrganizationType.DISTRIBUTOR) return Promise.resolve(3);
-          if (where?.type === OrganizationType.LOGISTICS) return Promise.resolve(2);
-          if (where?.type === OrganizationType.RETAILER) return Promise.resolve(5);
-          if (where?.type === OrganizationType.AUDITOR) return Promise.resolve(1);
+          if (where?.type === OrganizationType.MANUFACTURER)
+            return Promise.resolve(4);
+          if (where?.type === OrganizationType.DISTRIBUTOR)
+            return Promise.resolve(3);
+          if (where?.type === OrganizationType.LOGISTICS)
+            return Promise.resolve(2);
+          if (where?.type === OrganizationType.RETAILER)
+            return Promise.resolve(5);
+          if (where?.type === OrganizationType.AUDITOR)
+            return Promise.resolve(1);
           return Promise.resolve(15);
         }),
       },
@@ -194,7 +210,9 @@ describe('DashboardService', () => {
       expect(charts.blockchainActivity).toBeDefined();
       expect(charts.blockchainActivity.totalTransactions).toBe(32);
       expect(charts.blockchainActivity.confirmedTransactions).toBe(30);
-      expect(charts.blockchainActivity.recentTransactions).toBeInstanceOf(Array);
+      expect(charts.blockchainActivity.recentTransactions).toBeInstanceOf(
+        Array,
+      );
       expect(charts.blockchainActivity.dailyTrend).toBeInstanceOf(Array);
       expect(charts.blockchainActivity.dailyTrend.length).toBe(7);
     });

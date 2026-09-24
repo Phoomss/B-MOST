@@ -144,7 +144,8 @@ export class TraceabilityService {
 
         if (liveProduct?.productHash) {
           hashMatch =
-            liveProduct.productHash.toLowerCase() === computedHash.toLowerCase();
+            liveProduct.productHash.toLowerCase() ===
+            computedHash.toLowerCase();
         }
       } catch (err: any) {
         this.logger.warn(
@@ -184,7 +185,11 @@ export class TraceabilityService {
         id: `qc-${qc.id}`,
         eventType: 'QUALITY_CHECKED',
         title: `Quality Inspection: ${qc.result}`,
-        description: qc.notes || (isPassed ? 'Inspection benchmarks satisfied.' : 'Defects identified.'),
+        description:
+          qc.notes ||
+          (isPassed
+            ? 'Inspection benchmarks satisfied.'
+            : 'Defects identified.'),
         actor: qc.inspectorName,
         actorRole: 'AUDITOR',
         organizationName: qc.organization.name,
@@ -266,7 +271,8 @@ export class TraceabilityService {
         id: `recalled-${product.id}`,
         eventType: 'PRODUCT_RECALLED',
         title: 'Product Recalled',
-        description: 'Product has been recalled from circulation. Supply chain operations locked.',
+        description:
+          'Product has been recalled from circulation. Supply chain operations locked.',
         actor: 'Compliance & Quality Control',
         timestamp: product.updatedAt.toISOString(),
         badgeColor: 'rose',
@@ -284,7 +290,10 @@ export class TraceabilityService {
     }
 
     // Sort timeline chronologically (earliest to latest)
-    timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    timeline.sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
 
     // 5. Construct Ownership History Chain
     const ownershipHistory: OwnershipRecord[] = [];
@@ -322,7 +331,9 @@ export class TraceabilityService {
 
     // 6. Build Blockchain Verification Payload
     const blockchainVerification = {
-      verified: Boolean(product.blockchainProductId && (hashMatch || onChainData)),
+      verified: Boolean(
+        product.blockchainProductId && (hashMatch || onChainData),
+      ),
       contractAddress: this.blockchainService.getContractAddress(),
       onChainProductId: product.blockchainProductId
         ? Number(product.blockchainProductId)
@@ -374,7 +385,9 @@ export class TraceabilityService {
     if (!isSuperAdmin && !isAuditor) {
       const orgId = currentUser?.organizationId;
       if (!orgId) {
-        throw new ForbiddenException('User does not belong to any organization');
+        throw new ForbiddenException(
+          'User does not belong to any organization',
+        );
       }
       where.OR = [
         { manufacturerId: orgId },

@@ -555,16 +555,23 @@ describe('ProductsService', () => {
 
       const result = await service.verifyPublicProduct('PRD-2026-0001');
       expect(result.timeline.length).toBe(5); // Reg, QC, Shp-Created, Shp-Dispatched, Shp-Received -> 5 items
-      expect(result.timeline.some((t: any) => t.eventType === 'QUALITY_CHECKED')).toBe(true);
-      expect(result.timeline.some((t: any) => t.eventType === 'PRODUCT_SHIPPED')).toBe(true);
-      expect(result.timeline.some((t: any) => t.eventType === 'PRODUCT_RECEIVED')).toBe(true);
+      expect(
+        result.timeline.some((t: any) => t.eventType === 'QUALITY_CHECKED'),
+      ).toBe(true);
+      expect(
+        result.timeline.some((t: any) => t.eventType === 'PRODUCT_SHIPPED'),
+      ).toBe(true);
+      expect(
+        result.timeline.some((t: any) => t.eventType === 'PRODUCT_RECEIVED'),
+      ).toBe(true);
     });
 
     it('detects hash mismatch when on-chain hash differs from database', async () => {
       blockchainService.getProductByCode.mockResolvedValueOnce({
         productId: 1,
         productCode: 'PRD-2026-0001',
-        productHash: '0xTAMPERED_HASH_9999999999999999999999999999999999999999999999999999',
+        productHash:
+          '0xTAMPERED_HASH_9999999999999999999999999999999999999999999999999999',
         manufacturer: mockManufacturerOrg.walletAddress,
         currentOwner: mockManufacturerOrg.walletAddress,
         status: 0,
@@ -628,4 +635,3 @@ describe('ProductsService', () => {
     });
   });
 });
-

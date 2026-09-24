@@ -30,6 +30,7 @@ import { ShipmentsService } from '../shipments/shipments.service';
 import { DispatchShipmentDto } from '../shipments/dto/dispatch-shipment.dto';
 import { ReceiveShipmentDto } from '../shipments/dto/receive-shipment.dto';
 import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
+import { SellProductDto } from './dto/sell-product.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -309,6 +310,38 @@ export class ProductsController {
     @CurrentUser() user: any,
   ) {
     return this.shipmentsService.transferOwnership(id, dto, user);
+  }
+
+  @Post(':id/sell')
+  @UseGuards(RolesGuard)
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.ORG_ADMIN,
+    UserRole.RETAILER,
+    UserRole.DISTRIBUTOR,
+    UserRole.WAREHOUSE,
+    UserRole.MANUFACTURER,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Mark product as sold to end consumer',
+    description:
+      'Marks product status as SOLD in database and triggers markAsSold on the smart contract.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or Product Code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Product marked as sold successfully',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid product state' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not current owner' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async sellProduct(
+    @Param('id') id: string,
+    @Body() dto: SellProductDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.productsService.sellProduct(id, dto, user);
   }
 
   @Get(':id/shipments')

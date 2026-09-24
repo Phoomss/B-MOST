@@ -1,25 +1,40 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class DashboardStatisticsResponseDto {
-  @ApiProperty({ example: 42, description: 'Total products registered in the supply chain' })
+  @ApiProperty({
+    example: 42,
+    description: 'Total products registered in the supply chain',
+  })
   totalProducts: number;
 
-  @ApiProperty({ example: 8, description: 'Total products currently in transit' })
+  @ApiProperty({
+    example: 8,
+    description: 'Total products currently in transit',
+  })
   inTransit: number;
 
   @ApiProperty({ example: 25, description: 'Total products received / stored' })
   received: number;
 
-  @ApiProperty({ example: 7, description: 'Total products sold to end consumers' })
+  @ApiProperty({
+    example: 7,
+    description: 'Total products sold to end consumers',
+  })
   sold: number;
 
   @ApiProperty({ example: 2, description: 'Total products recalled' })
   recalled: number;
 
-  @ApiProperty({ example: 6, description: 'Active shipments currently pending or in transit' })
+  @ApiProperty({
+    example: 6,
+    description: 'Active shipments currently pending or in transit',
+  })
   activeShipments: number;
 
-  @ApiProperty({ example: 95, description: 'Total blockchain transactions indexed' })
+  @ApiProperty({
+    example: 95,
+    description: 'Total blockchain transactions indexed',
+  })
   blockchainTransactions: number;
 }
 
@@ -128,8 +143,17 @@ export class RecentActivityItem {
   @ApiProperty({ example: 'act-1' })
   id: string;
 
-  @ApiProperty({ example: 'PRODUCT_CREATED', enum: ['PRODUCT_CREATED', 'QUALITY_CHECK', 'SHIPMENT_UPDATE', 'BLOCKCHAIN_TX'] })
-  type: 'PRODUCT_CREATED' | 'QUALITY_CHECK' | 'SHIPMENT_UPDATE' | 'BLOCKCHAIN_TX';
+  @ApiProperty({
+    example: 'PRODUCT_CREATED',
+    enum: [
+      'PRODUCT_CREATED',
+      'QUALITY_CHECK',
+      'SHIPMENT_UPDATE',
+      'BLOCKCHAIN_TX',
+    ],
+  })
+  type:
+    'PRODUCT_CREATED' | 'QUALITY_CHECK' | 'SHIPMENT_UPDATE' | 'BLOCKCHAIN_TX';
 
   @ApiProperty({ example: 'Product Registered: PRD-2026-0001' })
   title: string;
@@ -149,6 +173,9 @@ export class RecentActivityItem {
   @ApiProperty({ example: '0xabc...', required: false })
   blockchainTxHash?: string | null;
 
-  @ApiProperty({ example: 'blue', enum: ['blue', 'emerald', 'amber', 'purple', 'rose', 'slate'] })
+  @ApiProperty({
+    example: 'blue',
+    enum: ['blue', 'emerald', 'amber', 'purple', 'rose', 'slate'],
+  })
   badgeColor: 'blue' | 'emerald' | 'amber' | 'purple' | 'rose' | 'slate';
 }
