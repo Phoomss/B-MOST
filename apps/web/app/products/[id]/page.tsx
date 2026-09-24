@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../../../components/Navbar';
-import { api, ProductItem, ProductHistoryResponse, HistoryEventRecord } from '../../../lib/api';
+import { api, ProductItem, ProductHistoryResponse, HistoryEventRecord, QualityCheckItem } from '../../../lib/api';
 
 export default function ProductDetailPage({
   params,
@@ -151,6 +151,15 @@ export default function ProductDetailPage({
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                 Ledger Confirmed (ID #{product.blockchainProductId})
               </span>
+            )}
+
+            {product.status !== 'RECALLED' && product.status !== 'SOLD' && (
+              <Link
+                href={`/quality?productId=${encodeURIComponent(product.id)}`}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition"
+              >
+                🛡️ Conduct QC
+              </Link>
             )}
 
             <Link
@@ -363,6 +372,59 @@ export default function ProductDetailPage({
                   </p>
                 </div>
               </div>
+            )}
+
+            {/* Quality Check Inspection Milestones */}
+            {(history?.qualityChecks || product.qualityChecks)?.map(
+              (qc: QualityCheckItem, idx: number) => (
+                <div key={`qc-${idx}`} className="relative">
+                  <div
+                    className={`absolute -left-[31px] top-0 w-4 h-4 rounded-full border-4 border-slate-900 ${
+                      qc.result === 'PASSED' ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`}
+                  ></div>
+                  <div>
+                    <span className="text-xs font-mono text-slate-400">
+                      {new Date(qc.createdAt).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <h3 className="text-sm font-semibold text-white">
+                        Quality Inspection:{' '}
+                        <span
+                          className={
+                            qc.result === 'PASSED'
+                              ? 'text-emerald-400'
+                              : 'text-rose-400'
+                          }
+                        >
+                          {qc.result}
+                        </span>
+                      </h3>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          qc.result === 'PASSED'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+                        }`}
+                      >
+                        {qc.result}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Inspector:{' '}
+                      <strong className="text-white">
+                        {qc.inspectorName || 'Lead Auditor'}
+                      </strong>
+                      {qc.notes && <span> — {qc.notes}</span>}
+                    </p>
+                    {qc.blockchainTxHash && (
+                      <p className="text-xs font-mono text-blue-400 mt-1 break-all">
+                        Tx: {qc.blockchainTxHash}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ),
             )}
 
             {/* Additional Events from On-chain History */}

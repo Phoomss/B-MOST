@@ -16,10 +16,27 @@ export interface BlockchainProductData {
 
 export interface QualityCheckItem {
   id?: string;
+  productId?: string;
+  organizationId?: string;
   result: string;
   inspectorName?: string;
   notes?: string;
+  blockchainTxHash?: string;
   createdAt: string;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+    status: string;
+    blockchainProductId?: string;
+    blockchainTxHash?: string;
+  };
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  };
 }
 
 export interface ShipmentItem {
@@ -209,6 +226,66 @@ export const api = {
     getHistory: (id: string) => request<ProductHistoryResponse>(`products/${id}/history`),
     getQr: (id: string) =>
       request<{ qrCodeDataUrl: string; verificationUrl: string }>(`products/${id}/qr`),
+    qualityCheck: (
+      id: string,
+      data: {
+        result: 'PASSED' | 'FAILED' | 'PASS' | 'FAIL';
+        inspectorName?: string;
+        notes?: string;
+      },
+    ) =>
+      request<{
+        message: string;
+        qualityCheck: QualityCheckItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/quality-check`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+  qualityChecks: {
+    list: (params?: {
+      productId?: string;
+      result?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.result) query.set('result', params.result);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+
+      const qs = query.toString();
+      return request<{
+        data: QualityCheckItem[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+      }>(`quality-checks${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<QualityCheckItem>(`quality-checks/${id}`),
+    create: (data: {
+      productId: string;
+      result: 'PASSED' | 'FAILED' | 'PASS' | 'FAIL';
+      inspectorName?: string;
+      notes?: string;
+    }) =>
+      request<{
+        message: string;
+        qualityCheck: QualityCheckItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>('quality-checks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
   public: {
     verify: (productCode: string) =>

@@ -5,9 +5,10 @@ import { PublicProductsController } from './public-products.controller';
 import { ProductsService } from './products.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { BlockchainModule } from '../blockchain/blockchain.module';
+import { QualityChecksModule } from '../quality-checks/quality-checks.module';
 
 @Module({
-  imports: [PrismaModule, BlockchainModule, ConfigModule],
+  imports: [PrismaModule, BlockchainModule, ConfigModule, QualityChecksModule],
   controllers: [ProductsController, PublicProductsController],
   providers: [ProductsService],
   exports: [ProductsService],
