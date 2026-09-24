@@ -378,6 +378,81 @@ export interface QueryAuditParams {
   limit?: number;
 }
 
+export interface BlockchainStatusData {
+  connected: boolean;
+  network?: string;
+  chainId?: number;
+  currentBlock?: number;
+  contractAddress: string;
+  operatorAddress?: string;
+  operatorBalanceEth?: string;
+  listenerActive?: boolean;
+  error?: string;
+}
+
+export interface BlockchainStatsData {
+  total: number;
+  confirmed: number;
+  pending: number;
+  failed: number;
+}
+
+export interface BlockchainBlockData {
+  number: number;
+  hash: string | null;
+  parentHash: string;
+  timestamp: number;
+  miner: string;
+  gasLimit: string;
+  gasUsed: string;
+  baseFeePerGas: string | null;
+  transactionCount: number;
+  transactions: string[];
+}
+
+export interface BlockchainTransactionDetail {
+  id: string;
+  txHash: string;
+  blockNumber: string | null;
+  contractAddress: string;
+  eventType: string;
+  entityType: string;
+  entityId: string;
+  productId: string | null;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+  } | null;
+  walletAddress: string;
+  status: 'PENDING' | 'CONFIRMED' | 'FAILED';
+  createdAt: string;
+  onChainReceipt?: {
+    blockNumber: number;
+    status: number | null;
+    from: string;
+    to: string | null;
+    gasUsed: string;
+    gasPrice?: string | null;
+    nonce?: number | null;
+    inputData?: string | null;
+    logsCount?: number;
+  } | null;
+}
+
+export interface QueryBlockchainParams {
+  eventType?: string;
+  entityType?: string;
+  entityId?: string;
+  productId?: string;
+  walletAddress?: string;
+  status?: string;
+  blockNumber?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('bmost_token');
@@ -675,5 +750,43 @@ export const api = {
     },
     get: (id: string) => request<AuditLogItem>(`audit-logs/${id}`),
     getFilterOptions: () => request<AuditFilterOptions>('audit-logs/filters/options'),
+  },
+  blockchain: {
+    getStatus: () => request<BlockchainStatusData>('blockchain/status'),
+    getStats: () => request<BlockchainStatsData>('blockchain/stats'),
+    getBlock: (blockNumber: string | number) =>
+      request<BlockchainBlockData>(`blockchain/blocks/${blockNumber}`),
+    getTransactions: (params?: QueryBlockchainParams) => {
+      const query = new URLSearchParams();
+      if (params?.eventType) query.set('eventType', params.eventType);
+      if (params?.entityType) query.set('entityType', params.entityType);
+      if (params?.entityId) query.set('entityId', params.entityId);
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.walletAddress) query.set('walletAddress', params.walletAddress);
+      if (params?.status) query.set('status', params.status);
+      if (params?.blockNumber) query.set('blockNumber', params.blockNumber);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString();
+      return request<{
+        data: BlockchainTransactionDetail[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`blockchain/transactions${qs ? `?${qs}` : ''}`);
+    },
+    getTransaction: (txHash: string) =>
+      request<BlockchainTransactionDetail>(
+        `blockchain/transactions/${encodeURIComponent(txHash)}`,
+      ),
+    syncEvents: (data?: { fromBlock?: number; toBlock?: number }) =>
+      request<{
+        message: string;
+        syncedEvents: number;
+        fromBlock: number;
+        toBlock: number;
+      }>('blockchain/sync', {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
   },
 };

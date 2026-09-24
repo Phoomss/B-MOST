@@ -85,6 +85,43 @@ describe('BlockchainTransactionService', () => {
       expect(result.meta.totalPages).toBe(1);
       expect(mockPrisma.blockchainTransaction.findMany).toHaveBeenCalled();
     });
+
+    it('should filter by blockNumber and search term when provided', async () => {
+      mockPrisma.blockchainTransaction.count.mockResolvedValue(1);
+      mockPrisma.blockchainTransaction.findMany.mockResolvedValue([]);
+
+      await service.findAll({
+        blockNumber: '42',
+        search: 'PROD-1',
+      });
+
+      expect(mockPrisma.blockchainTransaction.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            blockNumber: BigInt(42),
+            OR: expect.arrayContaining([
+              { txHash: { contains: 'PROD-1', mode: 'insensitive' } },
+            ]),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getStats', () => {
+    it('should return aggregated counts of transactions by status', async () => {
+      mockPrisma.blockchainTransaction.count
+        .mockResolvedValueOnce(50)
+        .mockResolvedValueOnce(45)
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(2);
+
+      const stats = await service.getStats();
+      expect(stats.total).toBe(50);
+      expect(stats.confirmed).toBe(45);
+      expect(stats.pending).toBe(3);
+      expect(stats.failed).toBe(2);
+    });
   });
 
   describe('findByHash', () => {

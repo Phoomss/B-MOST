@@ -122,6 +122,25 @@ describe('Blockchain API Endpoints (e2e)', () => {
       .fn()
       .mockReturnValue('0x5FbDB2315678afecb367f032d93F642f64180aa3'),
     getTransactionReceipt: jest.fn().mockResolvedValue(null),
+    getBlock: jest.fn().mockImplementation((blockNumber: string) => {
+      if (blockNumber === '42') {
+        return Promise.resolve({
+          number: 42,
+          hash: '0xblock42hash',
+          parentHash: '0xblock41hash',
+          timestamp: 1700000000,
+          miner: '0xMiner',
+          gasLimit: '30000000',
+          gasUsed: '21000',
+          baseFeePerGas: '1000000000',
+          transactionCount: 1,
+          transactions: [
+            '0xabc1234567890123456789012345678901234567890123456789012345678901',
+          ],
+        });
+      }
+      return Promise.resolve(null);
+    }),
     onModuleDestroy: jest.fn().mockResolvedValue(undefined),
   };
 
@@ -203,6 +222,53 @@ describe('Blockchain API Endpoints (e2e)', () => {
       expect(res.body.operatorAddress).toBe(
         '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
       );
+    });
+  });
+
+  describe('GET /api/blockchain/stats', () => {
+    it('rejects unauthenticated request with 401 Unauthorized', async () => {
+      await request(app.getHttpServer())
+        .get('/api/blockchain/stats')
+        .expect(401);
+    });
+
+    it('returns transaction statistics for authenticated user', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/blockchain/stats')
+        .set('Authorization', `Bearer ${regularUserToken}`)
+        .expect(200);
+
+      expect(res.body.total).toBe(1);
+      expect(res.body).toHaveProperty('confirmed');
+      expect(res.body).toHaveProperty('pending');
+      expect(res.body).toHaveProperty('failed');
+    });
+  });
+
+  describe('GET /api/blockchain/blocks/:blockNumber', () => {
+    it('rejects unauthenticated request with 401 Unauthorized', async () => {
+      await request(app.getHttpServer())
+        .get('/api/blockchain/blocks/42')
+        .expect(401);
+    });
+
+    it('returns block details when block exists', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/blockchain/blocks/42')
+        .set('Authorization', `Bearer ${regularUserToken}`)
+        .expect(200);
+
+      expect(res.body.number).toBe(42);
+      expect(res.body.hash).toBe('0xblock42hash');
+      expect(res.body.transactionCount).toBe(1);
+      expect(res.body.gasUsed).toBe('21000');
+    });
+
+    it('returns 404 when block is not found', async () => {
+      await request(app.getHttpServer())
+        .get('/api/blockchain/blocks/999')
+        .set('Authorization', `Bearer ${regularUserToken}`)
+        .expect(404);
     });
   });
 

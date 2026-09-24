@@ -260,5 +260,39 @@ describe('BlockchainService', () => {
       expect(await service.getTotalProducts()).toBe(5);
       expect(await service.getTotalShipments()).toBe(3);
     });
+
+    it('should query getBlock from provider and format block details', async () => {
+      const mockBlock = {
+        number: 10,
+        hash: '0xblock10',
+        parentHash: '0xblock9',
+        timestamp: 1700000000,
+        miner: '0xMiner',
+        gasLimit: BigInt(30000000),
+        gasUsed: BigInt(21000),
+        baseFeePerGas: BigInt(1000000000),
+        transactions: ['0xtx1', '0xtx2'],
+      };
+
+      jest
+        .spyOn(service.getProvider(), 'getBlock')
+        .mockResolvedValueOnce(mockBlock as any);
+
+      const block = await service.getBlock(10);
+      expect(block).toBeDefined();
+      expect(block?.number).toBe(10);
+      expect(block?.hash).toBe('0xblock10');
+      expect(block?.transactionCount).toBe(2);
+      expect(block?.gasUsed).toBe('21000');
+    });
+
+    it('should return null when getBlock fails or block is not found', async () => {
+      jest
+        .spyOn(service.getProvider(), 'getBlock')
+        .mockResolvedValueOnce(null as any);
+
+      const block = await service.getBlock('latest');
+      expect(block).toBeNull();
+    });
   });
 });

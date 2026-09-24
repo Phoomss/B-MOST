@@ -52,6 +52,23 @@ export class QueryTransactionsDto {
   status?: TxStatus;
 
   @ApiPropertyOptional({
+    description: 'Filter by block number',
+    example: '10',
+  })
+  @IsOptional()
+  @IsString()
+  blockNumber?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Search term across txHash, walletAddress, eventType, or entityId',
+    example: '0x123',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({
     description: 'Page number for pagination',
     default: 1,
     minimum: 1,
