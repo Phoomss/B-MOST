@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Navbar } from '../../components/Navbar';
+// import { Navbar } from '../../components/Navbar';
 import { api, setAuthToken, setStoredUser, getAuthToken } from '../../lib/api';
 
 export default function LoginPage() {
@@ -83,8 +83,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <Navbar />
-
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
           {/* Logo & Header */}
@@ -190,38 +188,54 @@ export default function LoginPage() {
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
               บัญชีทดสอบระบบ (คลิกเพื่อกรอกอัตโนมัติ)
             </span>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => handleQuickLogin('manufacturer@apex.com', 'password123')}
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
-              >
-                <div className="font-semibold">ผู้ผลิต (Apex)</div>
-                <div className="text-[10px] text-slate-400 truncate">manufacturer@apex.com</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@bmost.io', 'password123')}
+                onClick={() => handleQuickLogin('superadmin@bmost.io', 'password123')}
                 className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
               >
                 <div className="font-semibold">ผู้ดูแลระบบ (Admin)</div>
-                <div className="text-[10px] text-slate-400 truncate">admin@bmost.io</div>
+                <div className="text-[10px] text-slate-400 truncate">superadmin@bmost.io</div>
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickLogin('auditor@globalcert.org', 'password123')}
+                onClick={() => handleQuickLogin('manufacturer@bmost.io', 'password123')}
+                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+              >
+                <div className="font-semibold">ผู้ผลิต (Apex)</div>
+                <div className="text-[10px] text-slate-400 truncate">manufacturer@bmost.io</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('auditor@bmost.io', 'password123')}
                 className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
               >
                 <div className="font-semibold">ผู้ตรวจสอบ (Auditor)</div>
-                <div className="text-[10px] text-slate-400 truncate">auditor@globalcert.org</div>
+                <div className="text-[10px] text-slate-400 truncate">auditor@bmost.io</div>
               </button>
               <button
                 type="button"
-                onClick={() => handleQuickLogin('retailer@urbanstore.com', 'password123')}
+                onClick={() => handleQuickLogin('distributor@bmost.io', 'password123')}
+                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+              >
+                <div className="font-semibold">ผู้จัดจำหน่าย (Nexus)</div>
+                <div className="text-[10px] text-slate-400 truncate">distributor@bmost.io</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('warehouse@bmost.io', 'password123')}
+                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+              >
+                <div className="font-semibold">คลังสินค้า (Warehouse)</div>
+                <div className="text-[10px] text-slate-400 truncate">warehouse@bmost.io</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('retailer@bmost.io', 'password123')}
                 className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
               >
                 <div className="font-semibold">ร้านค้าปลีก (Retailer)</div>
-                <div className="text-[10px] text-slate-400 truncate">retailer@urbanstore.com</div>
+                <div className="text-[10px] text-slate-400 truncate">retailer@bmost.io</div>
               </button>
             </div>
           </div>

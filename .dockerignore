@@ -1,0 +1,13 @@
+node_modules
+.pnpm-store
+.next
+dist
+artifacts
+cache
+coverage
+.git
+.turbo
+*.log
+.DS_Store
+.env.local
+.env.*.local

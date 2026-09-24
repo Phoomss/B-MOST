@@ -1,4 +1,7 @@
 services:
+  # ----------------------------------------------------
+  # 1. PostgreSQL Relational Database
+  # ----------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: bmost-postgres
@@ -8,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-bmost_db}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +19,105 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 2. Hardhat Local EVM Blockchain Node
+  # ----------------------------------------------------
+  blockchain:
+    build:
+      context: .
+      dockerfile: packages/contracts/Dockerfile
+    container_name: bmost-blockchain
+    restart: unless-stopped
+    ports:
+      - "8545:8545"
+    environment:
+      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      BLOCKCHAIN_RPC_URL: http://127.0.0.1:8545
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "node -e 'const http=require(\"http\");const req=http.request({host:\"127.0.0.1\",port:8545,method:\"POST\",headers:{\"Content-Type\":\"application/json\"}},(res)=>process.exit(res.statusCode===200?0:1));req.on(\"error\",()=>process.exit(1));req.write(JSON.stringify({jsonrpc:\"2.0\",method:\"eth_blockNumber\",params:[],id:1}));req.end();' || exit 1"
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 3. NestJS Backend REST API
+  # ----------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bmost-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      blockchain:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bmost_db}?schema=public
+      DB_HOST: postgres
+      DB_PORT: 5432
+      AUTO_SEED: "true"
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      BLOCKCHAIN_RPC_URL: http://blockchain:8545
+      CONTRACT_ADDRESS: ${CONTRACT_ADDRESS:-0x5FbDB2315678afecb367f032d93F642f64180aa3}
+      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/api || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 4. Next.js Web Frontend Application
+  # ----------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+    container_name: bmost-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/login || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - bmost-network
 
 volumes:
   postgres_data:
+    name: bmost_postgres_data
+
+networks:
+  bmost-network:
+    name: bmost_network
+    driver: bridge

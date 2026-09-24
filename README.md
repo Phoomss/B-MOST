@@ -55,49 +55,62 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-### 3. Launch PostgreSQL Database
-Start PostgreSQL 16 on port 5433 using Docker:
+### 3. Launch Full Stack with Docker (Recommended)
+You can launch the entire ecosystem (PostgreSQL, Hardhat Blockchain Node, NestJS API with migrations & seed, and Next.js Web UI) with a single command:
 ```bash
+# Build and start all 4 containers in the background
 pnpm docker:up
-# or: docker compose up -d
+
+# View aggregated logs
+pnpm docker:logs
+
+# Teardown stack
+pnpm docker:down
+```
+Once healthy, navigate directly to:
+- **Web Application**: `http://localhost:3000`
+- **Backend API & Swagger**: `http://localhost:4000/api/docs`
+- **Blockchain Node (RPC)**: `http://localhost:8545`
+
+---
+
+### 4. Alternative: Local Hybrid Development
+
+If you prefer running services directly via Node/pnpm on your host machine:
+
+#### Step 4.1: Start Infrastructure Containers
+```bash
+# Start PostgreSQL container on port 5433
+pnpm docker:db
+
+# Optionally start Hardhat blockchain container on port 8545
+pnpm docker:blockchain
 ```
 
-### 4. Install Dependencies
+#### Step 4.2: Install Host Dependencies & Apply Schema
 ```bash
 pnpm install
-```
-
-### 5. Setup Database Schema & Seed Data
-Generate the Prisma client, execute database migrations, and seed initial supply chain actors:
-```bash
 pnpm db:migrate
 pnpm db:seed
 ```
 
-### 6. Start Local Blockchain & Deploy Smart Contract
-In a separate terminal or tab, run the local Hardhat EVM node:
+#### Step 4.3: Deploy Smart Contract (if running local node)
 ```bash
+# In terminal 1: start Hardhat node (if not using docker)
 pnpm blockchain:node
-```
 
-Deploy `SupplyChainRegistry.sol` to the local network:
-```bash
+# In terminal 2: deploy contract to localhost
 pnpm blockchain:deploy
 ```
 
-### 7. Run Development Servers
-To run both backend API and frontend Web UI concurrently:
+#### Step 4.4: Start Development Servers
 ```bash
+# Concurrently run API (port 4000) and Next.js (port 3000)
 pnpm dev
-```
 
-Or run services individually:
-```bash
-# Backend REST API (NestJS on port 4000)
-pnpm dev:api
-
-# Frontend Web Application (Next.js on port 3000)
-pnpm dev:web
+# Or individually:
+pnpm dev:api   # NestJS API
+pnpm dev:web   # Next.js Web UI
 ```
 
 ---
@@ -116,16 +129,16 @@ pnpm dev:web
 
 ## 👥 Default Demo Accounts (บัญชีทดสอบในระบบ)
 
-Password for all pre-seeded demo accounts is: `Password123!`
+Password for all pre-seeded demo accounts is: `password123`
 
 | Role / บทบาท | Email | Organization / องค์กร | Access / สิทธิ์การเข้าถึง |
 |---|---|---|---|
-| **Super Admin** | `admin@b-most.io` | Global Platform Admin | Full system administration, audit logs, node status |
-| **Manufacturer** | `manufacturer@b-most.io` | Apex Manufacturing Ltd. | Register products, anchor to blockchain, initiate QC |
-| **Auditor** | `auditor@b-most.io` | Global Quality Certification | Perform QC inspections, compliance audits |
-| **Logistics** | `logistics@b-most.io` | Nexus Logistics Corp | Create shipments, mark in-transit, dispatch manifests |
-| **Warehouse** | `warehouse@b-most.io` | Metro Warehousing Solutions | Receive shipments, store products, inventory transfers |
-| **Retailer** | `retailer@b-most.io` | Urban Retail Store | Receive inventory, execute consumer retail sales (`SOLD`) |
+| **Super Admin** | `superadmin@bmost.io` | Global Platform Admin | Full system administration, audit logs, node status |
+| **Manufacturer** | `manufacturer@bmost.io` | Apex Tech Manufacturing | Register products, anchor to blockchain, initiate QC |
+| **Auditor** | `auditor@bmost.io` | Quality Assurance Bureau | Perform QC inspections, compliance audits |
+| **Distributor** | `distributor@bmost.io` | Global Express Distribution | Create shipments, dispatch manifests, transfer custody |
+| **Warehouse** | `warehouse@bmost.io` | SafeHub Logistics & Storage | Receive shipments, store products, inventory transfers |
+| **Retailer** | `retailer@bmost.io` | Siam Retail & Department Store | Receive inventory, execute consumer retail sales (`SOLD`) |
 
 *One-click quick login buttons for all these roles are available directly on the `/login` page.*
 
@@ -146,8 +159,12 @@ Password for all pre-seeded demo accounts is: `Password123!`
 | `pnpm blockchain:node` | Run local Hardhat EVM blockchain node on port 8545 |
 | `pnpm blockchain:deploy` | Compile and deploy `SupplyChainRegistry.sol` smart contract |
 | `pnpm blockchain:test` | Run Hardhat smart contract test suite with 100% method coverage |
-| `pnpm docker:up` | Launch PostgreSQL container in the background |
-| `pnpm docker:down` | Stop and teardown PostgreSQL container |
+| `pnpm docker:up` | Launch full ecosystem in Docker (Postgres, Blockchain, API, Web) |
+| `pnpm docker:down` | Stop and teardown all Docker containers |
+| `pnpm docker:build` | Build or rebuild all Docker container images |
+| `pnpm docker:logs` | Follow real-time aggregated logs across all Docker containers |
+| `pnpm docker:db` | Start only the PostgreSQL database container (port 5433) |
+| `pnpm docker:blockchain` | Start only the Hardhat blockchain node container (port 8545) |
 | `pnpm db:migrate` | Run Prisma database migrations |
 | `pnpm db:seed` | Seed initial organizations, users, and baseline products |
 | `pnpm db:studio` | Launch Prisma Studio web GUI on port 5555 |
