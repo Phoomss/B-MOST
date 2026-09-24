@@ -218,21 +218,43 @@ export interface TraceabilityDetailResponse {
   blockchainVerification: BlockchainVerificationData;
 }
 
+export interface PublicTimelineEvent {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actor?: string;
+  organizationName?: string;
+  timestamp: string;
+  blockchainTxHash?: string | null;
+  badgeColor?: 'blue' | 'emerald' | 'rose' | 'amber' | 'purple' | 'slate';
+  verified?: boolean;
+}
+
 export interface PublicVerifyResponse {
   verified: boolean;
   productCode?: string;
   message?: string;
   product?: Partial<ProductItem>;
+  timeline?: PublicTimelineEvent[];
   blockchain?: {
     registeredOnChain: boolean;
-    onChainProductId?: number;
+    onChainProductId?: number | string;
     onChainStatus?: number;
+    onChainStatusName?: string;
+    manufacturerAddress?: string;
+    currentOwnerAddress?: string;
     contractAddress?: string;
     blockchainTxHash?: string;
+    productHash?: string;
+    computedHash?: string;
+    onChainHash?: string;
     hashMatch?: boolean;
     verified?: boolean;
     error?: string;
   };
+  qrCode?: string;
+  verificationUrl?: string;
 }
 
 export function getAuthToken(): string | null {

@@ -13,7 +13,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { generateProductHash } from './utils/product-hash.util';
-import { generateProductQr } from './utils/qr-code.util';
+import { generateProductQr, generateProductQrBuffer } from './utils/qr-code.util';
 import {
   OrganizationType,
   ProductStatus,
@@ -797,38 +797,90 @@ export class ProductsService {
 
   /**
    * Public verification endpoint (accessible without login) for consumer QR scanning.
+   * Compares deterministic Keccak-256 cryptographic hash with live smart contract state.
+   * Formats sanitized, customer-friendly supply-chain timeline without sensitive internal data.
    */
   async verifyPublicProduct(productCode: string) {
     const formattedCode = productCode.trim().toUpperCase();
-    const product = await this.prisma.product.findUnique({
-      where: { productCode: formattedCode },
-      include: {
-        manufacturer: {
-          select: {
-            name: true,
-            code: true,
-            type: true,
-            walletAddress: true,
-          },
+
+    // 1. Find product by productCode or serialNumber
+    const includeQuery = {
+      manufacturer: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          type: true,
+          walletAddress: true,
         },
-        currentOwner: {
-          select: {
-            name: true,
-            code: true,
-            type: true,
-            walletAddress: true,
-          },
+      },
+      currentOwner: {
+        select: {
+          id: true,
+          name: true,
+          code: true,
+          type: true,
+          walletAddress: true,
         },
-        qualityChecks: {
-          where: { result: 'PASSED' },
-          select: {
-            result: true,
-            inspectorName: true,
-            createdAt: true,
+      },
+      qualityChecks: {
+        where: { result: 'PASSED' as const },
+        orderBy: { createdAt: 'asc' as const },
+        select: {
+          id: true,
+          result: true,
+          inspectorName: true,
+          blockchainTxHash: true,
+          createdAt: true,
+          notes: true,
+          organization: {
+            select: {
+              name: true,
+              code: true,
+              type: true,
+            },
           },
         },
       },
+      shipments: {
+        orderBy: { createdAt: 'asc' as const },
+        include: {
+          sender: {
+            select: {
+              name: true,
+              code: true,
+              type: true,
+            },
+          },
+          receiver: {
+            select: {
+              name: true,
+              code: true,
+              type: true,
+            },
+          },
+          carrier: {
+            select: {
+              name: true,
+              code: true,
+              type: true,
+            },
+          },
+        },
+      },
+    };
+
+    let product = await this.prisma.product.findUnique({
+      where: { productCode: formattedCode },
+      include: includeQuery,
     });
+
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { serialNumber: formattedCode },
+        include: includeQuery,
+      });
+    }
 
     if (!product) {
       return {
@@ -838,9 +890,20 @@ export class ProductsService {
       };
     }
 
+    // 2. Deterministic Hash Computation & Blockchain Verification
+    const computedHash = generateProductHash({
+      productCode: product.productCode,
+      serialNumber: product.serialNumber,
+      manufacturerId: product.manufacturerId || (product.manufacturer as any)?.id || '',
+      name: product.name,
+      category: product.category ?? undefined,
+    });
+
     let blockchainVerification: any = {
       registeredOnChain: false,
       hashMatch: false,
+      verified: false,
+      computedHash,
     };
 
     if (product.blockchainProductId) {
@@ -848,28 +911,168 @@ export class ProductsService {
         const onChainProduct = await this.blockchainService.getProductByCode(
           product.productCode,
         );
-        const hashMatch = onChainProduct.productHash === product.productHash;
+
+        const statusNames = [
+          'REGISTERED',
+          'QUALITY_CHECKED',
+          'SHIPPED',
+          'DELIVERED',
+          'SOLD',
+          'RECALLED',
+        ];
+
+        const hashMatch =
+          Boolean(onChainProduct.productHash) &&
+          (onChainProduct.productHash.toLowerCase() === product.productHash?.toLowerCase() ||
+            onChainProduct.productHash.toLowerCase() === computedHash.toLowerCase());
 
         blockchainVerification = {
           registeredOnChain: true,
-          onChainProductId: onChainProduct.productId,
+          onChainProductId: onChainProduct.productId?.toString?.() ?? onChainProduct.productId,
           onChainStatus: onChainProduct.status,
+          onChainStatusName: statusNames[Number(onChainProduct.status)] || 'UNKNOWN',
           manufacturerAddress: onChainProduct.manufacturer,
           currentOwnerAddress: onChainProduct.currentOwner,
           contractAddress: this.blockchainService.getContractAddress(),
           blockchainTxHash: product.blockchainTxHash,
+          productHash: product.productHash,
+          computedHash,
+          onChainHash: onChainProduct.productHash,
           hashMatch,
           verified: hashMatch,
         };
-      } catch {
+      } catch (err: any) {
+        this.logger.warn(`Live blockchain check failed for ${product.productCode}: ${err.message}`);
         blockchainVerification = {
           registeredOnChain: true,
           blockchainTxHash: product.blockchainTxHash,
+          contractAddress: this.blockchainService.getContractAddress(),
           error: 'Blockchain node currently unavailable for live verification',
           hashMatch: false,
           verified: false,
         };
       }
+    }
+
+    // 3. Build Public Safe Supply-Chain Timeline
+    const timeline: any[] = [];
+
+    // Milestone A: Manufactured & Registered
+    timeline.push({
+      id: `reg-${product.id}`,
+      eventType: 'PRODUCT_REGISTERED',
+      title: 'Product Manufactured & Registered',
+      description: `Manufactured by ${product.manufacturer?.name || 'Authorized Manufacturer'} with unique serial ${product.serialNumber}.`,
+      actor: product.manufacturer?.name || 'Manufacturer',
+      organizationName: product.manufacturer?.name,
+      timestamp: product.createdAt,
+      blockchainTxHash: product.blockchainTxHash || null,
+      badgeColor: 'blue',
+      verified: Boolean(product.blockchainTxHash),
+    });
+
+    // Milestone B: Quality Checks (Passed)
+    if (product.qualityChecks && Array.isArray(product.qualityChecks)) {
+      for (const qc of product.qualityChecks) {
+        timeline.push({
+          id: `qc-${qc.id}`,
+          eventType: 'QUALITY_CHECKED',
+          title: `Quality Inspection: ${qc.result}`,
+          description: qc.notes || 'Inspection passed all quality and technical standards.',
+          actor: qc.inspectorName || qc.organization?.name || 'Auditor',
+          organizationName: qc.organization?.name,
+          timestamp: qc.createdAt,
+          blockchainTxHash: qc.blockchainTxHash || null,
+          badgeColor: 'emerald',
+          verified: Boolean(qc.blockchainTxHash),
+        });
+      }
+    }
+
+    // Milestone C: Shipments
+    if (product.shipments && Array.isArray(product.shipments)) {
+      for (const shp of product.shipments) {
+        timeline.push({
+          id: `shp-created-${shp.id}`,
+          eventType: 'SHIPMENT_CREATED',
+          title: `Shipment Created: ${shp.shipmentCode}`,
+          description: `Dispatched from ${shp.origin} to ${shp.destination}.`,
+          actor: shp.sender?.name || 'Sender',
+          organizationName: shp.sender?.name,
+          timestamp: shp.createdAt,
+          blockchainTxHash: shp.blockchainTxHash || null,
+          badgeColor: 'amber',
+          verified: Boolean(shp.blockchainTxHash),
+        });
+
+        if (shp.shippedAt) {
+          timeline.push({
+            id: `shp-dispatched-${shp.id}`,
+            eventType: 'PRODUCT_SHIPPED',
+            title: 'Dispatched in Transit',
+            description: `Cargo picked up by ${shp.carrier?.name || shp.sender?.name || 'Carrier'} en route to ${shp.destination}.`,
+            actor: shp.carrier?.name || shp.sender?.name || 'Carrier',
+            organizationName: shp.carrier?.name || shp.sender?.name,
+            timestamp: shp.shippedAt,
+            blockchainTxHash: shp.blockchainTxHash || null,
+            badgeColor: 'purple',
+            verified: Boolean(shp.blockchainTxHash),
+          });
+        }
+
+        if (shp.receivedAt) {
+          timeline.push({
+            id: `shp-received-${shp.id}`,
+            eventType: 'PRODUCT_RECEIVED',
+            title: 'Delivered & Custody Transferred',
+            description: `Consignment accepted at ${shp.destination} by ${shp.receiver?.name}.`,
+            actor: shp.receiver?.name || 'Receiver',
+            organizationName: shp.receiver?.name,
+            timestamp: shp.receivedAt,
+            blockchainTxHash: shp.blockchainTxHash || null,
+            badgeColor: 'emerald',
+            verified: Boolean(shp.blockchainTxHash),
+          });
+        }
+      }
+    }
+
+    // Milestone D: Sold or Recalled
+    if (product.status === ProductStatus.SOLD) {
+      timeline.push({
+        id: `sold-${product.id}`,
+        eventType: 'PRODUCT_SOLD',
+        title: 'Sold to Consumer',
+        description: `Product retailed to consumer by ${product.currentOwner?.name || 'Retailer'}.`,
+        actor: product.currentOwner?.name || 'Retailer',
+        organizationName: product.currentOwner?.name,
+        timestamp: product.updatedAt,
+        badgeColor: 'blue',
+        verified: true,
+      });
+    } else if (product.status === ProductStatus.RECALLED) {
+      timeline.push({
+        id: `recalled-${product.id}`,
+        eventType: 'PRODUCT_RECALLED',
+        title: 'Product Recalled',
+        description: 'Notice: Product has been officially recalled from circulation.',
+        actor: product.manufacturer?.name || 'Safety Authority',
+        organizationName: product.manufacturer?.name,
+        timestamp: product.updatedAt,
+        badgeColor: 'rose',
+        verified: true,
+      });
+    }
+
+    // Sort timeline ascending by timestamp
+    timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    // 4. Generate QR code for this product
+    let qr: any = { qrCodeDataUrl: '', verificationUrl: '' };
+    try {
+      qr = await generateProductQr(product.productCode, this.webUrl);
+    } catch {
+      // Fallback
     }
 
     return {
@@ -884,12 +1087,53 @@ export class ProductsService {
         description: product.description,
         status: product.status,
         createdAt: product.createdAt,
-        manufacturer: product.manufacturer,
-        currentOwner: product.currentOwner,
-        qualityChecks: product.qualityChecks,
+        manufacturer: {
+          name: product.manufacturer?.name,
+          code: product.manufacturer?.code,
+          type: product.manufacturer?.type,
+          walletAddress: product.manufacturer?.walletAddress,
+        },
+        currentOwner: {
+          name: product.currentOwner?.name,
+          code: product.currentOwner?.code,
+          type: product.currentOwner?.type,
+          walletAddress: product.currentOwner?.walletAddress,
+        },
+        qualityChecks: product.qualityChecks?.map((qc: any) => ({
+          result: qc.result,
+          inspectorName: qc.inspectorName,
+          createdAt: qc.createdAt,
+          notes: qc.notes,
+          organizationName: qc.organization?.name,
+          blockchainTxHash: qc.blockchainTxHash,
+        })),
       },
+      timeline,
       blockchain: blockchainVerification,
+      qrCode: qr.qrCodeDataUrl,
+      verificationUrl: qr.verificationUrl,
     };
+  }
+
+  /**
+   * Generates a raw PNG QR code buffer for streaming.
+   */
+  async getQrImageBuffer(productCode: string): Promise<Buffer> {
+    const formattedCode = productCode.trim().toUpperCase();
+    let product = await this.prisma.product.findUnique({
+      where: { productCode: formattedCode },
+      select: { productCode: true },
+    });
+    if (!product) {
+      product = await this.prisma.product.findUnique({
+        where: { serialNumber: formattedCode },
+        select: { productCode: true },
+      });
+    }
+    if (!product) {
+      throw new NotFoundException(`Product ${formattedCode} not found`);
+    }
+    return generateProductQrBuffer(product.productCode, this.webUrl);
   }
 
   /**

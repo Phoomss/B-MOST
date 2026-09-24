@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -515,6 +516,84 @@ describe('ProductsService', () => {
       expect(result.product.productCode).toEqual('PRD-2026-0001');
       expect(result.blockchain.registeredOnChain).toBe(true);
       expect(result.blockchain.hashMatch).toBe(true);
+      expect(result.timeline).toBeInstanceOf(Array);
+      expect(result.qrCode).toContain('data:image/png;base64');
+    });
+
+    it('returns rich timeline including quality checks and shipments', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        ...sampleProduct,
+        blockchainProductId: '1',
+        blockchainTxHash: '0x98765',
+        qualityChecks: [
+          {
+            id: 'qc-1',
+            result: 'PASSED',
+            inspectorName: 'Auditor Jane',
+            createdAt: new Date('2026-01-02'),
+            notes: 'All checks passed',
+            organization: { name: 'Audit Corp' },
+            blockchainTxHash: '0xqc123',
+          },
+        ],
+        shipments: [
+          {
+            id: 'shp-1',
+            shipmentCode: 'SHP-001',
+            origin: 'Factory A',
+            destination: 'Warehouse B',
+            sender: { name: 'Acme' },
+            carrier: { name: 'Speedy' },
+            receiver: { name: 'LogiHub' },
+            createdAt: new Date('2026-01-03'),
+            shippedAt: new Date('2026-01-04'),
+            receivedAt: new Date('2026-01-05'),
+            blockchainTxHash: '0xshp123',
+          },
+        ],
+      });
+
+      const result = await service.verifyPublicProduct('PRD-2026-0001');
+      expect(result.timeline.length).toBe(5); // Reg, QC, Shp-Created, Shp-Dispatched, Shp-Received -> 5 items
+      expect(result.timeline.some((t: any) => t.eventType === 'QUALITY_CHECKED')).toBe(true);
+      expect(result.timeline.some((t: any) => t.eventType === 'PRODUCT_SHIPPED')).toBe(true);
+      expect(result.timeline.some((t: any) => t.eventType === 'PRODUCT_RECEIVED')).toBe(true);
+    });
+
+    it('detects hash mismatch when on-chain hash differs from database', async () => {
+      blockchainService.getProductByCode.mockResolvedValueOnce({
+        productId: 1,
+        productCode: 'PRD-2026-0001',
+        productHash: '0xTAMPERED_HASH_9999999999999999999999999999999999999999999999999999',
+        manufacturer: mockManufacturerOrg.walletAddress,
+        currentOwner: mockManufacturerOrg.walletAddress,
+        status: 0,
+      });
+
+      prisma.product.findUnique.mockResolvedValue({
+        ...sampleProduct,
+        blockchainProductId: '1',
+        blockchainTxHash: '0x98765',
+      });
+
+      const result = await service.verifyPublicProduct('PRD-2026-0001');
+      expect(result.verified).toBe(false);
+      expect(result.blockchain.hashMatch).toBe(false);
+    });
+
+    it('verifies product via serial number fallback if productCode does not match', async () => {
+      prisma.product.findUnique
+        .mockResolvedValueOnce(null) // first try with productCode
+        .mockResolvedValueOnce({
+          ...sampleProduct,
+          serialNumber: 'SN-001',
+          blockchainProductId: '1',
+          blockchainTxHash: '0x98765',
+        }); // second try with serialNumber
+
+      const result = await service.verifyPublicProduct('SN-001');
+      expect(result.verified).toBe(true);
+      expect(result.product.serialNumber).toEqual('SN-001');
     });
 
     it('returns unverified when product code is not found', async () => {
@@ -524,4 +603,29 @@ describe('ProductsService', () => {
       expect(result.verified).toBe(false);
     });
   });
+
+  describe('getQrImageBuffer', () => {
+    it('returns a PNG Buffer for valid product', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        productCode: 'PRD-2026-0001',
+      });
+
+      const buffer = await service.getQrImageBuffer('PRD-2026-0001');
+      expect(Buffer.isBuffer(buffer)).toBe(true);
+      expect(buffer.length).toBeGreaterThan(0);
+    });
+
+    it('throws NotFoundException when product is missing', async () => {
+      prisma.product.findUnique.mockResolvedValue(null);
+
+      let error: any;
+      try {
+        await service.getQrImageBuffer('MISSING');
+      } catch (err) {
+        error = err;
+      }
+      expect(error).toBeInstanceOf(NotFoundException);
+    });
+  });
 });
+

@@ -131,3 +131,12 @@ pnpm dev:web
   - Chronological event timeline uniting registration, quality inspections, shipment dispatch, custody receipt, and terminal states
   - Multi-tenant ownership provenance chain tracking the sequence of custodians from manufacturer to current owner
   - Dedicated Next.js Traceability Dashboard (`/traceability`) with instant code lookup, live hash integrity badges, ownership provenance cards, and interactive milestone timeline
+- [x] **Phase 11 — QR Verification**:
+  - Deterministic Keccak-256 cryptographic hash verification comparing recalculated product attributes against immutable on-chain smart contract state
+  - Public unauthenticated verification endpoint (`GET /api/public/verify/:productCode`) supporting lookup by both `productCode` and `serialNumber` without exposing sensitive internal credentials or organization IDs
+  - Public QR code PNG image streaming endpoint (`GET /api/public/verify/:productCode/qr`)
+  - Customer-facing sanitized supply-chain timeline combining manufacturing, passed QC inspections, shipment dispatch, custody delivery, and terminal states
+  - Next.js Mobile-friendly Public Verification Page (`/verify/[code]`) with live authenticity badges, chronological event steps, on-chain provenance proofs, and QR download/lightbox modal
+  - Dedicated Next.js QR Verification Landing Page (`/verify`) featuring instant product code / serial lookup and quick-test sample products
+  - Navigation bar integration with direct "Verify QR" access for consumers and partners
+
