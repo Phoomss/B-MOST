@@ -139,4 +139,11 @@ pnpm dev:web
   - Next.js Mobile-friendly Public Verification Page (`/verify/[code]`) with live authenticity badges, chronological event steps, on-chain provenance proofs, and QR download/lightbox modal
   - Dedicated Next.js QR Verification Landing Page (`/verify`) featuring instant product code / serial lookup and quick-test sample products
   - Navigation bar integration with direct "Verify QR" access for consumers and partners
+- [x] **Phase 12 — Dashboard**:
+  - Real operational statistics endpoint (`GET /api/dashboard/statistics`) calculating live database counts for total products, active shipments, in transit, received, sold, recalled, and blockchain transactions
+  - Visual analytics dataset endpoint (`GET /api/dashboard/charts`) providing product lifecycle status distributions, shipment activity, organization ecosystem breakdown, and blockchain 7-day daily trend
+  - Recent activity stream endpoint (`GET /api/dashboard/recent-activity`) aggregating real-time registrations, inspections, shipment movements, and blockchain ledger confirmations
+  - Multi-tenant scoping with `OptionalJwtAuthGuard` delivering tenant-isolated metrics for authenticated organizations and aggregated statistics for public visitors
+  - Enterprise SaaS Overview Dashboard in Next.js (`/`) featuring 7 KPI metric cards, lifecycle progress bars, organization breakdown, 7-day transaction trend visualization, and live event feed
+
 
