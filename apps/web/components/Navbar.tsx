@@ -29,9 +29,12 @@ export function Navbar() {
           >
             Products
           </Link>
-          <span className="px-3 py-1.5 rounded-md text-slate-500 cursor-not-allowed">
+          <Link
+            href="/shipments"
+            className="px-3 py-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/60 transition"
+          >
             Shipments
-          </span>
+          </Link>
           <Link
             href="/quality"
             className="px-3 py-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/60 transition"

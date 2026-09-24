@@ -26,6 +26,10 @@ import { QueryProductDto } from './dto/query-product.dto';
 import { RegisterBlockchainDto } from './dto/register-blockchain.dto';
 import { CreateQualityCheckDto } from '../quality-checks/dto/create-quality-check.dto';
 import { QualityChecksService } from '../quality-checks/quality-checks.service';
+import { ShipmentsService } from '../shipments/shipments.service';
+import { DispatchShipmentDto } from '../shipments/dto/dispatch-shipment.dto';
+import { ReceiveShipmentDto } from '../shipments/dto/receive-shipment.dto';
+import { TransferOwnershipDto } from './dto/transfer-ownership.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -39,6 +43,7 @@ export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly qualityChecksService: QualityChecksService,
+    private readonly shipmentsService: ShipmentsService,
   ) {}
 
   @Post()
@@ -224,6 +229,98 @@ export class ProductsController {
     @CurrentUser() user: any,
   ) {
     return this.qualityChecksService.findByProductId(id, user);
+  }
+
+  @Post(':id/ship')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Ship product (dispatch on-chain)',
+    description:
+      'Dispatches active pending shipment for the product. Submits shipProduct on smart contract and transitions status to SHIPPED.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or Product Code' })
+  @ApiResponse({ status: 200, description: 'Product dispatched successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid product or shipment state',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - only sender or carrier can ship',
+  })
+  @ApiResponse({ status: 404, description: 'Product or shipment not found' })
+  async shipProduct(
+    @Param('id') id: string,
+    @Body() dto: DispatchShipmentDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.shipByProductId(id, dto, user);
+  }
+
+  @Post(':id/receive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Receive product & transfer ownership (on-chain)',
+    description:
+      'Confirms delivery of product. Submits receiveProduct on smart contract, transitions status to RECEIVED, and transfers ownership to the receiver organization.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or Product Code' })
+  @ApiResponse({
+    status: 200,
+    description: 'Product received and ownership transferred',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid product or shipment state',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - only receiver can confirm receipt',
+  })
+  @ApiResponse({ status: 404, description: 'Product or shipment not found' })
+  async receiveProduct(
+    @Param('id') id: string,
+    @Body() dto: ReceiveShipmentDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.receiveByProductId(id, dto, user);
+  }
+
+  @Post(':id/transfer')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Manual ownership transfer on blockchain',
+    description:
+      'Transfers product ownership directly to a new organization on the smart contract.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or Product Code' })
+  @ApiResponse({ status: 200, description: 'Ownership transferred' })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - only current owner can transfer',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Product or organization not found',
+  })
+  async transferOwnership(
+    @Param('id') id: string,
+    @Body() dto: TransferOwnershipDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.transferOwnership(id, dto, user);
+  }
+
+  @Get(':id/shipments')
+  @ApiOperation({
+    summary: 'Get product shipments history',
+    description: 'Retrieves all shipments involving this product.',
+  })
+  @ApiParam({ name: 'id', description: 'Product UUID or Product Code' })
+  @ApiResponse({ status: 200, description: 'Shipments retrieved' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async getProductShipments(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.shipmentsService.findByProductId(id, user);
   }
 
   @Get(':id/history')

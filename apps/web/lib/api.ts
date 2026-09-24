@@ -39,13 +39,55 @@ export interface QualityCheckItem {
   };
 }
 
+export interface OrganizationItem {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  walletAddress?: string;
+  status: string;
+}
+
 export interface ShipmentItem {
   id?: string;
   shipmentCode: string;
-  status: string;
+  productId?: string;
+  senderOrganizationId?: string;
+  receiverOrganizationId?: string;
+  carrierOrganizationId?: string | null;
   origin?: string;
   destination?: string;
+  status: string;
+  blockchainShipmentId?: string | null;
+  blockchainTxHash?: string | null;
+  shippedAt?: string | null;
+  receivedAt?: string | null;
   createdAt: string;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+    status: string;
+    blockchainProductId?: string;
+  };
+  sender?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  };
+  receiver?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  };
+  carrier?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  } | null;
 }
 
 export interface BlockchainTxItem {
@@ -243,6 +285,119 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    ship: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/ship`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    receive: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/receive`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    transfer: (id: string, data: { newOwnerOrganizationId: string; notes?: string }) =>
+      request<{
+        message: string;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/transfer`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getShipments: (id: string) =>
+      request<{
+        data: ShipmentItem[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`products/${id}/shipments`),
+  },
+  shipments: {
+    list: (params?: {
+      productId?: string;
+      senderId?: string;
+      receiverId?: string;
+      carrierId?: string;
+      status?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.senderId) query.set('senderId', params.senderId);
+      if (params?.receiverId) query.set('receiverId', params.receiverId);
+      if (params?.carrierId) query.set('carrierId', params.carrierId);
+      if (params?.status) query.set('status', params.status);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+
+      const qs = query.toString();
+      return request<{
+        data: ShipmentItem[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+      }>(`shipments${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<ShipmentItem>(`shipments/${id}`),
+    create: (data: {
+      productId: string;
+      receiverOrganizationId: string;
+      carrierOrganizationId?: string;
+      origin: string;
+      destination: string;
+      shipmentCode?: string;
+    }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: {
+          txHash: string;
+          blockNumber: number;
+          shipmentId: number;
+          status: string;
+        };
+      }>('shipments', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    ship: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`shipments/${id}/ship`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    receive: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`shipments/${id}/receive`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+  },
+  organizations: {
+    list: () =>
+      request<{ data: OrganizationItem[] } | OrganizationItem[]>('organizations').then((res) =>
+        Array.isArray(res) ? res : res.data || [],
+      ),
   },
   qualityChecks: {
     list: (params?: {
