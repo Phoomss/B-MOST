@@ -6,13 +6,29 @@ import Link from 'next/link';
 import { Navbar } from '../../../components/Navbar';
 import { api } from '../../../lib/api';
 
+const PRODUCT_CATEGORIES = [
+  { value: '', label: '-- เลือกหมวดหมู่สินค้า --' },
+  { value: 'Electronics', label: 'อิเล็กทรอนิกส์และอุปกรณ์ (Electronics)' },
+  { value: 'Medical & Pharmaceuticals', label: 'ยาและเวชภัณฑ์ (Medical & Pharmaceuticals)' },
+  { value: 'Food & Beverage', label: 'อาหารและเครื่องดื่ม (Food & Beverage)' },
+  { value: 'Automotive & Parts', label: 'ยานยนต์และชิ้นส่วน (Automotive & Spare Parts)' },
+  { value: 'Consumer Goods', label: 'สินค้าอุปโภคบริโภค (Consumer Goods)' },
+  { value: 'Industrial Machinery', label: 'เครื่องจักรและอุปกรณ์อุตสาหกรรม (Industrial Machinery)' },
+  { value: 'Chemicals & Materials', label: 'เคมีภัณฑ์และวัตถุดิบ (Chemicals & Raw Materials)' },
+  { value: 'Agriculture', label: 'สินค้าเกษตรและแปรรูป (Agriculture & Agri-food)' },
+  { value: 'Luxury & Jewelry', label: 'สินค้าลักชัวรีและอัญมณี (Luxury & Jewelry)' },
+  { value: 'Cosmetics', label: 'เครื่องสำอางและเวชสำอาง (Cosmetics & Personal Care)' },
+  { value: 'Other', label: 'หมวดหมู่อื่นๆ (Other - ระบุเอง)' },
+];
+
 export default function CreateProductPage() {
   const router = useRouter();
 
   const [productCode, setProductCode] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
   const [registerOnBlockchain, setRegisterOnBlockchain] = useState(false);
 
@@ -24,12 +40,15 @@ export default function CreateProductPage() {
     setError(null);
     setLoading(true);
 
+    const resolvedCategory =
+      selectedCategory === 'Other' ? customCategory.trim() : selectedCategory.trim();
+
     try {
       const created = await api.products.create({
         productCode: productCode.trim().toUpperCase(),
         serialNumber: serialNumber.trim(),
         name: name.trim(),
-        category: category.trim() || undefined,
+        category: resolvedCategory || undefined,
         description: description.trim() || undefined,
         registerOnBlockchain,
       });
@@ -164,17 +183,39 @@ export default function CreateProductPage() {
 
           {/* Category */}
           <div>
-            <label htmlFor="category-input" className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+            <label htmlFor="category-select" className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
               หมวดหมู่สินค้า (Category)
             </label>
-            <input
-              id="category-input"
-              type="text"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="e.g. Electronics, Pharmaceuticals, Consumer Goods"
-              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
-            />
+            <div className="space-y-2">
+              <select
+                id="category-select"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 cursor-pointer"
+              >
+                {PRODUCT_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+
+              {selectedCategory === 'Other' && (
+                <div className="pt-1">
+                  <input
+                    type="text"
+                    required
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="กรุณาระบุหมวดหมู่สินค้า เช่น เครื่องใช้ไฟฟ้า, สิ่งทอ, อุปกรณ์ประมง..."
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                  />
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              เลือกหมวดหมู่ที่ตรงกับลักษณะสินค้าเพื่อช่วยในการจัดกลุ่มและสืบค้นในห่วงโซ่อุปทาน
+            </p>
           </div>
 
           {/* Description */}
@@ -228,7 +269,7 @@ export default function CreateProductPage() {
               {loading && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               )}
-              {loading ? 'กำลังบันทึก...' : 'ลงทะเบียนสินค้า (Register Product)'}
+              {loading ? 'กำลังบันทึกสินค้า...' : 'บันทึกสินค้า (Register Product)'}
             </button>
           </div>
         </form>
