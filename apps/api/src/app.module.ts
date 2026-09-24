@@ -9,6 +9,7 @@ import { QualityChecksModule } from './quality-checks/quality-checks.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { TraceabilityModule } from './traceability/traceability.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AuditModule } from './audit/audit.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -27,6 +28,7 @@ import { AppService } from './app.service';
     ShipmentsModule,
     TraceabilityModule,
     DashboardModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

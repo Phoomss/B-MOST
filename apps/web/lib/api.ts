@@ -329,6 +329,55 @@ export interface DashboardRecentActivityItem {
   badgeColor: 'blue' | 'emerald' | 'amber' | 'purple' | 'rose' | 'slate';
 }
 
+export interface AuditLogItem {
+  id: string;
+  userId?: string | null;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  } | null;
+  organizationId?: string | null;
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  } | null;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata?: Record<string, any> | null;
+  ipAddress?: string | null;
+  createdAt: string;
+}
+
+export interface AuditFilterOptions {
+  actions: string[];
+  entityTypes: string[];
+  organizations: Array<{
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  }>;
+}
+
+export interface QueryAuditParams {
+  organizationId?: string;
+  userId?: string;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('bmost_token');
@@ -604,5 +653,27 @@ export const api = {
     getCharts: () => request<DashboardCharts>('dashboard/charts'),
     getRecentActivity: () =>
       request<DashboardRecentActivityItem[]>('dashboard/recent-activity'),
+  },
+  audit: {
+    list: (params?: QueryAuditParams) => {
+      const query = new URLSearchParams();
+      if (params?.organizationId) query.set('organizationId', params.organizationId);
+      if (params?.userId) query.set('userId', params.userId);
+      if (params?.action) query.set('action', params.action);
+      if (params?.entityType) query.set('entityType', params.entityType);
+      if (params?.entityId) query.set('entityId', params.entityId);
+      if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) query.set('dateTo', params.dateTo);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString();
+      return request<{
+        data: AuditLogItem[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`audit-logs${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<AuditLogItem>(`audit-logs/${id}`),
+    getFilterOptions: () => request<AuditFilterOptions>('audit-logs/filters/options'),
   },
 };

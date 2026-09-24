@@ -125,18 +125,9 @@ export class DashboardService {
         ? this.prisma.blockchainTransaction.count({ where: {} })
         : this.prisma.blockchainTransaction.count({
             where: {
-              OR: [
-                { product: { OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }] } },
-                {
-                  shipment: {
-                    OR: [
-                      { senderOrganizationId: orgId },
-                      { receiverOrganizationId: orgId },
-                      { carrierOrganizationId: orgId },
-                    ],
-                  },
-                },
-              ],
+              product: {
+                OR: [{ manufacturerId: orgId }, { currentOwnerId: orgId }],
+              },
             },
           }),
     ]);

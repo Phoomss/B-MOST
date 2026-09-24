@@ -48,6 +48,12 @@ export function Navbar() {
             Traceability
           </Link>
           <Link
+            href="/audit"
+            className="px-3 py-1.5 rounded-md text-slate-300 hover:text-white hover:bg-slate-800/60 transition"
+          >
+            Audit Logs
+          </Link>
+          <Link
             href="/verify"
             className="px-3 py-1.5 rounded-md text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 transition flex items-center gap-1.5"
           >

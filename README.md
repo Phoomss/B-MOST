@@ -145,5 +145,14 @@ pnpm dev:web
   - Recent activity stream endpoint (`GET /api/dashboard/recent-activity`) aggregating real-time registrations, inspections, shipment movements, and blockchain ledger confirmations
   - Multi-tenant scoping with `OptionalJwtAuthGuard` delivering tenant-isolated metrics for authenticated organizations and aggregated statistics for public visitors
   - Enterprise SaaS Overview Dashboard in Next.js (`/`) featuring 7 KPI metric cards, lifecycle progress bars, organization breakdown, 7-day transaction trend visualization, and live event feed
+- [x] **Phase 13 — Audit**:
+  - Declarative audit decorator (`@Audit()`) and NestJS Interceptor (`AuditInterceptor`) capturing actions, entity types, entity IDs, user context, client IP (`x-forwarded-for`/`req.ip`), and sanitized metadata (redacting passwords and authorization tokens)
+  - Dedicated PostgreSQL `AuditLog` model queried via indexed fields (`organizationId`, `userId`, `action`, `entityType`, `createdAt`)
+  - Multi-tenant audit logs query API (`GET /api/audit-logs`) with strict tenant isolation (`SUPER_ADMIN` and `AUDITOR` view all logs, regular organizations isolated strictly to their tenant records)
+  - Rich multi-field query filters supporting `organizationId`, `userId`, `action`, `entityType`, `entityId`, `dateFrom`, `dateTo`, `search`, `page`, and `limit`
+  - Dynamic filter options endpoint (`GET /api/audit-logs/filters/options`) returning distinct actions, entity types, and organizations
+  - Audit entry detail retrieval (`GET /api/audit-logs/:id`) with cross-tenant authorization enforcement
+  - Enterprise Next.js Audit & Compliance UI (`/audit`) featuring full-text search, action/entity/organization dropdowns, date range pickers, color-coded action badges, client IP tracking, interactive JSON metadata drawer/modal, and compliance CSV/JSON exports
+  - Global Navigation bar link integration to `/audit`
 
 
