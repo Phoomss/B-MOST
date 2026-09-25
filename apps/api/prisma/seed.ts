@@ -13,7 +13,15 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...');
+  const userCount = await prisma.user.count();
+  if (userCount > 0 && process.env.FORCE_SEED !== 'true') {
+    console.log(
+      '🌱 Database already initialized with users and organizations. Preserving existing operational data. (Set FORCE_SEED=true to reset)',
+    );
+    return;
+  }
+
+  console.log('🌱 Starting database seed (clearing and rebuilding master data)...');
 
   // Clean existing data in reverse order of foreign keys
   await prisma.auditLog.deleteMany();

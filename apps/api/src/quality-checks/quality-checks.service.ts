@@ -87,9 +87,10 @@ export class QualityChecksService {
         : currentUser.email || 'Authorized Quality Inspector');
 
     // Ensure product is registered on-chain before recording inspection
+    // Ensure product is registered on-chain before recording inspection
     if (!product.blockchainProductId) {
       this.logger.log(
-        `Product ${product.productCode} is not yet registered on blockchain. Auto-registering before QC...`,
+        `Product ${product.productCode} is not yet registered on blockchain in DB. Checking on-chain status...`,
       );
       const productHash =
         product.productHash ||
@@ -101,49 +102,94 @@ export class QualityChecksService {
           category: product.category || undefined,
         });
 
-      const regReceipt = await this.blockchainService.registerProduct(
-        product.productCode,
-        productHash,
-        dto.signerPrivateKey,
-      );
+      let onChainProductId: string | null = null;
+      let onChainTxHash: string | null = product.blockchainTxHash || null;
+      let onChainBlockNumber: number = 0;
 
-      product.blockchainProductId = regReceipt.productId.toString();
-      product.blockchainTxHash = regReceipt.txHash;
+      // Check if product already exists on-chain
+      try {
+        const onChainProduct = await this.blockchainService.getProductByCode(
+          product.productCode,
+        );
+        if (onChainProduct && Number(onChainProduct.productId) > 0) {
+          onChainProductId = onChainProduct.productId.toString();
+          this.logger.log(
+            `Product ${product.productCode} already found on blockchain with ID ${onChainProductId}`,
+          );
+        }
+      } catch {
+        // Not on-chain yet, proceed to register
+      }
+
+      if (!onChainProductId) {
+        try {
+          const regReceipt = await this.blockchainService.registerProduct(
+            product.productCode,
+            productHash,
+            dto.signerPrivateKey,
+          );
+          onChainProductId = regReceipt.productId.toString();
+          onChainTxHash = regReceipt.txHash;
+          onChainBlockNumber = regReceipt.blockNumber;
+        } catch (regErr: any) {
+          if (
+            regErr?.message?.includes('PRODUCT_ALREADY_EXISTS') ||
+            regErr?.reason === 'PRODUCT_ALREADY_EXISTS'
+          ) {
+            this.logger.warn(
+              `Product ${product.productCode} was already registered on blockchain. Syncing ID...`,
+            );
+            const onChainProduct = await this.blockchainService.getProductByCode(
+              product.productCode,
+            );
+            onChainProductId = onChainProduct.productId.toString();
+          } else {
+            throw regErr;
+          }
+        }
+      }
+
+      product.blockchainProductId = onChainProductId;
+      product.blockchainTxHash = onChainTxHash;
       product.productHash = productHash;
 
       await this.prisma.product.update({
         where: { id: product.id },
         data: {
-          blockchainProductId: regReceipt.productId.toString(),
-          blockchainTxHash: regReceipt.txHash,
+          blockchainProductId: onChainProductId,
+          blockchainTxHash: onChainTxHash,
           productHash,
         },
       });
 
-      const signerAddr = await this.blockchainService
-        .getSigner(dto.signerPrivateKey)
-        .getAddress()
-        .catch(() => '0x0000000000000000000000000000000000000000');
+      if (onChainTxHash) {
+        const signerAddr = await this.blockchainService
+          .getSigner(dto.signerPrivateKey)
+          .getAddress()
+          .catch(() => '0x0000000000000000000000000000000000000000');
 
-      await this.prisma.blockchainTransaction.upsert({
-        where: { txHash: regReceipt.txHash },
-        update: {
-          blockNumber: BigInt(regReceipt.blockNumber),
-          productId: product.id,
-          status: TxStatus.CONFIRMED,
-        },
-        create: {
-          txHash: regReceipt.txHash,
-          blockNumber: BigInt(regReceipt.blockNumber),
-          contractAddress: this.blockchainService.getContractAddress(),
-          eventType: 'ProductRegistered',
-          entityType: 'Product',
-          entityId: regReceipt.productId.toString(),
-          productId: product.id,
-          walletAddress: signerAddr,
-          status: TxStatus.CONFIRMED,
-        },
-      });
+        await this.prisma.blockchainTransaction
+          .upsert({
+            where: { txHash: onChainTxHash },
+            update: {
+              blockNumber: BigInt(onChainBlockNumber),
+              productId: product.id,
+              status: TxStatus.CONFIRMED,
+            },
+            create: {
+              txHash: onChainTxHash,
+              blockNumber: BigInt(onChainBlockNumber),
+              contractAddress: this.blockchainService.getContractAddress(),
+              eventType: 'ProductRegistered',
+              entityType: 'Product',
+              entityId: onChainProductId || product.id,
+              productId: product.id,
+              walletAddress: signerAddr,
+              status: TxStatus.CONFIRMED,
+            },
+          })
+          .catch(() => {});
+      }
     }
 
     // Call Smart Contract: recordQualityCheck

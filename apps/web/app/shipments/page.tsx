@@ -94,6 +94,22 @@ function ShipmentsPageContent() {
     };
   }, [preselectedProductId, selectedProductId]);
 
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
+
+  const handleProductChange = (productId: string) => {
+    setSelectedProductId(productId);
+    const prod = products.find((p) => p.id === productId);
+    if (prod) {
+      const ownerId = prod.currentOwnerId || prod.manufacturerId;
+      if (receiverOrgId === ownerId) {
+        setReceiverOrgId('');
+      }
+      if (!origin.trim()) {
+        setOrigin(prod.currentOwner?.name || prod.manufacturer?.name || '');
+      }
+    }
+  };
+
   const handleCreateShipment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProductId) {
@@ -102,6 +118,16 @@ function ShipmentsPageContent() {
     }
     if (!receiverOrgId) {
       setErrorMessage('กรุณาเลือกองค์กรผู้รับสินค้า');
+      return;
+    }
+    if (
+      selectedProduct &&
+      (receiverOrgId === selectedProduct.currentOwnerId ||
+        receiverOrgId === selectedProduct.manufacturerId)
+    ) {
+      setErrorMessage(
+        'องค์กรผู้รับสินค้าไม่สามารถเป็นองค์กรเดียวกับเจ้าของสินค้าปัจจุบันได้ กรุณาเลือกองค์กรปลายทางอื่น เช่น Global Express Distribution (Distributor) หรือ SafeHub Storage (Warehouse)',
+      );
       return;
     }
     if (!origin.trim() || !destination.trim()) {
@@ -302,9 +328,9 @@ function ShipmentsPageContent() {
                   </label>
                   <select
                     value={selectedProductId}
-                    onChange={(e) => setSelectedProductId(e.target.value)}
+                    onChange={(e) => handleProductChange(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
                   >
                     <option value="">-- เลือกสินค้า --</option>
                     {products.map((p) => (
@@ -315,6 +341,23 @@ function ShipmentsPageContent() {
                   </select>
                 </div>
 
+                {/* Current Owner Info Card */}
+                {selectedProduct && (
+                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-700">
+                      <span className="text-slate-600 font-medium">ผู้ส่ง (เจ้าของสินค้าปัจจุบัน):</span>
+                      <strong className="font-semibold text-blue-900">
+                        {selectedProduct.currentOwner?.name ||
+                          selectedProduct.manufacturer?.name ||
+                          'Apex Tech Manufacturing'}
+                      </strong>
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      การจัดส่งจะโอนสิทธิ์ไปยังองค์กรคู่ค้าปลายทาง กรุณาเลือก <strong>องค์กรผู้รับ</strong> ที่เป็นคนละองค์กรกับผู้ส่ง
+                    </p>
+                  </div>
+                )}
+
                 {/* Receiver Org */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -324,15 +367,30 @@ function ShipmentsPageContent() {
                     value={receiverOrgId}
                     onChange={(e) => setReceiverOrgId(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
                   >
-                    <option value="">-- เลือกองค์กรผู้รับ --</option>
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>
-                        {org.name} [{org.code}] — {org.type}
-                      </option>
-                    ))}
+                    <option value="">-- เลือกองค์กรผู้รับสินค้าปลายทาง --</option>
+                    {organizations.map((org) => {
+                      const isCurrentOwner =
+                        selectedProduct &&
+                        (org.id === selectedProduct.currentOwnerId ||
+                          org.id === selectedProduct.manufacturerId);
+                      return (
+                        <option
+                          key={org.id}
+                          value={org.id}
+                          disabled={isCurrentOwner}
+                          className={isCurrentOwner ? 'text-slate-400 bg-slate-50' : ''}
+                        >
+                          {org.name} [{org.code}] — {org.type}
+                          {isCurrentOwner ? ' (เจ้าของปัจจุบัน - ไม่สามารถเลือกได้)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    เลือกคู่ค้าปลายทาง เช่น ผู้แทนจำหน่าย (Distributor) หรือ คลังสินค้า (Warehouse)
+                  </p>
                 </div>
 
                 {/* Carrier Org */}

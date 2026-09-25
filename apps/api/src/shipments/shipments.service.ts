@@ -145,7 +145,7 @@ export class ShipmentsService {
     // 7. Ensure product is registered on blockchain
     if (!product.blockchainProductId) {
       this.logger.log(
-        `Product ${product.productCode} is not registered on blockchain. Auto-registering before shipment...`,
+        `Product ${product.productCode} is not registered on blockchain in DB. Checking on-chain status...`,
       );
       const productHash =
         product.productHash ||
@@ -157,21 +157,59 @@ export class ShipmentsService {
           category: product.category || undefined,
         });
 
-      const regReceipt = await this.blockchainService.registerProduct(
-        product.productCode,
-        productHash,
-        dto.signerPrivateKey,
-      );
+      let onChainProductId: string | null = null;
+      let onChainTxHash: string | null = product.blockchainTxHash || null;
 
-      product.blockchainProductId = regReceipt.productId.toString();
-      product.blockchainTxHash = regReceipt.txHash;
+      try {
+        const onChainProduct = await this.blockchainService.getProductByCode(
+          product.productCode,
+        );
+        if (onChainProduct && Number(onChainProduct.productId) > 0) {
+          onChainProductId = onChainProduct.productId.toString();
+          this.logger.log(
+            `Product ${product.productCode} already found on blockchain with ID ${onChainProductId}`,
+          );
+        }
+      } catch {
+        // Not on-chain yet
+      }
+
+      if (!onChainProductId) {
+        try {
+          const regReceipt = await this.blockchainService.registerProduct(
+            product.productCode,
+            productHash,
+            dto.signerPrivateKey,
+          );
+          onChainProductId = regReceipt.productId.toString();
+          onChainTxHash = regReceipt.txHash;
+        } catch (regErr: any) {
+          if (
+            regErr?.message?.includes('PRODUCT_ALREADY_EXISTS') ||
+            regErr?.reason === 'PRODUCT_ALREADY_EXISTS'
+          ) {
+            this.logger.warn(
+              `Product ${product.productCode} was already registered on blockchain. Syncing ID...`,
+            );
+            const onChainProduct = await this.blockchainService.getProductByCode(
+              product.productCode,
+            );
+            onChainProductId = onChainProduct.productId.toString();
+          } else {
+            throw regErr;
+          }
+        }
+      }
+
+      product.blockchainProductId = onChainProductId;
+      product.blockchainTxHash = onChainTxHash;
       product.productHash = productHash;
 
       await this.prisma.product.update({
         where: { id: product.id },
         data: {
-          blockchainProductId: regReceipt.productId.toString(),
-          blockchainTxHash: regReceipt.txHash,
+          blockchainProductId: onChainProductId,
+          blockchainTxHash: onChainTxHash,
           productHash,
         },
       });

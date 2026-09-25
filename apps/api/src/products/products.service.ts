@@ -61,9 +61,16 @@ export class ProductsService {
         if (currentUser?.organizationId) {
           targetManufacturerId = currentUser.organizationId;
         } else {
-          throw new BadRequestException(
-            'manufacturerId is required when creating a product as SUPER_ADMIN without an assigned organization',
-          );
+          const defaultMfg = await this.prisma.organization.findFirst({
+            where: { type: OrganizationType.MANUFACTURER, status: 'ACTIVE' },
+          });
+          if (defaultMfg) {
+            targetManufacturerId = defaultMfg.id;
+          } else {
+            throw new BadRequestException(
+              'manufacturerId is required when creating a product as SUPER_ADMIN without an assigned organization',
+            );
+          }
         }
       }
     }
@@ -539,11 +546,35 @@ export class ProductsService {
     );
 
     // Call smart contract
-    const receipt = await this.blockchainService.registerProduct(
-      product.productCode,
-      productHash,
-      signerPrivateKey,
-    );
+    let receipt: { txHash: string; blockNumber: number; productId: number };
+    try {
+      receipt = await this.blockchainService.registerProduct(
+        product.productCode,
+        productHash,
+        signerPrivateKey,
+      );
+    } catch (regErr: any) {
+      if (
+        regErr?.message?.includes('PRODUCT_ALREADY_EXISTS') ||
+        regErr?.reason === 'PRODUCT_ALREADY_EXISTS'
+      ) {
+        this.logger.warn(
+          `Product ${product.productCode} already registered on blockchain. Syncing state...`,
+        );
+        const onChainProduct = await this.blockchainService.getProductByCode(
+          product.productCode,
+        );
+        receipt = {
+          txHash:
+            product.blockchainTxHash ||
+            '0x0000000000000000000000000000000000000000000000000000000000000000',
+          blockNumber: 0,
+          productId: onChainProduct.productId,
+        };
+      } else {
+        throw regErr;
+      }
+    }
 
     // Update database record
     const updatedProduct = await this.prisma.product.update({
