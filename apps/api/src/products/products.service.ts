@@ -19,6 +19,7 @@ import {
   generateProductQrBuffer,
 } from './utils/qr-code.util';
 import {
+  Prisma,
   OrganizationType,
   ProductStatus,
   TxStatus,
@@ -576,19 +577,61 @@ export class ProductsService {
       }
     }
 
-    // Update database record
-    const updatedProduct = await this.prisma.product.update({
-      where: { id },
-      data: {
-        blockchainProductId: receipt.productId.toString(),
-        blockchainTxHash: receipt.txHash,
-        productHash,
-      },
-      include: {
-        manufacturer: true,
-        currentOwner: true,
-      },
+    const onChainIdStr = receipt.productId.toString();
+
+    // Check for duplicate assignment before updating database
+    const conflict = await this.prisma.product.findUnique({
+      where: { blockchainProductId: onChainIdStr },
+      select: { id: true, productCode: true },
     });
+
+    if (conflict && conflict.id !== id) {
+      this.logger.error(
+        `Unique constraint conflict: blockchainProductId '${onChainIdStr}' is already held by product '${conflict.productCode}' (${conflict.id}) in database`,
+      );
+      throw new ConflictException(
+        `Blockchain Product ID ${onChainIdStr} is already assigned to another product (${conflict.productCode})`,
+      );
+    }
+
+    // Update database record
+    let updatedProduct: any;
+    try {
+      updatedProduct = await this.prisma.product.update({
+        where: { id },
+        data: {
+          blockchainProductId: onChainIdStr,
+          blockchainTxHash: receipt.txHash,
+          productHash,
+        },
+        include: {
+          manufacturer: true,
+          currentOwner: true,
+        },
+      });
+    } catch (updateErr: any) {
+      if (
+        updateErr instanceof Prisma.PrismaClientKnownRequestError &&
+        updateErr.code === 'P2002'
+      ) {
+        const recheck = await this.prisma.product.findUnique({
+          where: { id },
+          include: {
+            manufacturer: true,
+            currentOwner: true,
+          },
+        });
+        if (recheck?.blockchainProductId === onChainIdStr) {
+          updatedProduct = recheck;
+        } else {
+          throw new ConflictException(
+            `Blockchain Product ID ${onChainIdStr} is already assigned to another product`,
+          );
+        }
+      } else {
+        throw updateErr;
+      }
+    }
 
     // Record BlockchainTransaction record
     const operatorAddress = await this.blockchainService

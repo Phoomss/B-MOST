@@ -144,6 +144,18 @@ export class ShipmentsService {
 
     // 7. Ensure product is registered on blockchain
     if (!product.blockchainProductId) {
+      // Concurrency check: refresh product from DB in case another process already registered it
+      const freshProduct = await this.prisma.product.findUnique({
+        where: { id: product.id },
+      });
+      if (freshProduct?.blockchainProductId) {
+        product.blockchainProductId = freshProduct.blockchainProductId;
+        product.blockchainTxHash = freshProduct.blockchainTxHash;
+        product.productHash = freshProduct.productHash;
+      }
+    }
+
+    if (!product.blockchainProductId) {
       this.logger.log(
         `Product ${product.productCode} is not registered on blockchain in DB. Checking on-chain status...`,
       );
@@ -201,18 +213,61 @@ export class ShipmentsService {
         }
       }
 
-      product.blockchainProductId = onChainProductId;
-      product.blockchainTxHash = onChainTxHash;
-      product.productHash = productHash;
+      // If productId was not captured in receipt logs (e.g. 0), sync from on-chain contract
+      if (!onChainProductId || onChainProductId === '0') {
+        const onChainProduct = await this.blockchainService.getProductByCode(
+          product.productCode,
+        );
+        onChainProductId = onChainProduct.productId.toString();
+      }
 
-      await this.prisma.product.update({
-        where: { id: product.id },
-        data: {
-          blockchainProductId: onChainProductId,
-          blockchainTxHash: onChainTxHash,
-          productHash,
-        },
+      // Validate against duplicate assignment before attempting database update
+      const conflict = await this.prisma.product.findUnique({
+        where: { blockchainProductId: onChainProductId },
+        select: { id: true, productCode: true },
       });
+
+      if (conflict && conflict.id !== product.id) {
+        this.logger.error(
+          `Unique constraint conflict: blockchainProductId '${onChainProductId}' is already held by product '${conflict.productCode}' (${conflict.id}) in database`,
+        );
+        throw new ConflictException(
+          `Blockchain Product ID ${onChainProductId} is already assigned to another product (${conflict.productCode})`,
+        );
+      }
+
+      try {
+        await this.prisma.product.update({
+          where: { id: product.id },
+          data: {
+            blockchainProductId: onChainProductId,
+            blockchainTxHash: onChainTxHash,
+            productHash,
+          },
+        });
+        product.blockchainProductId = onChainProductId;
+        product.blockchainTxHash = onChainTxHash;
+        product.productHash = productHash;
+      } catch (updateErr: any) {
+        if (
+          updateErr instanceof Prisma.PrismaClientKnownRequestError &&
+          updateErr.code === 'P2002'
+        ) {
+          const recheck = await this.prisma.product.findUnique({
+            where: { id: product.id },
+            select: { blockchainProductId: true },
+          });
+          if (recheck?.blockchainProductId === onChainProductId) {
+            product.blockchainProductId = onChainProductId;
+          } else {
+            throw new ConflictException(
+              `Blockchain Product ID ${onChainProductId} is already assigned to another product`,
+            );
+          }
+        } else {
+          throw updateErr;
+        }
+      }
     }
 
     // 8. Resolve Ethereum addresses for smart contract

@@ -197,10 +197,10 @@ async function main() {
       category: 'Electronics',
       manufacturerId: manufacturerOrg.id,
       currentOwnerId: manufacturerOrg.id,
-      blockchainProductId: '1',
+      blockchainProductId: null,
       productHash: '0x4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
-      blockchainTxHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-      status: ProductStatus.QUALITY_CHECKED,
+      blockchainTxHash: null,
+      status: ProductStatus.REGISTERED,
     },
   });
 
@@ -213,7 +213,7 @@ async function main() {
       inspectorName: 'Somchai Maker',
       result: QualityCheckResult.PASSED,
       notes: 'Calibrated sensors; cryptographic hardware verified with zero error tolerances.',
-      blockchainTxHash: '0x2234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      blockchainTxHash: null,
     },
   });
 
@@ -229,8 +229,8 @@ async function main() {
       origin: 'Apex Tech Factory #1, Bangkok',
       destination: 'Global Express Hub #2, Samut Prakan',
       status: ShipmentStatus.PENDING,
-      blockchainShipmentId: '1',
-      blockchainTxHash: '0x3234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      blockchainShipmentId: null,
+      blockchainTxHash: null,
     },
   });
 

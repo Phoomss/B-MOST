@@ -4,10 +4,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  Prisma,
   ProductStatus,
   QualityCheckResult,
   UserRole,
@@ -249,6 +251,109 @@ describe('QualityChecksService', () => {
       );
 
       expect(blockchain.registerProduct).toHaveBeenCalled();
+    });
+
+    it('uses existing blockchainProductId without calling registerProduct if product is already registered', async () => {
+      prisma.product.findFirst.mockResolvedValue(mockProduct);
+      prisma.qualityCheck.create.mockResolvedValue({
+        id: 'qc-existing-id',
+        result: QualityCheckResult.PASSED,
+      });
+      prisma.product.update.mockResolvedValue({
+        ...mockProduct,
+        status: ProductStatus.QUALITY_CHECKED,
+      });
+
+      await service.performQualityCheck(
+        mockProduct.id,
+        { result: 'PASS' } as any,
+        mockMfgUser,
+      );
+
+      expect(blockchain.registerProduct).not.toHaveBeenCalled();
+      expect(blockchain.recordQualityCheck).toHaveBeenCalledWith(
+        BigInt(1),
+        true,
+        '',
+        undefined,
+      );
+    });
+
+    it('throws ConflictException if onChainProductId is already assigned to another product in database', async () => {
+      const unregisteredProduct = {
+        ...mockProduct,
+        id: 'prod-uuid-new',
+        productCode: 'PRD-APEX-NEW',
+        blockchainProductId: null,
+        blockchainTxHash: null,
+      };
+      prisma.product.findFirst.mockResolvedValue(unregisteredProduct);
+      prisma.product.findUnique.mockImplementation(({ where }: any) => {
+        if (where.blockchainProductId === '1') {
+          return Promise.resolve({
+            id: 'other-existing-prod',
+            productCode: 'PRD-EXISTING',
+          });
+        }
+        return Promise.resolve(null);
+      });
+
+      await expect(
+        service.performQualityCheck(
+          unregisteredProduct.id,
+          { result: 'PASS' } as any,
+          mockMfgUser,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('handles concurrent P2002 gracefully if product was already updated with the same blockchainProductId', async () => {
+      const unregisteredProduct = {
+        ...mockProduct,
+        blockchainProductId: null,
+        blockchainTxHash: null,
+      };
+      prisma.product.findFirst.mockResolvedValue(unregisteredProduct);
+      let findUniqueCallCount = 0;
+      prisma.product.findUnique.mockImplementation(({ where }: any) => {
+        if (where.id === unregisteredProduct.id) {
+          findUniqueCallCount++;
+          if (findUniqueCallCount === 1) {
+            return Promise.resolve({
+              ...unregisteredProduct,
+              blockchainProductId: null,
+            });
+          }
+          return Promise.resolve({
+            ...unregisteredProduct,
+            blockchainProductId: '1',
+          });
+        }
+        return Promise.resolve(null);
+      });
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`blockchainProductId`)',
+        { code: 'P2002', clientVersion: '6.19.3' },
+      );
+      prisma.product.update
+        .mockRejectedValueOnce(p2002Error) // First update for blockchainProductId throws P2002
+        .mockResolvedValueOnce({
+          ...unregisteredProduct,
+          blockchainProductId: '1',
+          status: ProductStatus.QUALITY_CHECKED,
+        }); // Second update for status succeeds
+      prisma.qualityCheck.create.mockResolvedValue({
+        id: 'qc-uuid-concurrent',
+        result: QualityCheckResult.PASSED,
+      });
+
+      const res = await service.performQualityCheck(
+        unregisteredProduct.id,
+        { result: 'PASS' } as any,
+        mockMfgUser,
+      );
+
+      expect(res).toBeDefined();
       expect(blockchain.recordQualityCheck).toHaveBeenCalledWith(
         BigInt(1),
         true,

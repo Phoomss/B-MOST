@@ -312,16 +312,27 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
       // Resolve database Product UUID if matched
       let resolvedProductId: string | null = null;
       if (params.entityType === 'Product') {
-        const found = await this.prisma.product.findFirst({
-          where: {
-            OR: [
-              { blockchainProductId: params.entityId },
-              ...(params.productCode
-                ? [{ productCode: params.productCode }]
-                : []),
-            ],
-          },
-        });
+        let found: any = null;
+        if (params.productCode && this.prisma.product.findUnique) {
+          found = await this.prisma.product.findUnique({
+            where: { productCode: params.productCode },
+          });
+        }
+        if (!found && params.entityId && this.prisma.product.findUnique) {
+          found = await this.prisma.product.findUnique({
+            where: { blockchainProductId: params.entityId },
+          });
+        }
+        if (!found && this.prisma.product.findFirst) {
+          found = await this.prisma.product.findFirst({
+            where: {
+              OR: [
+                ...(params.productCode ? [{ productCode: params.productCode }] : []),
+                ...(params.entityId ? [{ blockchainProductId: params.entityId }] : []),
+              ],
+            },
+          });
+        }
         if (found) {
           resolvedProductId = found.id;
 
@@ -378,7 +389,21 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
       const updateData: any = {};
 
       if (eventParams.eventName === BLOCKCHAIN_EVENTS.PRODUCT_REGISTERED) {
-        updateData.blockchainProductId = eventParams.entityId;
+        let conflict: any = null;
+        if (this.prisma.product.findUnique) {
+          conflict = await this.prisma.product.findUnique({
+            where: { blockchainProductId: eventParams.entityId },
+            select: { id: true, productCode: true },
+          });
+        }
+
+        if (conflict && conflict.id !== dbProductId) {
+          this.logger.warn(
+            `Indexer detected conflict: blockchainProductId ${eventParams.entityId} is already held by product ${conflict.productCode} (${conflict.id}). Skipping blockchainProductId assignment on product ${dbProductId} to prevent P2002.`,
+          );
+        } else {
+          updateData.blockchainProductId = eventParams.entityId;
+        }
         updateData.blockchainTxHash = eventParams.txHash;
         updateData.status = ProductStatus.REGISTERED;
       } else if (eventParams.eventName === BLOCKCHAIN_EVENTS.QUALITY_CHECKED) {
@@ -403,10 +428,16 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (Object.keys(updateData).length > 0) {
-        await this.prisma.product.update({
-          where: { id: dbProductId },
-          data: updateData,
-        });
+        try {
+          await this.prisma.product.update({
+            where: { id: dbProductId },
+            data: updateData,
+          });
+        } catch (err: any) {
+          this.logger.warn(
+            `Could not sync product state for ${dbProductId}: ${err.message}`,
+          );
+        }
       }
     } catch (err: any) {
       this.logger.warn(

@@ -157,8 +157,49 @@ export class BlockchainService implements OnModuleDestroy {
   }
 
   // ----------------------------------------------------
+  // ----------------------------------------------------
   // Write Operations (Transactions)
   // ----------------------------------------------------
+
+  private async sendTransactionWithNonceRetry(
+    signer: ethers.Wallet,
+    txFn: (overrides?: ethers.Overrides) => Promise<ethers.ContractTransactionResponse>,
+    maxRetries = 3,
+  ): Promise<ethers.ContractTransactionReceipt> {
+    let lastError: any;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
+          const freshNonce = await this.provider.getTransactionCount(
+            await signer.getAddress(),
+            'pending',
+          );
+          const tx = await txFn({ nonce: freshNonce });
+          return (await tx.wait())!;
+        } else {
+          const tx = await txFn();
+          return (await tx.wait())!;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const msg = String(err?.message || '');
+        if (
+          err?.code === 'NONCE_EXPIRED' ||
+          msg.includes('nonce') ||
+          msg.includes('Nonce') ||
+          msg.includes('replacement transaction underpriced')
+        ) {
+          this.logger.warn(
+            `Nonce collision detected on attempt ${attempt + 1}: ${msg}. Retrying...`,
+          );
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastError;
+  }
 
   async registerProduct(
     productCode: string,
@@ -168,15 +209,56 @@ export class BlockchainService implements OnModuleDestroy {
     const signer = this.getSigner(signerPrivateKey);
     const contract = this.getContract(signer);
 
+    // If already registered on-chain, retrieve it directly
+    try {
+      const existing = await this.getProductByCode(productCode);
+      if (existing && Number(existing.productId) > 0) {
+        this.logger.log(
+          `Product ${productCode} is already registered on-chain with ID ${existing.productId}`,
+        );
+        return {
+          txHash: '',
+          blockNumber: 0,
+          productId: Number(existing.productId),
+        };
+      }
+    } catch {
+      // not yet registered on-chain
+    }
+
     this.logger.log(`Registering product on-chain: code=${productCode}`);
-    const tx = await contract.registerProduct(productCode, productHash);
-    const receipt = await tx.wait();
+    let receipt: ethers.ContractTransactionReceipt;
+    try {
+      receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+        overrides
+          ? contract.registerProduct(productCode, productHash, overrides)
+          : contract.registerProduct(productCode, productHash),
+      );
+    } catch (err: any) {
+      // If error indicates product already exists (e.g. race condition), resolve it from contract
+      const msg = String(err?.message || '');
+      if (
+        msg.includes('PRODUCT_ALREADY_EXISTS') ||
+        err?.reason === 'PRODUCT_ALREADY_EXISTS'
+      ) {
+        this.logger.warn(
+          `Product ${productCode} already registered on blockchain during concurrent call. Resolving ID...`,
+        );
+        const existing = await this.getProductByCode(productCode);
+        return {
+          txHash: '',
+          blockNumber: 0,
+          productId: Number(existing.productId),
+        };
+      }
+      throw err;
+    }
 
     // Extract productId from ProductRegistered event if available
     let productId = 0;
     for (const log of receipt.logs) {
       try {
-        const parsed = contract.interface.parseLog(log);
+        const parsed = contract.interface.parseLog(log as any);
         if (parsed && parsed.name === 'ProductRegistered') {
           productId = Number(parsed.args[0]);
           break;
@@ -205,8 +287,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Recording QC on-chain: productId=${productId}, passed=${passed}`,
     );
-    const tx = await contract.recordQualityCheck(productId, passed, notes);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.recordQualityCheck(productId, passed, notes, overrides)
+        : contract.recordQualityCheck(productId, passed, notes),
+    );
 
     return {
       txHash: receipt.hash,
@@ -227,18 +312,16 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Creating shipment on-chain: code=${shipmentCode}, productId=${productId}`,
     );
-    const tx = await contract.createShipment(
-      shipmentCode,
-      productId,
-      receiver,
-      carrier,
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.createShipment(shipmentCode, productId, receiver, carrier, overrides)
+        : contract.createShipment(shipmentCode, productId, receiver, carrier),
     );
-    const receipt = await tx.wait();
 
     let shipmentId = 0;
     for (const log of receipt.logs) {
       try {
-        const parsed = contract.interface.parseLog(log);
+        const parsed = contract.interface.parseLog(log as any);
         if (parsed && parsed.name === 'ShipmentCreated') {
           shipmentId = Number(parsed.args[0]);
           break;
@@ -266,8 +349,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Shipping product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const tx = await contract.shipProduct(productId, shipmentId);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.shipProduct(productId, shipmentId, overrides)
+        : contract.shipProduct(productId, shipmentId),
+    );
 
     return {
       txHash: receipt.hash,
@@ -286,8 +372,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Marking shipment in transit on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const tx = await contract.markInTransit(productId, shipmentId);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.markInTransit(productId, shipmentId, overrides)
+        : contract.markInTransit(productId, shipmentId),
+    );
 
     return {
       txHash: receipt.hash,
@@ -306,8 +395,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Receiving product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const tx = await contract.receiveProduct(productId, shipmentId);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.receiveProduct(productId, shipmentId, overrides)
+        : contract.receiveProduct(productId, shipmentId),
+    );
 
     return {
       txHash: receipt.hash,
@@ -323,8 +415,11 @@ export class BlockchainService implements OnModuleDestroy {
     const contract = this.getContract(signer);
 
     this.logger.log(`Storing product on-chain: productId=${productId}`);
-    const tx = await contract.storeProduct(productId);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.storeProduct(productId, overrides)
+        : contract.storeProduct(productId),
+    );
 
     return {
       txHash: receipt.hash,
@@ -343,8 +438,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Transferring ownership on-chain: productId=${productId}, newOwner=${newOwner}`,
     );
-    const tx = await contract.transferOwnership(productId, newOwner);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.transferOwnership(productId, newOwner, overrides)
+        : contract.transferOwnership(productId, newOwner),
+    );
 
     return {
       txHash: receipt.hash,
@@ -360,8 +458,11 @@ export class BlockchainService implements OnModuleDestroy {
     const contract = this.getContract(signer);
 
     this.logger.log(`Marking product sold on-chain: productId=${productId}`);
-    const tx = await contract.markAsSold(productId);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.markAsSold(productId, overrides)
+        : contract.markAsSold(productId),
+    );
 
     return {
       txHash: receipt.hash,
@@ -380,8 +481,11 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Recalling product on-chain: productId=${productId}, reason=${reason}`,
     );
-    const tx = await contract.recallProduct(productId, reason);
-    const receipt = await tx.wait();
+    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+      overrides
+        ? contract.recallProduct(productId, reason, overrides)
+        : contract.recallProduct(productId, reason),
+    );
 
     return {
       txHash: receipt.hash,

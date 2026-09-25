@@ -1,10 +1,10 @@
-node_modules
-.pnpm-store
-.next
-dist
-artifacts
-cache
-coverage
+**/node_modules
+**/.pnpm-store
+**/.next
+**/dist
+**/artifacts
+**/cache
+**/coverage
 .git
 .turbo
 *.log
