@@ -18,7 +18,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { CreateQualityCheckDto } from './dto/create-quality-check.dto';
 import { QueryQualityCheckDto } from './dto/query-quality-check.dto';
-import { generateProductHash } from '../products/utils/product-hash.util';
 
 @Injectable()
 export class QualityChecksService {
@@ -89,161 +88,37 @@ export class QualityChecksService {
 
     // Ensure product is registered on-chain before recording inspection
     if (!product.blockchainProductId) {
-      // 1. Concurrency check: refresh product from DB in case another process already registered it
-      const freshProduct = await this.prisma.product.findUnique({
-        where: { id: product.id },
-      });
-      if (freshProduct?.blockchainProductId) {
-        product.blockchainProductId = freshProduct.blockchainProductId;
-        product.blockchainTxHash = freshProduct.blockchainTxHash;
-        product.productHash = freshProduct.productHash;
-      }
-    }
-
-    if (!product.blockchainProductId) {
-      this.logger.log(
-        `Product ${product.productCode} is not yet registered on blockchain in DB. Checking on-chain status...`,
+      throw new BadRequestException(
+        'Product has not been registered on blockchain (สินค้ายังไม่ได้ลงทะเบียนบน Blockchain กรุณาลงทะเบียนสินค้าก่อนบันทึกการตรวจสอบคุณภาพ)',
       );
-      const productHash =
-        product.productHash ||
-        generateProductHash({
-          productCode: product.productCode,
-          serialNumber: product.serialNumber,
-          manufacturerId: product.manufacturerId,
-          name: product.name,
-          category: product.category || undefined,
-        });
-
-      let onChainProductId: string | null = null;
-      let onChainTxHash: string | null = product.blockchainTxHash || null;
-      let onChainBlockNumber: number = 0;
-
-      // Check if product already exists on-chain
-      try {
-        const onChainProduct = await this.blockchainService.getProductByCode(
-          product.productCode,
-        );
-        if (onChainProduct && Number(onChainProduct.productId) > 0) {
-          onChainProductId = onChainProduct.productId.toString();
-          this.logger.log(
-            `Product ${product.productCode} already found on blockchain with ID ${onChainProductId}`,
-          );
-        }
-      } catch {
-        // Not on-chain yet, proceed to register
-      }
-
-      if (!onChainProductId) {
-        try {
-          const regReceipt = await this.blockchainService.registerProduct(
-            product.productCode,
-            productHash,
-            dto.signerPrivateKey,
-          );
-          onChainProductId = regReceipt.productId.toString();
-          onChainTxHash = regReceipt.txHash;
-          onChainBlockNumber = regReceipt.blockNumber;
-        } catch (regErr: any) {
-          if (
-            regErr?.message?.includes('PRODUCT_ALREADY_EXISTS') ||
-            regErr?.reason === 'PRODUCT_ALREADY_EXISTS'
-          ) {
-            this.logger.warn(
-              `Product ${product.productCode} was already registered on blockchain. Syncing ID...`,
-            );
-            const onChainProduct = await this.blockchainService.getProductByCode(
-              product.productCode,
-            );
-            onChainProductId = onChainProduct.productId.toString();
-          } else {
-            throw regErr;
-          }
-        }
-      }
-
-      // If productId was not captured in receipt logs (e.g. 0), sync from on-chain contract
-      if (!onChainProductId || onChainProductId === '0') {
-        const onChainProduct = await this.blockchainService.getProductByCode(
-          product.productCode,
-        );
-        onChainProductId = onChainProduct.productId.toString();
-      }
-
-      // Validate against duplicate assignment before attempting database update
-      const conflict = await this.prisma.product.findUnique({
-        where: { blockchainProductId: onChainProductId },
-        select: { id: true, productCode: true },
-      });
-
-      if (conflict && conflict.id !== product.id) {
-        this.logger.error(
-          `Unique constraint conflict: blockchainProductId '${onChainProductId}' is already held by product '${conflict.productCode}' (${conflict.id}) in database`,
-        );
-        throw new ConflictException(
-          `Blockchain Product ID ${onChainProductId} is already assigned to another product (${conflict.productCode})`,
-        );
-      }
-
-      try {
-        await this.prisma.product.update({
-          where: { id: product.id },
-          data: {
-            blockchainProductId: onChainProductId,
-            blockchainTxHash: onChainTxHash,
-            productHash,
-          },
-        });
-        product.blockchainProductId = onChainProductId;
-        product.blockchainTxHash = onChainTxHash;
-        product.productHash = productHash;
-      } catch (updateErr: any) {
-        if (updateErr?.code === 'P2002') {
-          // Check if this product was concurrently updated with the same onChainProductId
-          const recheck = await this.prisma.product.findUnique({
-            where: { id: product.id },
-            select: { blockchainProductId: true },
-          });
-          if (recheck?.blockchainProductId === onChainProductId) {
-            product.blockchainProductId = onChainProductId;
-          } else {
-            throw new ConflictException(
-              `Blockchain Product ID ${onChainProductId} is already assigned to another product`,
-            );
-          }
-        } else {
-          throw updateErr;
-        }
-      }
-
-      if (onChainTxHash) {
-        const signerAddr = await this.blockchainService
-          .getSigner(dto.signerPrivateKey)
-          .getAddress()
-          .catch(() => '0x0000000000000000000000000000000000000000');
-
-        await this.prisma.blockchainTransaction
-          .upsert({
-            where: { txHash: onChainTxHash },
-            update: {
-              blockNumber: BigInt(onChainBlockNumber),
-              productId: product.id,
-              status: TxStatus.CONFIRMED,
-            },
-            create: {
-              txHash: onChainTxHash,
-              blockNumber: BigInt(onChainBlockNumber),
-              contractAddress: this.blockchainService.getContractAddress(),
-              eventType: 'ProductRegistered',
-              entityType: 'Product',
-              entityId: onChainProductId || product.id,
-              productId: product.id,
-              walletAddress: signerAddr,
-              status: TxStatus.CONFIRMED,
-            },
-          })
-          .catch(() => {});
-      }
     }
+
+    const onChainProductIdNum = Number(product.blockchainProductId);
+    if (!onChainProductIdNum || onChainProductIdNum <= 0) {
+      throw new BadRequestException(
+        'Product has not been registered on blockchain (รหัส Blockchain Product ID ไม่ถูกต้อง)',
+      );
+    }
+
+    // Existence check on blockchain before transaction
+    const exists =
+      await this.blockchainService.verifyProductExists(onChainProductIdNum);
+    if (!exists) {
+      this.logger.error(
+        `Product exists in database but not found on blockchain (Product DB ID: ${product.id}, Blockchain ID: ${product.blockchainProductId}, Code: ${product.productCode})`,
+      );
+      throw new ConflictException(
+        'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+      );
+    }
+
+    // Structured logging before blockchain transaction
+    this.blockchainService.logTransactionAttempt({
+      productDbId: product.id,
+      productBlockchainId: product.blockchainProductId,
+      productCode: product.productCode,
+      functionName: 'recordQualityCheck',
+    });
 
     // Call Smart Contract: recordQualityCheck
     this.logger.log(

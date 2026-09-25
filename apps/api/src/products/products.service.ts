@@ -546,6 +546,14 @@ export class ProductsService {
       `Executing blockchain registration for product ${product.productCode} with hash ${productHash}`,
     );
 
+    // Structured logging before blockchain transaction
+    this.blockchainService.logTransactionAttempt({
+      productDbId: product.id,
+      productBlockchainId: 'N/A (Pending Registration)',
+      productCode: product.productCode,
+      functionName: 'registerProduct',
+    });
+
     // Call smart contract
     let receipt: { txHash: string; blockNumber: number; productId: number };
     try {
@@ -740,6 +748,27 @@ export class ProductsService {
     let blockNumber: number | null = null;
 
     if (product.blockchainProductId) {
+      const onChainProductIdNum = Number(product.blockchainProductId);
+      if (onChainProductIdNum > 0) {
+        const exists =
+          await this.blockchainService.verifyProductExists(onChainProductIdNum);
+        if (!exists) {
+          this.logger.error(
+            `Product exists in database but not found on blockchain (Product DB ID: ${product.id}, Blockchain ID: ${product.blockchainProductId}, Code: ${product.productCode})`,
+          );
+          throw new ConflictException(
+            'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+          );
+        }
+
+        this.blockchainService.logTransactionAttempt({
+          productDbId: product.id,
+          productBlockchainId: product.blockchainProductId,
+          productCode: product.productCode,
+          functionName: 'markAsSold',
+        });
+      }
+
       const receipt = await this.blockchainService.markAsSold(
         BigInt(product.blockchainProductId),
         dto?.signerPrivateKey,

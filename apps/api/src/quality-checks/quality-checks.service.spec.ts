@@ -9,7 +9,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  Prisma,
   ProductStatus,
   QualityCheckResult,
   UserRole,
@@ -115,6 +114,8 @@ describe('QualityChecksService', () => {
         blockNumber: 41,
         productId: 1,
       }),
+      verifyProductExists: jest.fn().mockResolvedValue(true),
+      logTransactionAttempt: jest.fn(),
       getContractAddress: jest.fn().mockReturnValue('0xContractAddress'),
       getSigner: jest.fn().mockReturnValue({
         getAddress: jest.fn().mockResolvedValue('0xSignerAddress'),
@@ -227,30 +228,24 @@ describe('QualityChecksService', () => {
       expect(result.product.status).toBe(ProductStatus.RECALLED);
     });
 
-    it('auto-registers product on blockchain before QC if not yet registered', async () => {
+    it('rejects QC if product is not yet registered on blockchain', async () => {
       const unregisteredProduct = {
         ...mockProduct,
         blockchainProductId: null,
         blockchainTxHash: null,
       };
       prisma.product.findFirst.mockResolvedValue(unregisteredProduct);
-      prisma.product.update.mockResolvedValue({
-        ...unregisteredProduct,
-        blockchainProductId: '1',
-        status: ProductStatus.QUALITY_CHECKED,
-      });
-      prisma.qualityCheck.create.mockResolvedValue({
-        id: 'qc-auto-reg',
-        result: QualityCheckResult.PASSED,
-      });
 
-      await service.performQualityCheck(
-        unregisteredProduct.id,
-        { result: 'PASS' } as any,
-        mockMfgUser,
-      );
+      await expect(
+        service.performQualityCheck(
+          unregisteredProduct.id,
+          { result: 'PASS' } as any,
+          mockMfgUser,
+        ),
+      ).rejects.toThrow(BadRequestException);
 
-      expect(blockchain.registerProduct).toHaveBeenCalled();
+      expect(blockchain.registerProduct).not.toHaveBeenCalled();
+      expect(blockchain.recordQualityCheck).not.toHaveBeenCalled();
     });
 
     it('uses existing blockchainProductId without calling registerProduct if product is already registered', async () => {
@@ -279,87 +274,21 @@ describe('QualityChecksService', () => {
       );
     });
 
-    it('throws ConflictException if onChainProductId is already assigned to another product in database', async () => {
-      const unregisteredProduct = {
-        ...mockProduct,
-        id: 'prod-uuid-new',
-        productCode: 'PRD-APEX-NEW',
-        blockchainProductId: null,
-        blockchainTxHash: null,
-      };
-      prisma.product.findFirst.mockResolvedValue(unregisteredProduct);
-      prisma.product.findUnique.mockImplementation(({ where }: any) => {
-        if (where.blockchainProductId === '1') {
-          return Promise.resolve({
-            id: 'other-existing-prod',
-            productCode: 'PRD-EXISTING',
-          });
-        }
-        return Promise.resolve(null);
-      });
+    it('throws ConflictException if product exists in database but not found on blockchain', async () => {
+      prisma.product.findFirst.mockResolvedValue(mockProduct);
+      (blockchain.verifyProductExists as jest.Mock).mockResolvedValueOnce(
+        false,
+      );
 
       await expect(
         service.performQualityCheck(
-          unregisteredProduct.id,
+          mockProduct.id,
           { result: 'PASS' } as any,
           mockMfgUser,
         ),
       ).rejects.toThrow(ConflictException);
-    });
 
-    it('handles concurrent P2002 gracefully if product was already updated with the same blockchainProductId', async () => {
-      const unregisteredProduct = {
-        ...mockProduct,
-        blockchainProductId: null,
-        blockchainTxHash: null,
-      };
-      prisma.product.findFirst.mockResolvedValue(unregisteredProduct);
-      let findUniqueCallCount = 0;
-      prisma.product.findUnique.mockImplementation(({ where }: any) => {
-        if (where.id === unregisteredProduct.id) {
-          findUniqueCallCount++;
-          if (findUniqueCallCount === 1) {
-            return Promise.resolve({
-              ...unregisteredProduct,
-              blockchainProductId: null,
-            });
-          }
-          return Promise.resolve({
-            ...unregisteredProduct,
-            blockchainProductId: '1',
-          });
-        }
-        return Promise.resolve(null);
-      });
-      const p2002Error = new Prisma.PrismaClientKnownRequestError(
-        'Unique constraint failed on the fields: (`blockchainProductId`)',
-        { code: 'P2002', clientVersion: '6.19.3' },
-      );
-      prisma.product.update
-        .mockRejectedValueOnce(p2002Error) // First update for blockchainProductId throws P2002
-        .mockResolvedValueOnce({
-          ...unregisteredProduct,
-          blockchainProductId: '1',
-          status: ProductStatus.QUALITY_CHECKED,
-        }); // Second update for status succeeds
-      prisma.qualityCheck.create.mockResolvedValue({
-        id: 'qc-uuid-concurrent',
-        result: QualityCheckResult.PASSED,
-      });
-
-      const res = await service.performQualityCheck(
-        unregisteredProduct.id,
-        { result: 'PASS' } as any,
-        mockMfgUser,
-      );
-
-      expect(res).toBeDefined();
-      expect(blockchain.recordQualityCheck).toHaveBeenCalledWith(
-        BigInt(1),
-        true,
-        '',
-        undefined,
-      );
+      expect(blockchain.recordQualityCheck).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException if target product does not exist', async () => {

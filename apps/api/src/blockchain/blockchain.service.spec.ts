@@ -261,6 +261,23 @@ describe('BlockchainService', () => {
       expect(await service.getTotalShipments()).toBe(3);
     });
 
+    it('should verify product existence on-chain', async () => {
+      jest.spyOn(service, 'getTotalProducts').mockResolvedValue(2);
+      jest.spyOn(service, 'getProduct').mockResolvedValue({
+        productId: 1,
+        productCode: 'PROD-001',
+        productHash: '0x123',
+        manufacturer: '0xMfg',
+        currentOwner: '0xOwner',
+        status: 0,
+        registeredAt: 123456,
+      });
+
+      expect(await service.verifyProductExists(1)).toBe(true);
+      expect(await service.verifyProductExists(3)).toBe(false);
+      expect(await service.verifyProductExists(0)).toBe(false);
+    });
+
     it('should query getBlock from provider and format block details', async () => {
       const mockBlock = {
         number: 10,
@@ -287,9 +304,7 @@ describe('BlockchainService', () => {
     });
 
     it('should return null when getBlock fails or block is not found', async () => {
-      jest
-        .spyOn(service.getProvider(), 'getBlock')
-        .mockResolvedValueOnce(null as any);
+      jest.spyOn(service.getProvider(), 'getBlock').mockResolvedValueOnce(null);
 
       const block = await service.getBlock('latest');
       expect(block).toBeNull();

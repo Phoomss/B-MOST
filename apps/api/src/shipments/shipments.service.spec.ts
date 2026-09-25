@@ -169,6 +169,8 @@ describe('ShipmentsService', () => {
         status: 0,
       }),
       verifyShipmentExists: jest.fn().mockResolvedValue(true),
+      verifyProductExists: jest.fn().mockResolvedValue(true),
+      logTransactionAttempt: jest.fn(),
       getContractAddress: jest.fn().mockReturnValue('0xContractAddress'),
       getSigner: jest.fn().mockReturnValue({
         getAddress: jest.fn().mockResolvedValue('0xSignerAddress'),

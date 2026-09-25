@@ -148,6 +148,8 @@ describe('ProductsService', () => {
           details: 'Product registered',
         },
       ]),
+      verifyProductExists: jest.fn().mockResolvedValue(true),
+      logTransactionAttempt: jest.fn(),
       getContractAddress: jest
         .fn()
         .mockReturnValue('0x5FbDB2315678afecb367f032d93F642f64180aa3'),

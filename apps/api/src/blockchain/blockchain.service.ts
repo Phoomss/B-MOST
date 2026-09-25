@@ -5,6 +5,7 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
@@ -103,6 +104,36 @@ export class BlockchainService implements OnModuleDestroy {
     return this.contractAddress;
   }
 
+  getNetworkName(): string {
+    return this.rpcUrl.includes('localhost') ||
+      this.rpcUrl.includes('127.0.0.1')
+      ? 'localhost'
+      : 'hardhat';
+  }
+
+  logTransactionAttempt(details: {
+    productDbId?: string;
+    productBlockchainId?: string | number | bigint;
+    productCode?: string;
+    functionName: string;
+    contractAddress?: string;
+    network?: string;
+  }) {
+    const network = details.network || this.getNetworkName();
+    const contract = details.contractAddress || this.contractAddress;
+
+    this.logger.log(
+      `\n--- [Blockchain Transaction Attempt] ---\n` +
+        `Product DB ID: ${details.productDbId || 'N/A'}\n` +
+        `Product Blockchain ID: ${details.productBlockchainId ?? 'N/A'}\n` +
+        `Product Code: ${details.productCode || 'N/A'}\n` +
+        `Function: ${details.functionName}\n` +
+        `Contract: ${contract}\n` +
+        `Network: ${network}\n` +
+        `----------------------------------------`,
+    );
+  }
+
   getProvider(): ethers.JsonRpcProvider {
     return this.provider;
   }
@@ -170,7 +201,9 @@ export class BlockchainService implements OnModuleDestroy {
 
   private async sendTransactionWithNonceRetry(
     signer: ethers.Wallet,
-    txFn: (overrides?: ethers.Overrides) => Promise<ethers.ContractTransactionResponse>,
+    txFn: (
+      overrides?: ethers.Overrides,
+    ) => Promise<ethers.ContractTransactionResponse>,
     maxRetries = 3,
   ): Promise<ethers.ContractTransactionReceipt> {
     let lastError: any;
@@ -265,13 +298,24 @@ export class BlockchainService implements OnModuleDestroy {
     let productId = 0;
     for (const log of receipt.logs) {
       try {
-        const parsed = contract.interface.parseLog(log as any);
+        const parsed = contract.interface.parseLog(log);
         if (parsed && parsed.name === 'ProductRegistered') {
           productId = Number(parsed.args[0]);
           break;
         }
       } catch {
         // Skip logs that do not match contract interface
+      }
+    }
+
+    if (!productId || productId === 0) {
+      try {
+        const onChain = await this.getProductByCode(productCode);
+        if (onChain && Number(onChain.productId) > 0) {
+          productId = Number(onChain.productId);
+        }
+      } catch {
+        // ignore
       }
     }
 
@@ -294,16 +338,53 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Recording QC on-chain: productId=${productId}, passed=${passed}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.recordQualityCheck(productId, passed, notes, overrides)
-        : contract.recordQualityCheck(productId, passed, notes),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.recordQualityCheck(productId, passed, notes, overrides)
+            : contract.recordQualityCheck(productId, passed, notes),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing recordQualityCheck on-chain (productId: ${productId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      if (
+        msg.includes('UNAUTHORIZED_ACTION') ||
+        err?.reason === 'UNAUTHORIZED_ACTION'
+      ) {
+        throw new ForbiddenException(
+          'ไม่มีสิทธิ์ในการบันทึกการตรวจสอบคุณภาพบน Smart Contract',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException(
+          'สถานะสินค้าไม่ถูกต้องสำหรับการตรวจสอบคุณภาพ',
+        );
+      }
+      throw err;
+    }
   }
 
   async createShipment(
@@ -340,7 +421,13 @@ export class BlockchainService implements OnModuleDestroy {
     try {
       receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
         overrides
-          ? contract.createShipment(shipmentCode, productId, receiver, carrier, overrides)
+          ? contract.createShipment(
+              shipmentCode,
+              productId,
+              receiver,
+              carrier,
+              overrides,
+            )
           : contract.createShipment(shipmentCode, productId, receiver, carrier),
       );
     } catch (err: any) {
@@ -363,6 +450,15 @@ export class BlockchainService implements OnModuleDestroy {
           shipmentId: Number(existing.shipmentId),
         };
       }
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
       if (msg.includes('INVALID_STATE_TRANSITION')) {
         throw new BadRequestException(
           'สินค้าต้องผ่านการตรวจสอบคุณภาพ (Quality Checked) บน Blockchain ก่อนสร้างการจัดส่ง',
@@ -379,7 +475,7 @@ export class BlockchainService implements OnModuleDestroy {
     let shipmentId = 0;
     for (const log of receipt.logs) {
       try {
-        const parsed = contract.interface.parseLog(log as any);
+        const parsed = contract.interface.parseLog(log);
         if (parsed && parsed.name === 'ShipmentCreated') {
           shipmentId = Number(parsed.args[0]);
           break;
@@ -417,10 +513,12 @@ export class BlockchainService implements OnModuleDestroy {
       `Shipping product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
     try {
-      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-        overrides
-          ? contract.shipProduct(productId, shipmentId, overrides)
-          : contract.shipProduct(productId, shipmentId),
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.shipProduct(productId, shipmentId, overrides)
+            : contract.shipProduct(productId, shipmentId),
       );
 
       return {
@@ -434,6 +532,15 @@ export class BlockchainService implements OnModuleDestroy {
         err?.stack,
       );
 
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
       if (
         msg.includes('SHIPMENT_NOT_FOUND') ||
         err?.reason === 'SHIPMENT_NOT_FOUND' ||
@@ -481,10 +588,12 @@ export class BlockchainService implements OnModuleDestroy {
       `Marking shipment in transit on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
     try {
-      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-        overrides
-          ? contract.markInTransit(productId, shipmentId, overrides)
-          : contract.markInTransit(productId, shipmentId),
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.markInTransit(productId, shipmentId, overrides)
+            : contract.markInTransit(productId, shipmentId),
       );
 
       return {
@@ -498,6 +607,15 @@ export class BlockchainService implements OnModuleDestroy {
         err?.stack,
       );
 
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
       if (
         msg.includes('SHIPMENT_NOT_FOUND') ||
         err?.reason === 'SHIPMENT_NOT_FOUND'
@@ -538,10 +656,12 @@ export class BlockchainService implements OnModuleDestroy {
       `Receiving product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
     try {
-      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-        overrides
-          ? contract.receiveProduct(productId, shipmentId, overrides)
-          : contract.receiveProduct(productId, shipmentId),
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.receiveProduct(productId, shipmentId, overrides)
+            : contract.receiveProduct(productId, shipmentId),
       );
 
       return {
@@ -555,6 +675,15 @@ export class BlockchainService implements OnModuleDestroy {
         err?.stack,
       );
 
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
       if (
         msg.includes('SHIPMENT_NOT_FOUND') ||
         err?.reason === 'SHIPMENT_NOT_FOUND'
@@ -597,16 +726,53 @@ export class BlockchainService implements OnModuleDestroy {
     const contract = this.getContract(signer);
 
     this.logger.log(`Storing product on-chain: productId=${productId}`);
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.storeProduct(productId, overrides)
-        : contract.storeProduct(productId),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.storeProduct(productId, overrides)
+            : contract.storeProduct(productId),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing storeProduct on-chain (productId: ${productId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      if (
+        msg.includes('NOT_CURRENT_OWNER') ||
+        err?.reason === 'NOT_CURRENT_OWNER'
+      ) {
+        throw new ForbiddenException(
+          'เฉพาะเจ้าของสินค้าปัจจุบันเท่านั้นที่สามารถเก็บเข้าคลังได้',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException(
+          'สถานะสินค้าไม่ถูกต้องสำหรับการเก็บเข้าคลัง',
+        );
+      }
+      throw err;
+    }
   }
 
   async transferOwnership(
@@ -620,16 +786,53 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Transferring ownership on-chain: productId=${productId}, newOwner=${newOwner}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.transferOwnership(productId, newOwner, overrides)
-        : contract.transferOwnership(productId, newOwner),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.transferOwnership(productId, newOwner, overrides)
+            : contract.transferOwnership(productId, newOwner),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing transferOwnership on-chain (productId: ${productId}, newOwner: ${newOwner}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      if (
+        msg.includes('NOT_CURRENT_OWNER') ||
+        err?.reason === 'NOT_CURRENT_OWNER'
+      ) {
+        throw new ForbiddenException(
+          'เฉพาะเจ้าของสินค้าปัจจุบันเท่านั้นที่สามารถโอนกรรมสิทธิ์ได้',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException(
+          'สถานะสินค้าไม่ถูกต้องสำหรับการโอนกรรมสิทธิ์',
+        );
+      }
+      throw err;
+    }
   }
 
   async markAsSold(
@@ -640,16 +843,51 @@ export class BlockchainService implements OnModuleDestroy {
     const contract = this.getContract(signer);
 
     this.logger.log(`Marking product sold on-chain: productId=${productId}`);
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.markAsSold(productId, overrides)
-        : contract.markAsSold(productId),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.markAsSold(productId, overrides)
+            : contract.markAsSold(productId),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing markAsSold on-chain (productId: ${productId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      if (
+        msg.includes('NOT_CURRENT_OWNER') ||
+        err?.reason === 'NOT_CURRENT_OWNER'
+      ) {
+        throw new ForbiddenException(
+          'เฉพาะเจ้าของสินค้าปัจจุบันเท่านั้นที่สามารถขายสินค้าได้',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException('สถานะสินค้าไม่ถูกต้องสำหรับการขาย');
+      }
+      throw err;
+    }
   }
 
   async recallProduct(
@@ -663,16 +901,45 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Recalling product on-chain: productId=${productId}, reason=${reason}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.recallProduct(productId, reason, overrides)
-        : contract.recallProduct(productId, reason),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(
+        signer,
+        (overrides) =>
+          overrides
+            ? contract.recallProduct(productId, reason, overrides)
+            : contract.recallProduct(productId, reason),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing recallProduct on-chain (productId: ${productId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new ConflictException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      if (
+        msg.includes('UNAUTHORIZED_ACTION') ||
+        err?.reason === 'UNAUTHORIZED_ACTION'
+      ) {
+        throw new ForbiddenException(
+          'ไม่มีสิทธิ์ในการเรียกคืนสินค้านี้บน Smart Contract',
+        );
+      }
+      throw err;
+    }
   }
 
   // ----------------------------------------------------
@@ -680,31 +947,78 @@ export class BlockchainService implements OnModuleDestroy {
   // ----------------------------------------------------
 
   async getProduct(productId: number | bigint): Promise<ContractProduct> {
+    const idNum = Number(productId);
+    if (!idNum || idNum <= 0) {
+      throw new NotFoundException(
+        `Product ID ${productId} is invalid on blockchain`,
+      );
+    }
     const contract = this.getReadOnlyContract();
-    const result = await contract.getProduct(productId);
-    return {
-      productId: Number(result[0]),
-      productCode: result[1],
-      productHash: result[2],
-      manufacturer: result[3],
-      currentOwner: result[4],
-      status: Number(result[5]),
-      registeredAt: Number(result[6]),
-    };
+    try {
+      const result = await contract.getProduct(productId);
+      return {
+        productId: Number(result[0]),
+        productCode: result[1],
+        productHash: result[2],
+        manufacturer: result[3],
+        currentOwner: result[4],
+        status: Number(result[5]),
+        registeredAt: Number(result[6]),
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new NotFoundException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
+        );
+      }
+      throw err;
+    }
   }
 
   async getProductByCode(productCode: string): Promise<ContractProduct> {
     const contract = this.getReadOnlyContract();
-    const result = await contract.getProductByCode(productCode);
-    return {
-      productId: Number(result[0]),
-      productCode: result[1],
-      productHash: result[2],
-      manufacturer: result[3],
-      currentOwner: result[4],
-      status: Number(result[5]),
-      registeredAt: Number(result[6]),
-    };
+    try {
+      const result = await contract.getProductByCode(productCode);
+      return {
+        productId: Number(result[0]),
+        productCode: result[1],
+        productHash: result[2],
+        manufacturer: result[3],
+        currentOwner: result[4],
+        status: Number(result[5]),
+        registeredAt: Number(result[6]),
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (
+        msg.includes('PRODUCT_NOT_FOUND') ||
+        err?.reason === 'PRODUCT_NOT_FOUND' ||
+        err?.shortMessage?.includes('PRODUCT_NOT_FOUND')
+      ) {
+        throw new NotFoundException(
+          'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product Code และสถานะของ Blockchain)',
+        );
+      }
+      throw err;
+    }
+  }
+
+  async verifyProductExists(productId: number | bigint): Promise<boolean> {
+    try {
+      const id = Number(productId);
+      if (!id || id <= 0) return false;
+      const total = await this.getTotalProducts();
+      if (id > total) return false;
+      const prod = await this.getProduct(id);
+      return Boolean(prod && Number(prod.productId) > 0);
+    } catch {
+      return false;
+    }
   }
 
   async getShipment(shipmentId: number | bigint): Promise<ContractShipment> {
@@ -817,9 +1131,9 @@ export class BlockchainService implements OnModuleDestroy {
         blockHashOrNumber === 'latest'
           ? 'latest'
           : typeof blockHashOrNumber === 'string' &&
-            blockHashOrNumber.startsWith('0x')
-          ? blockHashOrNumber
-          : Number(blockHashOrNumber);
+              blockHashOrNumber.startsWith('0x')
+            ? blockHashOrNumber
+            : Number(blockHashOrNumber);
       const block = await this.provider.getBlock(target);
       if (!block) return null;
 
@@ -866,4 +1180,3 @@ export class BlockchainService implements OnModuleDestroy {
     return contract.hasRole(roleHash, account);
   }
 }
-

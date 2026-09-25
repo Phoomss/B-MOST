@@ -327,8 +327,12 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
           found = await this.prisma.product.findFirst({
             where: {
               OR: [
-                ...(params.productCode ? [{ productCode: params.productCode }] : []),
-                ...(params.entityId ? [{ blockchainProductId: params.entityId }] : []),
+                ...(params.productCode
+                  ? [{ productCode: params.productCode }]
+                  : []),
+                ...(params.entityId
+                  ? [{ blockchainProductId: params.entityId }]
+                  : []),
               ],
             },
           });
@@ -368,7 +372,10 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Sync shipment lifecycle state from product / shipment events
-      if (params.additionalData?.shipmentId && this.prisma.shipment?.updateMany) {
+      if (
+        params.additionalData?.shipmentId &&
+        this.prisma.shipment?.updateMany
+      ) {
         const onChainShpId = params.additionalData.shipmentId.toString();
         let newStatus: ShipmentStatus | null = null;
         const updateShipmentData: any = {};
