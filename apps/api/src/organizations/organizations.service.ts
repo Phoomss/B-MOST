@@ -28,18 +28,6 @@ export class OrganizationsService {
       );
     }
 
-    // Check wallet address uniqueness if provided
-    if (createDto.walletAddress) {
-      const existingWallet = await this.prisma.organization.findUnique({
-        where: { walletAddress: createDto.walletAddress },
-      });
-      if (existingWallet) {
-        throw new ConflictException(
-          `Wallet address '${createDto.walletAddress}' is already registered to another organization`,
-        );
-      }
-    }
-
     const organization = await this.prisma.organization.create({
       data: {
         name: createDto.name,
@@ -236,21 +224,6 @@ export class OrganizationsService {
       if (codeInUse) {
         throw new ConflictException(
           `Organization with code '${updateDto.code.toUpperCase()}' already exists`,
-        );
-      }
-    }
-
-    // Check wallet uniqueness if changing
-    if (
-      updateDto.walletAddress &&
-      updateDto.walletAddress !== existing.walletAddress
-    ) {
-      const walletInUse = await this.prisma.organization.findUnique({
-        where: { walletAddress: updateDto.walletAddress },
-      });
-      if (walletInUse) {
-        throw new ConflictException(
-          `Wallet address '${updateDto.walletAddress}' is already registered to another organization`,
         );
       }
     }

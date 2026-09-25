@@ -131,7 +131,14 @@ export class TraceabilityService {
       category: product.category || undefined,
     });
 
-    if (product.blockchainProductId) {
+    // A bare ID from the old local chain must never be queried as a Sepolia ID.
+    const hasSepoliaReference = Boolean(
+      product.blockchainProductId &&
+      product.blockchainChainId === 11155111 &&
+      product.blockchainContractAddress?.toLowerCase() ===
+        this.blockchainService.getContractAddress().toLowerCase(),
+    );
+    if (hasSepoliaReference && product.blockchainProductId) {
       const onChainId = BigInt(product.blockchainProductId);
       try {
         const [liveProduct, historyEvents] = await Promise.all([
@@ -331,11 +338,9 @@ export class TraceabilityService {
 
     // 6. Build Blockchain Verification Payload
     const blockchainVerification = {
-      verified: Boolean(
-        product.blockchainProductId && (hashMatch || onChainData),
-      ),
+      verified: Boolean(hasSepoliaReference && (hashMatch || onChainData)),
       contractAddress: this.blockchainService.getContractAddress(),
-      onChainProductId: product.blockchainProductId
+      onChainProductId: hasSepoliaReference
         ? Number(product.blockchainProductId)
         : null,
       productHash: product.productHash || computedHash,

@@ -26,6 +26,9 @@ import { SyncEventsDto } from './dto/sync-events.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { BlockchainVerificationService } from './blockchain-verification.service';
+import { VerifyTransactionDto } from './dto/verify-transaction.dto';
 
 @ApiTags('Blockchain')
 @Controller('blockchain')
@@ -36,7 +39,15 @@ export class BlockchainController {
     private readonly blockchainService: BlockchainService,
     private readonly transactionService: BlockchainTransactionService,
     private readonly indexerService: BlockchainIndexerService,
+    private readonly verificationService: BlockchainVerificationService,
   ) {}
+
+  @Post('verify-transaction')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Independently verify a user-signed Sepolia transaction' })
+  async verifyTransaction(@Body() dto: VerifyTransactionDto, @CurrentUser() user: any) {
+    return this.verificationService.verifyTransaction(dto.transactionHash, user?.walletAddress);
+  }
 
   @Get('status')
   @ApiOperation({

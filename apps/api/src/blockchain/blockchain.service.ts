@@ -6,10 +6,11 @@ import {
   BadRequestException,
   ForbiddenException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
-import { SUPPLY_CHAIN_REGISTRY_ABI } from './constants/contract-abi.constant';
+import { supplyChainRegistryAbi } from './constants/sepolia-abi.constant';
 import { CONTRACT_ROLES } from './constants/events.constant';
 
 export interface BlockchainStatus {
@@ -67,29 +68,29 @@ export class BlockchainService implements OnModuleDestroy {
   private readonly logger = new Logger(BlockchainService.name);
   private provider: ethers.JsonRpcProvider;
   private readonly contractAddress: string;
-  private readonly deployerPrivateKey: string;
   private readonly rpcUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     this.rpcUrl =
       this.configService.get<string>('blockchain.rpcUrl') ||
       this.configService.get<string>('BLOCKCHAIN_RPC_URL') ||
-      'http://localhost:8545';
+      '';
 
     this.contractAddress =
       this.configService.get<string>('blockchain.contractAddress') ||
-      this.configService.get<string>('CONTRACT_ADDRESS') ||
-      '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-
-    this.deployerPrivateKey =
-      this.configService.get<string>('blockchain.deployerPrivateKey') ||
-      this.configService.get<string>('DEPLOYER_PRIVATE_KEY') ||
-      '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
-
-    const network = new ethers.Network('hardhat', 31337);
-    this.provider = new ethers.JsonRpcProvider(this.rpcUrl, network, {
-      staticNetwork: network,
-    });
+      '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a';
+    if (
+      this.contractAddress.toLowerCase() !==
+      '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a'
+    ) {
+      throw new Error(
+        'Sepolia contract address does not match the fixed deployment',
+      );
+    }
+    // No local-chain fallback and no static Hardhat network assumption.
+    this.provider = new ethers.JsonRpcProvider(
+      this.rpcUrl || 'http://127.0.0.1:0',
+    );
   }
 
   onModuleDestroy() {
@@ -105,10 +106,7 @@ export class BlockchainService implements OnModuleDestroy {
   }
 
   getNetworkName(): string {
-    return this.rpcUrl.includes('localhost') ||
-      this.rpcUrl.includes('127.0.0.1')
-      ? 'localhost'
-      : 'hardhat';
+    return 'sepolia';
   }
 
   logTransactionAttempt(details: {
@@ -139,25 +137,45 @@ export class BlockchainService implements OnModuleDestroy {
   }
 
   getSigner(privateKey?: string): ethers.Wallet {
-    const key = privateKey || this.deployerPrivateKey;
-    return new ethers.Wallet(key, this.provider);
+    void privateKey;
+    throw new ServiceUnavailableException(
+      'Backend signing disabled. TODO: Waiting for SupplyChainRegistry ABI and MetaMask transaction flow',
+    );
   }
 
   getContract(
     signerOrProvider?: ethers.Signer | ethers.Provider,
   ): ethers.Contract {
-    const runner = signerOrProvider || this.getSigner();
+    // Legacy callers remain until their ABI-dependent UI flows are migrated.
+    // Never attach a signer to the backend contract.
+    void signerOrProvider;
+    if (
+      process.env.BLOCKCHAIN_ABI_READY !== 'true' ||
+      (supplyChainRegistryAbi as readonly unknown[]).length === 0
+    ) {
+      throw new ServiceUnavailableException(
+        'TODO: Waiting for SupplyChainRegistry ABI',
+      );
+    }
     return new ethers.Contract(
       this.contractAddress,
-      SUPPLY_CHAIN_REGISTRY_ABI,
-      runner,
+      supplyChainRegistryAbi,
+      this.provider,
     );
   }
 
   getReadOnlyContract(): ethers.Contract {
+    if (
+      process.env.BLOCKCHAIN_ABI_READY !== 'true' ||
+      (supplyChainRegistryAbi as readonly unknown[]).length === 0
+    ) {
+      throw new ServiceUnavailableException(
+        'TODO: Waiting for SupplyChainRegistry ABI',
+      );
+    }
     return new ethers.Contract(
       this.contractAddress,
-      SUPPLY_CHAIN_REGISTRY_ABI,
+      supplyChainRegistryAbi,
       this.provider,
     );
   }
@@ -169,9 +187,11 @@ export class BlockchainService implements OnModuleDestroy {
         this.provider.getBlockNumber(),
       ]);
 
-      const signer = this.getSigner();
-      const operatorAddress = await signer.getAddress();
-      const balance = await this.provider.getBalance(operatorAddress);
+      if (Number(network.chainId) !== 11155111) {
+        throw new Error(
+          `Wrong blockchain network: expected Sepolia 11155111, got ${network.chainId}`,
+        );
+      }
 
       return {
         connected: true,
@@ -179,8 +199,6 @@ export class BlockchainService implements OnModuleDestroy {
         chainId: Number(network.chainId),
         currentBlock: blockNumber,
         contractAddress: this.contractAddress,
-        operatorAddress,
-        operatorBalanceEth: ethers.formatEther(balance),
       };
     } catch (error: any) {
       this.logger.warn(

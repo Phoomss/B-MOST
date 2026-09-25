@@ -58,11 +58,6 @@ export class CreateQualityCheckDto {
   @MaxLength(1000)
   notes?: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Optional EVM private key for explicitly signing the on-chain quality check transaction',
-  })
-  @IsOptional()
-  @IsString()
+  // Deprecated field; incoming private keys are rejected by ValidationPipe.
   signerPrivateKey?: string;
 }

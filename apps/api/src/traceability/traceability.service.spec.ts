@@ -78,6 +78,8 @@ describe('TraceabilityService', () => {
     currentOwnerId: mockDistributorOrg.id,
     currentOwner: mockDistributorOrg,
     blockchainProductId: '1',
+    blockchainChainId: 11155111,
+    blockchainContractAddress: '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a',
     productHash: expectedHash,
     blockchainTxHash: '0xregtx1234567890abcdef',
     createdAt: new Date('2026-01-01T10:00:00Z'),
@@ -153,7 +155,7 @@ describe('TraceabilityService', () => {
       ]),
       getContractAddress: jest
         .fn()
-        .mockReturnValue('0x5FbDB2315678afecb367f032d93F642f64180aa3'),
+        .mockReturnValue('0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a'),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -297,10 +299,24 @@ describe('TraceabilityService', () => {
       expect(result.blockchainVerification.verified).toBe(true);
       expect(result.blockchainVerification.hashMatch).toBe(true);
       expect(result.blockchainVerification.contractAddress).toBe(
-        '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+        '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a',
       );
       expect(result.blockchainVerification.computedHash).toBe(expectedHash);
       expect(result.blockchainVerification.onChainProductId).toBe(1);
+    });
+
+    it('does not interpret an unscoped local-chain product ID as a Sepolia product', async () => {
+      prisma.product.findFirst.mockResolvedValueOnce({
+        ...mockProduct,
+        blockchainChainId: null,
+        blockchainContractAddress: null,
+      });
+      const result = await service.getTraceability('PRD-APEX-001', {
+        role: UserRole.SUPER_ADMIN,
+      });
+      expect(blockchain.getProduct).not.toHaveBeenCalled();
+      expect(result.blockchainVerification.verified).toBe(false);
+      expect(result.blockchainVerification.onChainProductId).toBeNull();
     });
 
     it('handles blockchain query failures gracefully without crashing', async () => {

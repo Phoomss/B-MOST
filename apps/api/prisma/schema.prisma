@@ -90,7 +90,7 @@ model Organization {
   address       String?
   contactEmail  String?
   phone         String?
-  walletAddress String?            @unique
+  walletAddress String?
   status        OrganizationStatus @default(ACTIVE)
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
@@ -111,49 +111,54 @@ model Organization {
 }
 
 model User {
-  id             String         @id @default(uuid())
-  email          String         @unique
+  id             String        @id @default(uuid())
+  email          String        @unique
   passwordHash   String
   firstName      String
   lastName       String
   role           UserRole
   organizationId String?
-  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  status         UserStatus     @default(ACTIVE)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  walletAddress  String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  status         UserStatus    @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   // Relations
   auditLogs AuditLog[]
 
   @@index([email])
   @@index([organizationId])
+  @@index([walletAddress])
   @@index([role])
 }
 
 model Product {
-  id                  String        @id @default(uuid())
-  productCode         String        @unique
-  serialNumber        String        @unique
-  name                String
-  description         String?
-  category            String?
-  manufacturerId      String
-  manufacturer        Organization  @relation("ProductManufacturer", fields: [manufacturerId], references: [id])
-  currentOwnerId      String
-  currentOwner        Organization  @relation("ProductOwner", fields: [currentOwnerId], references: [id])
-  blockchainProductId String?       @unique
-  productHash         String?
-  blockchainTxHash    String?
-  status              ProductStatus @default(REGISTERED)
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  id                        String        @id @default(uuid())
+  productCode               String        @unique
+  serialNumber              String        @unique
+  name                      String
+  description               String?
+  category                  String?
+  manufacturerId            String
+  manufacturer              Organization  @relation("ProductManufacturer", fields: [manufacturerId], references: [id])
+  currentOwnerId            String
+  currentOwner              Organization  @relation("ProductOwner", fields: [currentOwnerId], references: [id])
+  blockchainProductId       String?
+  blockchainChainId         Int?
+  blockchainContractAddress String?
+  productHash               String?
+  blockchainTxHash          String?
+  status                    ProductStatus @default(REGISTERED)
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
 
   // Relations
   qualityChecks          QualityCheck[]
   shipments              Shipment[]
   blockchainTransactions BlockchainTransaction[]
 
+  @@unique([blockchainChainId, blockchainContractAddress, blockchainProductId])
   @@index([productCode])
   @@index([serialNumber])
   @@index([manufacturerId])
@@ -162,25 +167,27 @@ model Product {
 }
 
 model Shipment {
-  id                     String         @id @default(uuid())
-  shipmentCode           String         @unique
-  productId              String
-  product                Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
-  senderOrganizationId   String
-  sender                 Organization   @relation("ShipmentSender", fields: [senderOrganizationId], references: [id])
-  receiverOrganizationId String
-  receiver               Organization   @relation("ShipmentReceiver", fields: [receiverOrganizationId], references: [id])
-  carrierOrganizationId  String?
-  carrier                Organization?  @relation("ShipmentCarrier", fields: [carrierOrganizationId], references: [id])
-  origin                 String
-  destination            String
-  status                 ShipmentStatus @default(PENDING)
-  blockchainShipmentId   String?
-  blockchainTxHash       String?
-  shippedAt              DateTime?
-  receivedAt             DateTime?
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
+  id                        String         @id @default(uuid())
+  shipmentCode              String         @unique
+  productId                 String
+  product                   Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  senderOrganizationId      String
+  sender                    Organization   @relation("ShipmentSender", fields: [senderOrganizationId], references: [id])
+  receiverOrganizationId    String
+  receiver                  Organization   @relation("ShipmentReceiver", fields: [receiverOrganizationId], references: [id])
+  carrierOrganizationId     String?
+  carrier                   Organization?  @relation("ShipmentCarrier", fields: [carrierOrganizationId], references: [id])
+  origin                    String
+  destination               String
+  status                    ShipmentStatus @default(PENDING)
+  blockchainShipmentId      String?
+  blockchainChainId         Int?
+  blockchainContractAddress String?
+  blockchainTxHash          String?
+  shippedAt                 DateTime?
+  receivedAt                DateTime?
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
 
   @@index([shipmentCode])
   @@index([productId])
@@ -211,6 +218,7 @@ model BlockchainTransaction {
   txHash          String   @unique
   blockNumber     BigInt?
   contractAddress String
+  chainId         Int?
   eventType       String
   entityType      String
   entityId        String

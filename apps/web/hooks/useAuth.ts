@@ -10,6 +10,7 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   role: string;
+  walletAddress?: string | null;
   organizationId?: string;
   organization?: {
     id: string;

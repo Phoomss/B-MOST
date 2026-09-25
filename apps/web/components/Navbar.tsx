@@ -4,12 +4,14 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
+import { useWallet } from '../hooks/useWallet';
 import { THAI_USER_ROLE } from '../lib/thai-locale';
 import { BuildingIcon } from './Icons';
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const wallet = useWallet();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [ledgerDropdownOpen, setLedgerDropdownOpen] = useState(false);
@@ -294,6 +296,23 @@ export function Navbar() {
 
           {/* 3. Right Action Tools & User Profile */}
           <div className="flex items-center gap-2.5">
+            {isAuthenticated && user && (
+              <div className="hidden md:flex items-center gap-1" title={wallet.error || undefined}>
+                <button type="button" onClick={wallet.connect}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                  {wallet.account ? `${wallet.account.slice(0, 6)}…${wallet.account.slice(-4)}` : 'เชื่อมต่อ MetaMask'}
+                </button>
+                {wallet.account && !wallet.isSepolia && (
+                  <button type="button" onClick={wallet.switchChain}
+                    className="rounded-lg bg-amber-600 px-2 py-1.5 text-xs text-white">เปลี่ยนเป็น Sepolia</button>
+                )}
+                {wallet.account && user.walletAddress &&
+                  wallet.account.toLowerCase() !== user.walletAddress.toLowerCase() && (
+                    <span className="text-xs text-red-700">Wallet ไม่ตรงบัญชี</span>
+                  )}
+                {wallet.error && <span className="text-xs text-red-700">{wallet.error}</span>}
+              </div>
+            )}
             {/* Quick Public QR Scanner Link */}
             <Link
               href="/verify"

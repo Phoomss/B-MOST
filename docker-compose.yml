@@ -26,6 +26,7 @@ services:
   # 2. Hardhat Local EVM Blockchain Node
   # ----------------------------------------------------
   blockchain:
+    profiles: ["local-chain"]
     build:
       context: .
       dockerfile: packages/contracts/Dockerfile
@@ -34,7 +35,6 @@ services:
     ports:
       - "8545:8545"
     environment:
-      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
       BLOCKCHAIN_RPC_URL: http://127.0.0.1:8545
     healthcheck:
       test:
@@ -59,8 +59,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      blockchain:
-        condition: service_healthy
     ports:
       - "${API_PORT:-4000}:4000"
     environment:
@@ -72,9 +70,10 @@ services:
       AUTO_SEED: "true"
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      BLOCKCHAIN_RPC_URL: http://blockchain:8545
-      CONTRACT_ADDRESS: ${CONTRACT_ADDRESS:-0x5FbDB2315678afecb367f032d93F642f64180aa3}
-      DEPLOYER_PRIVATE_KEY: ${DEPLOYER_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      BLOCKCHAIN_RPC_URL: ${BLOCKCHAIN_RPC_URL:?Set a Sepolia RPC URL}
+      CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+      BLOCKCHAIN_CHAIN_ID: 11155111
+      BLOCKCHAIN_ABI_READY: "true"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/api || exit 1"]
       interval: 10s
@@ -93,6 +92,9 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+        NEXT_PUBLIC_CHAIN_ID: 11155111
+        NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+        NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "false"
     container_name: bmost-web
     restart: unless-stopped
     depends_on:
@@ -104,6 +106,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+      NEXT_PUBLIC_CHAIN_ID: 11155111
+      NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+      NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "false"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/login || exit 1"]
       interval: 15s

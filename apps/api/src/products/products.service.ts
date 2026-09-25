@@ -623,8 +623,10 @@ export class ProductsService {
     const onChainIdStr = receipt.productId.toString();
 
     // Check for duplicate assignment before updating database
-    const conflict = await this.prisma.product.findUnique({
-      where: { blockchainProductId: onChainIdStr },
+    const conflict = await this.prisma.product.findFirst({
+      where: { blockchainProductId: onChainIdStr,
+        blockchainChainId: 11155111,
+        blockchainContractAddress: this.blockchainService.getContractAddress() },
       select: { id: true, productCode: true },
     });
 
@@ -644,6 +646,8 @@ export class ProductsService {
         where: { id },
         data: {
           blockchainProductId: onChainIdStr,
+          blockchainChainId: 11155111,
+          blockchainContractAddress: this.blockchainService.getContractAddress(),
           blockchainTxHash: receipt.txHash,
           productHash,
         },

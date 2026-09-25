@@ -120,10 +120,9 @@ describe('OrganizationsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should reject with ConflictException if wallet address is taken', async () => {
+    it('allows organizations to share a wallet address', async () => {
       mockPrisma.organization.findUnique
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockOrg);
+        .mockResolvedValueOnce(null);
 
       await expect(
         service.create(
@@ -135,7 +134,7 @@ describe('OrganizationsService', () => {
           },
           mockSuperAdmin,
         ),
-      ).rejects.toThrow(ConflictException);
+      ).resolves.toBeDefined();
     });
   });
 

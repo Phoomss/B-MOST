@@ -2,12 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
 export class ReceiveShipmentDto {
-  @ApiPropertyOptional({
-    description:
-      'Optional EVM private key for explicitly signing the on-chain receive & ownership transfer transaction',
-  })
-  @IsOptional()
-  @IsString()
+  // Deprecated field; incoming private keys are rejected by ValidationPipe.
   signerPrivateKey?: string;
 
   @ApiPropertyOptional({

@@ -54,11 +54,6 @@ export class CreateShipmentDto {
   @MaxLength(50)
   shipmentCode?: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Optional EVM private key for explicitly signing the on-chain shipment transaction',
-  })
-  @IsOptional()
-  @IsString()
+  // Deprecated field; incoming private keys are rejected by ValidationPipe.
   signerPrivateKey?: string;
 }

@@ -47,16 +47,8 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
         `Blockchain event listener active on contract: ${status.contractAddress} (Chain ID: ${status.chainId})`,
       );
 
-      // Perform initial historical catch-up sync in the background
-      void this.syncHistoricalEvents(0)
-        .then((result) => {
-          this.logger.log(
-            `Initial blockchain catch-up sync completed: ${result.syncedEvents} events indexed up to block ${result.toBlock}`,
-          );
-        })
-        .catch((err: Error) => {
-          this.logger.warn(`Initial catch-up sync notice: ${err.message}`);
-        });
+      // Historical Sepolia sync requires an explicit deployment block and the real ABI.
+      // TODO: Waiting for SupplyChainRegistry ABI.
 
       return true;
     } catch (err: any) {
@@ -305,6 +297,15 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
     additionalData?: Record<string, any>;
   }) {
     try {
+      if (params.contractAddress.toLowerCase() !== this.blockchainService.getContractAddress().toLowerCase()) {
+        this.logger.warn(`Ignoring event from another contract: ${params.contractAddress}`);
+        return;
+      }
+      const network = await this.blockchainService.getProvider().getNetwork();
+      if (Number(network.chainId) !== 11155111) {
+        this.logger.warn(`Ignoring event from chain ${network.chainId}; Sepolia required`);
+        return;
+      }
       this.logger.log(
         `Indexing event: ${params.eventName} [tx: ${params.txHash}, block: ${params.blockNumber}]`,
       );
@@ -318,26 +319,22 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
             where: { productCode: params.productCode },
           });
         }
-        if (!found && params.entityId && this.prisma?.product?.findUnique) {
-          found = await this.prisma.product.findUnique({
-            where: { blockchainProductId: params.entityId },
-          });
-        }
         if (!found && this.prisma?.product?.findFirst) {
           found = await this.prisma.product.findFirst({
             where: {
-              OR: [
-                ...(params.productCode
-                  ? [{ productCode: params.productCode }]
-                  : []),
-                ...(params.entityId
-                  ? [{ blockchainProductId: params.entityId }]
-                  : []),
-              ],
+              blockchainProductId: params.entityId,
+              blockchainChainId: 11155111,
+              blockchainContractAddress: params.contractAddress,
             },
           });
         }
         if (found) {
+          if (found.blockchainProductId &&
+              (found.blockchainChainId !== 11155111 ||
+               found.blockchainContractAddress?.toLowerCase() !== params.contractAddress.toLowerCase())) {
+            this.logger.warn(`Skipping legacy or foreign-chain product ${found.id}`);
+            return;
+          }
           resolvedProductId = found.id;
 
           // Sync database state according to blockchain event
@@ -353,13 +350,17 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
             const foundShipment = await this.prisma.shipment.findUnique({
               where: { shipmentCode },
             });
-            if (foundShipment) {
+            if (foundShipment && (!foundShipment.blockchainShipmentId ||
+                (foundShipment.blockchainChainId === 11155111 &&
+                 foundShipment.blockchainContractAddress?.toLowerCase() === params.contractAddress.toLowerCase()))) {
               resolvedProductId = foundShipment.productId;
               await this.prisma.shipment.update({
                 where: { id: foundShipment.id },
                 data: {
                   blockchainShipmentId: params.entityId,
                   blockchainTxHash: params.txHash,
+                  blockchainChainId: 11155111,
+                  blockchainContractAddress: params.contractAddress,
                 },
               });
             }
@@ -392,7 +393,9 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
           updateShipmentData.status = newStatus;
           try {
             await this.prisma.shipment.updateMany({
-              where: { blockchainShipmentId: onChainShpId },
+              where: { blockchainShipmentId: onChainShpId,
+                blockchainChainId: 11155111,
+                blockchainContractAddress: params.contractAddress },
               data: updateShipmentData,
             });
           } catch (shpErr: any) {
@@ -415,6 +418,7 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
           productId: resolvedProductId,
           walletAddress: params.walletAddress,
           status: TxStatus.CONFIRMED,
+          chainId: 11155111,
         },
         create: {
           txHash: params.txHash,
@@ -426,6 +430,7 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
           productId: resolvedProductId,
           walletAddress: params.walletAddress,
           status: TxStatus.CONFIRMED,
+          chainId: 11155111,
         },
       });
 
@@ -452,9 +457,11 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
 
       if (eventParams.eventName === BLOCKCHAIN_EVENTS.PRODUCT_REGISTERED) {
         let conflict: any = null;
-        if (this.prisma.product.findUnique) {
-          conflict = await this.prisma.product.findUnique({
-            where: { blockchainProductId: eventParams.entityId },
+        if (this.prisma.product.findFirst) {
+          conflict = await this.prisma.product.findFirst({
+            where: { blockchainProductId: eventParams.entityId,
+              blockchainChainId: 11155111,
+              blockchainContractAddress: this.blockchainService.getContractAddress() },
             select: { id: true, productCode: true },
           });
         }
@@ -465,6 +472,8 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
           );
         } else {
           updateData.blockchainProductId = eventParams.entityId;
+          updateData.blockchainChainId = 11155111;
+          updateData.blockchainContractAddress = this.blockchainService.getContractAddress();
         }
         updateData.blockchainTxHash = eventParams.txHash;
         updateData.status = ProductStatus.REGISTERED;

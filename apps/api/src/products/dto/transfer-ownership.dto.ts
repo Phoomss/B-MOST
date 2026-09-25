@@ -10,12 +10,7 @@ export class TransferOwnershipDto {
   @IsString()
   newOwnerOrganizationId: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Optional EVM private key for explicitly signing the on-chain transfer transaction',
-  })
-  @IsOptional()
-  @IsString()
+  // Deprecated field; incoming private keys are rejected by ValidationPipe.
   signerPrivateKey?: string;
 
   @ApiPropertyOptional({

@@ -809,6 +809,18 @@ export const api = {
     getFilterOptions: () => request<AuditFilterOptions>('audit-logs/filters/options'),
   },
   blockchain: {
+    verifyTransaction: (transactionHash: string) =>
+      request<{
+        verified: boolean;
+        synced: boolean;
+        transactionHash: string;
+        chainId: number;
+        blockNumber: number;
+        pendingAbi: boolean;
+      }>('blockchain/verify-transaction', {
+        method: 'POST',
+        body: JSON.stringify({ transactionHash }),
+      }),
     getStatus: () => request<BlockchainStatusData>('blockchain/status'),
     getStats: () => request<BlockchainStatsData>('blockchain/stats'),
     getBlock: (blockNumber: string | number) =>
