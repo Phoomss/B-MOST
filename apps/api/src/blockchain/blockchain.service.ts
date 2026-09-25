@@ -1,4 +1,11 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  ConflictException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
 import { SUPPLY_CHAIN_REGISTRY_ABI } from './constants/contract-abi.constant';
@@ -309,14 +316,65 @@ export class BlockchainService implements OnModuleDestroy {
     const signer = this.getSigner(signerPrivateKey);
     const contract = this.getContract(signer);
 
+    // If already exists on-chain, retrieve it directly
+    try {
+      const existing = await this.getShipmentByCode(shipmentCode);
+      if (existing && Number(existing.shipmentId) > 0) {
+        this.logger.log(
+          `Shipment ${shipmentCode} is already registered on-chain with ID ${existing.shipmentId}`,
+        );
+        return {
+          txHash: '',
+          blockNumber: 0,
+          shipmentId: Number(existing.shipmentId),
+        };
+      }
+    } catch {
+      // not yet registered on-chain
+    }
+
     this.logger.log(
       `Creating shipment on-chain: code=${shipmentCode}, productId=${productId}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.createShipment(shipmentCode, productId, receiver, carrier, overrides)
-        : contract.createShipment(shipmentCode, productId, receiver, carrier),
-    );
+    let receipt: ethers.ContractTransactionReceipt;
+    try {
+      receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+        overrides
+          ? contract.createShipment(shipmentCode, productId, receiver, carrier, overrides)
+          : contract.createShipment(shipmentCode, productId, receiver, carrier),
+      );
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Failed to create shipment on-chain (code: ${shipmentCode}, productId: ${productId}): ${msg}`,
+        err?.stack,
+      );
+      if (
+        msg.includes('SHIPMENT_ALREADY_EXISTS') ||
+        err?.reason === 'SHIPMENT_ALREADY_EXISTS'
+      ) {
+        this.logger.warn(
+          `Shipment ${shipmentCode} already registered on blockchain during concurrent call. Resolving ID...`,
+        );
+        const existing = await this.getShipmentByCode(shipmentCode);
+        return {
+          txHash: '',
+          blockNumber: 0,
+          shipmentId: Number(existing.shipmentId),
+        };
+      }
+      if (msg.includes('INVALID_STATE_TRANSITION')) {
+        throw new BadRequestException(
+          'สินค้าต้องผ่านการตรวจสอบคุณภาพ (Quality Checked) บน Blockchain ก่อนสร้างการจัดส่ง',
+        );
+      }
+      if (msg.includes('NOT_CURRENT_OWNER')) {
+        throw new ForbiddenException(
+          'ผู้ส่งไม่ใช่เจ้าของสินค้าปัจจุบันบน Smart Contract',
+        );
+      }
+      throw err;
+    }
 
     let shipmentId = 0;
     for (const log of receipt.logs) {
@@ -326,6 +384,15 @@ export class BlockchainService implements OnModuleDestroy {
           shipmentId = Number(parsed.args[0]);
           break;
         }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!shipmentId || shipmentId === 0) {
+      try {
+        const onChain = await this.getShipmentByCode(shipmentCode);
+        shipmentId = Number(onChain.shipmentId);
       } catch {
         // ignore
       }
@@ -349,16 +416,57 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Shipping product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.shipProduct(productId, shipmentId, overrides)
-        : contract.shipProduct(productId, shipmentId),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+        overrides
+          ? contract.shipProduct(productId, shipmentId, overrides)
+          : contract.shipProduct(productId, shipmentId),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing shipProduct on-chain (productId: ${productId}, shipmentId: ${shipmentId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('SHIPMENT_NOT_FOUND') ||
+        err?.reason === 'SHIPMENT_NOT_FOUND' ||
+        err?.data === '0x356e4c76' // custom error or reason hash
+      ) {
+        throw new ConflictException(
+          'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+        );
+      }
+      if (
+        msg.includes('SHIPMENT_PRODUCT_MISMATCH') ||
+        err?.reason === 'SHIPMENT_PRODUCT_MISMATCH'
+      ) {
+        throw new BadRequestException(
+          'ข้อมูลสินค้าไม่ตรงกับข้อมูลการจัดส่งบน Blockchain',
+        );
+      }
+      if (
+        msg.includes('UNAUTHORIZED_ACTION') ||
+        err?.reason === 'UNAUTHORIZED_ACTION'
+      ) {
+        throw new ForbiddenException(
+          'ไม่มีสิทธิ์ในการส่งสินค้านี้บน Smart Contract',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException('สถานะสินค้าไม่ถูกต้องสำหรับการจัดส่ง');
+      }
+      throw err;
+    }
   }
 
   async markInTransit(
@@ -372,16 +480,50 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Marking shipment in transit on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.markInTransit(productId, shipmentId, overrides)
-        : contract.markInTransit(productId, shipmentId),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+        overrides
+          ? contract.markInTransit(productId, shipmentId, overrides)
+          : contract.markInTransit(productId, shipmentId),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing markInTransit on-chain (productId: ${productId}, shipmentId: ${shipmentId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('SHIPMENT_NOT_FOUND') ||
+        err?.reason === 'SHIPMENT_NOT_FOUND'
+      ) {
+        throw new ConflictException(
+          'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+        );
+      }
+      if (
+        msg.includes('SHIPMENT_PRODUCT_MISMATCH') ||
+        err?.reason === 'SHIPMENT_PRODUCT_MISMATCH'
+      ) {
+        throw new BadRequestException(
+          'ข้อมูลสินค้าไม่ตรงกับข้อมูลการจัดส่งบน Blockchain',
+        );
+      }
+      if (
+        msg.includes('UNAUTHORIZED_ACTION') ||
+        err?.reason === 'UNAUTHORIZED_ACTION'
+      ) {
+        throw new ForbiddenException(
+          'ไม่มีสิทธิ์ในการดำเนินการนี้บน Smart Contract',
+        );
+      }
+      throw err;
+    }
   }
 
   async receiveProduct(
@@ -395,16 +537,56 @@ export class BlockchainService implements OnModuleDestroy {
     this.logger.log(
       `Receiving product on-chain: productId=${productId}, shipmentId=${shipmentId}`,
     );
-    const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
-      overrides
-        ? contract.receiveProduct(productId, shipmentId, overrides)
-        : contract.receiveProduct(productId, shipmentId),
-    );
+    try {
+      const receipt = await this.sendTransactionWithNonceRetry(signer, (overrides) =>
+        overrides
+          ? contract.receiveProduct(productId, shipmentId, overrides)
+          : contract.receiveProduct(productId, shipmentId),
+      );
 
-    return {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-    };
+      return {
+        txHash: receipt.hash,
+        blockNumber: receipt.blockNumber,
+      };
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      this.logger.error(
+        `Error executing receiveProduct on-chain (productId: ${productId}, shipmentId: ${shipmentId}): ${msg}`,
+        err?.stack,
+      );
+
+      if (
+        msg.includes('SHIPMENT_NOT_FOUND') ||
+        err?.reason === 'SHIPMENT_NOT_FOUND'
+      ) {
+        throw new ConflictException(
+          'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+        );
+      }
+      if (
+        msg.includes('SHIPMENT_PRODUCT_MISMATCH') ||
+        err?.reason === 'SHIPMENT_PRODUCT_MISMATCH'
+      ) {
+        throw new BadRequestException(
+          'ข้อมูลสินค้าไม่ตรงกับข้อมูลการจัดส่งบน Blockchain',
+        );
+      }
+      if (
+        msg.includes('UNAUTHORIZED_ACTION') ||
+        err?.reason === 'UNAUTHORIZED_ACTION'
+      ) {
+        throw new ForbiddenException(
+          'ไม่มีสิทธิ์ในการรับมอบสินค้านี้บน Smart Contract',
+        );
+      }
+      if (
+        msg.includes('INVALID_STATE_TRANSITION') ||
+        err?.reason === 'INVALID_STATE_TRANSITION'
+      ) {
+        throw new BadRequestException('สถานะสินค้าไม่ถูกต้องสำหรับการรับมอบ');
+      }
+      throw err;
+    }
   }
 
   async storeProduct(
@@ -557,6 +739,19 @@ export class BlockchainService implements OnModuleDestroy {
       shippedAt: Number(result[8]),
       receivedAt: Number(result[9]),
     };
+  }
+
+  async verifyShipmentExists(shipmentId: number | bigint): Promise<boolean> {
+    try {
+      const id = Number(shipmentId);
+      if (!id || id <= 0) return false;
+      const total = await this.getTotalShipments();
+      if (id > total) return false;
+      const shp = await this.getShipment(id);
+      return Boolean(shp && shp.shipmentId > 0);
+    } catch {
+      return false;
+    }
   }
 
   async getQualityChecks(

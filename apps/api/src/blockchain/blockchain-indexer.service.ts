@@ -5,7 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ethers } from 'ethers';
-import { TxStatus, ProductStatus } from '@prisma/client';
+import { TxStatus, ProductStatus, ShipmentStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from './blockchain.service';
 import { BLOCKCHAIN_EVENTS } from './constants/events.constant';
@@ -313,17 +313,17 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
       let resolvedProductId: string | null = null;
       if (params.entityType === 'Product') {
         let found: any = null;
-        if (params.productCode && this.prisma.product.findUnique) {
+        if (params.productCode && this.prisma?.product?.findUnique) {
           found = await this.prisma.product.findUnique({
             where: { productCode: params.productCode },
           });
         }
-        if (!found && params.entityId && this.prisma.product.findUnique) {
+        if (!found && params.entityId && this.prisma?.product?.findUnique) {
           found = await this.prisma.product.findUnique({
             where: { blockchainProductId: params.entityId },
           });
         }
-        if (!found && this.prisma.product.findFirst) {
+        if (!found && this.prisma?.product?.findFirst) {
           found = await this.prisma.product.findFirst({
             where: {
               OR: [
@@ -338,6 +338,61 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
 
           // Sync database state according to blockchain event
           await this.syncProductStateFromEvent(found.id, params);
+        }
+      }
+
+      // Resolve database Shipment record if matched
+      if (params.entityType === 'Shipment') {
+        const shipmentCode = params.additionalData?.shipmentCode;
+        if (shipmentCode && this.prisma.shipment) {
+          try {
+            const foundShipment = await this.prisma.shipment.findUnique({
+              where: { shipmentCode },
+            });
+            if (foundShipment) {
+              resolvedProductId = foundShipment.productId;
+              await this.prisma.shipment.update({
+                where: { id: foundShipment.id },
+                data: {
+                  blockchainShipmentId: params.entityId,
+                  blockchainTxHash: params.txHash,
+                },
+              });
+            }
+          } catch (shpErr: any) {
+            this.logger.warn(
+              `Notice syncing shipment for code ${shipmentCode}: ${shpErr.message}`,
+            );
+          }
+        }
+      }
+
+      // Sync shipment lifecycle state from product / shipment events
+      if (params.additionalData?.shipmentId && this.prisma.shipment?.updateMany) {
+        const onChainShpId = params.additionalData.shipmentId.toString();
+        let newStatus: ShipmentStatus | null = null;
+        const updateShipmentData: any = {};
+        if (params.eventName === BLOCKCHAIN_EVENTS.PRODUCT_SHIPPED) {
+          newStatus = ShipmentStatus.SHIPPED;
+          updateShipmentData.shippedAt = new Date();
+        } else if (params.eventName === BLOCKCHAIN_EVENTS.SHIPMENT_IN_TRANSIT) {
+          newStatus = ShipmentStatus.IN_TRANSIT;
+        } else if (params.eventName === BLOCKCHAIN_EVENTS.PRODUCT_RECEIVED) {
+          newStatus = ShipmentStatus.DELIVERED;
+          updateShipmentData.receivedAt = new Date();
+        }
+        if (newStatus) {
+          updateShipmentData.status = newStatus;
+          try {
+            await this.prisma.shipment.updateMany({
+              where: { blockchainShipmentId: onChainShpId },
+              data: updateShipmentData,
+            });
+          } catch (shpErr: any) {
+            this.logger.warn(
+              `Notice syncing shipment status for blockchainShipmentId ${onChainShpId}: ${shpErr.message}`,
+            );
+          }
         }
       }
 

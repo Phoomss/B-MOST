@@ -154,6 +154,21 @@ describe('ShipmentsService', () => {
         blockNumber: 49,
         productId: 1,
       }),
+      getProduct: jest.fn().mockResolvedValue({
+        productId: 1,
+        status: 1,
+      }),
+      getShipment: jest.fn().mockResolvedValue({
+        shipmentId: 1,
+        productId: 1,
+        status: 0,
+      }),
+      getShipmentByCode: jest.fn().mockResolvedValue({
+        shipmentId: 1,
+        productId: 1,
+        status: 0,
+      }),
+      verifyShipmentExists: jest.fn().mockResolvedValue(true),
       getContractAddress: jest.fn().mockReturnValue('0xContractAddress'),
       getSigner: jest.fn().mockReturnValue({
         getAddress: jest.fn().mockResolvedValue('0xSignerAddress'),

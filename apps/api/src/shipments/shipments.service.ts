@@ -270,6 +270,45 @@ export class ShipmentsService {
       }
     }
 
+    // Ensure product is in valid status on-chain to create shipment
+    try {
+      const onChainProd = await this.blockchainService.getProduct(
+        Number(product.blockchainProductId),
+      );
+      if (
+        onChainProd &&
+        onChainProd.status !== 1 && // QUALITY_CHECKED
+        onChainProd.status !== 6 && // STORED
+        onChainProd.status !== 2 // READY_TO_SHIP
+      ) {
+        // If product in DB has passed quality check, sync to blockchain
+        const passedQc = await this.prisma.qualityCheck.findFirst({
+          where: { productId: product.id, result: 'PASSED' },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (passedQc && onChainProd.status === 0) {
+          this.logger.log(
+            `Syncing passed QC on-chain for product ${product.productCode} before shipment creation...`,
+          );
+          await this.blockchainService.recordQualityCheck(
+            Number(product.blockchainProductId),
+            true,
+            passedQc.notes || 'Auto-synced quality check pass before shipment',
+            dto.signerPrivateKey,
+          );
+        } else if (onChainProd.status === 0) {
+          throw new BadRequestException(
+            'สินค้าต้องผ่านการตรวจสอบคุณภาพ (Quality Checked) บน Blockchain ก่อนสร้างการจัดส่ง',
+          );
+        }
+      }
+    } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.warn(
+        `Notice checking on-chain status before creating shipment: ${err.message}`,
+      );
+    }
+
     // 8. Resolve Ethereum addresses for smart contract
     const receiverWallet =
       receiverOrg.walletAddress || '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC'; // Standard test wallet fallback
@@ -289,6 +328,20 @@ export class ShipmentsService {
       dto.signerPrivateKey,
     );
 
+    let blockchainShipmentIdStr = onChainReceipt.shipmentId.toString();
+    if (!onChainReceipt.shipmentId || onChainReceipt.shipmentId === 0) {
+      try {
+        const onChainShp = await this.blockchainService.getShipmentByCode(
+          shipmentCode,
+        );
+        if (onChainShp && onChainShp.shipmentId > 0) {
+          blockchainShipmentIdStr = onChainShp.shipmentId.toString();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     // 9. Persist Shipment in PostgreSQL
     const shipment = await this.prisma.shipment.create({
       data: {
@@ -300,7 +353,7 @@ export class ShipmentsService {
         origin: dto.origin.trim(),
         destination: dto.destination.trim(),
         status: ShipmentStatus.PENDING,
-        blockchainShipmentId: onChainReceipt.shipmentId.toString(),
+        blockchainShipmentId: blockchainShipmentIdStr,
         blockchainTxHash: onChainReceipt.txHash,
       },
       include: {
@@ -417,16 +470,106 @@ export class ShipmentsService {
     // Authorization: Must be sender, carrier, logistics role, or admin
     this.assertShipmentActionAccess(shipment, currentUser, 'SHIP');
 
-    const onChainProduct = shipment.product.blockchainProductId
-      ? BigInt(shipment.product.blockchainProductId)
-      : BigInt(1);
-    const onChainShipment = shipment.blockchainShipmentId
-      ? BigInt(shipment.blockchainShipmentId)
-      : BigInt(1);
+    // Resolve on-chain product ID
+    let onChainProductIdStr = shipment.product.blockchainProductId;
+    if (!onChainProductIdStr) {
+      try {
+        const onChainProd = await this.blockchainService.getProductByCode(
+          shipment.product.productCode,
+        );
+        if (onChainProd && Number(onChainProd.productId) > 0) {
+          onChainProductIdStr = onChainProd.productId.toString();
+          await this.prisma.product.update({
+            where: { id: shipment.productId },
+            data: { blockchainProductId: onChainProductIdStr },
+          });
+          shipment.product.blockchainProductId = onChainProductIdStr;
+        }
+      } catch {
+        // not found
+      }
+    }
+
+    if (!onChainProductIdStr || Number(onChainProductIdStr) <= 0) {
+      this.logger.error(
+        `Product '${shipment.product.productCode}' is not registered on blockchain`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลสินค้าบน Blockchain กรุณาตรวจสอบว่าสินค้าได้รับการลงทะเบียนแล้ว',
+      );
+    }
+
+    // Resolve on-chain shipment ID
+    let onChainShipmentIdStr = shipment.blockchainShipmentId;
+    if (!onChainShipmentIdStr) {
+      try {
+        const onChainShp = await this.blockchainService.getShipmentByCode(
+          shipment.shipmentCode,
+        );
+        if (onChainShp && Number(onChainShp.shipmentId) > 0) {
+          onChainShipmentIdStr = onChainShp.shipmentId.toString();
+          await this.prisma.shipment.update({
+            where: { id: shipment.id },
+            data: { blockchainShipmentId: onChainShipmentIdStr },
+          });
+          shipment.blockchainShipmentId = onChainShipmentIdStr;
+        }
+      } catch {
+        // not found
+      }
+    }
+
+    if (!onChainShipmentIdStr || Number(onChainShipmentIdStr) <= 0) {
+      this.logger.error(
+        `Shipment '${shipment.shipmentCode}' (ID: ${shipment.id}) does not exist on blockchain`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    // Pre-verify shipment existence on the smart contract before dispatch
+    const blockchainShipmentIdNum = Number(onChainShipmentIdStr);
+    let onChainShipmentData: any;
+    try {
+      onChainShipmentData = await this.blockchainService.getShipment(
+        blockchainShipmentIdNum,
+      );
+    } catch (err: any) {
+      this.logger.error(
+        `Smart contract verification failed for shipment ID ${blockchainShipmentIdNum} (${shipment.shipmentCode}): ${err.message}`,
+        err.stack,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    if (!onChainShipmentData || onChainShipmentData.shipmentId === 0) {
+      this.logger.error(
+        `Shipment ID ${blockchainShipmentIdNum} has shipmentId 0 on smart contract`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    const blockchainProductIdNum = Number(onChainProductIdStr);
+    if (onChainShipmentData.productId !== blockchainProductIdNum) {
+      this.logger.error(
+        `Shipment product mismatch on chain: shipment ${blockchainShipmentIdNum} belongs to product ${onChainShipmentData.productId}, but expected product is ${blockchainProductIdNum}`,
+      );
+      throw new BadRequestException(
+        'ข้อมูลสินค้าไม่ตรงกับข้อมูลการจัดส่งบน Blockchain',
+      );
+    }
+
+    const onChainProduct = BigInt(blockchainProductIdNum);
+    const onChainShipment = BigInt(blockchainShipmentIdNum);
 
     // Call Smart Contract: shipProduct
     this.logger.log(
-      `Executing on-chain dispatch for shipment ${shipment.shipmentCode}`,
+      `Executing on-chain dispatch for shipment ${shipment.shipmentCode} (blockchainShipmentId: ${onChainShipmentIdStr})`,
     );
 
     const onChainReceipt = await this.blockchainService.shipProduct(
@@ -546,16 +689,106 @@ export class ShipmentsService {
     // Authorization: Must be receiving organization or super admin
     this.assertShipmentActionAccess(shipment, currentUser, 'RECEIVE');
 
-    const onChainProduct = shipment.product.blockchainProductId
-      ? BigInt(shipment.product.blockchainProductId)
-      : BigInt(1);
-    const onChainShipment = shipment.blockchainShipmentId
-      ? BigInt(shipment.blockchainShipmentId)
-      : BigInt(1);
+    // Resolve on-chain product ID
+    let onChainProductIdStr = shipment.product.blockchainProductId;
+    if (!onChainProductIdStr) {
+      try {
+        const onChainProd = await this.blockchainService.getProductByCode(
+          shipment.product.productCode,
+        );
+        if (onChainProd && Number(onChainProd.productId) > 0) {
+          onChainProductIdStr = onChainProd.productId.toString();
+          await this.prisma.product.update({
+            where: { id: shipment.productId },
+            data: { blockchainProductId: onChainProductIdStr },
+          });
+          shipment.product.blockchainProductId = onChainProductIdStr;
+        }
+      } catch {
+        // not found
+      }
+    }
+
+    if (!onChainProductIdStr || Number(onChainProductIdStr) <= 0) {
+      this.logger.error(
+        `Product '${shipment.product.productCode}' is not registered on blockchain`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลสินค้าบน Blockchain กรุณาตรวจสอบว่าสินค้าได้รับการลงทะเบียนแล้ว',
+      );
+    }
+
+    // Resolve on-chain shipment ID
+    let onChainShipmentIdStr = shipment.blockchainShipmentId;
+    if (!onChainShipmentIdStr) {
+      try {
+        const onChainShp = await this.blockchainService.getShipmentByCode(
+          shipment.shipmentCode,
+        );
+        if (onChainShp && Number(onChainShp.shipmentId) > 0) {
+          onChainShipmentIdStr = onChainShp.shipmentId.toString();
+          await this.prisma.shipment.update({
+            where: { id: shipment.id },
+            data: { blockchainShipmentId: onChainShipmentIdStr },
+          });
+          shipment.blockchainShipmentId = onChainShipmentIdStr;
+        }
+      } catch {
+        // not found
+      }
+    }
+
+    if (!onChainShipmentIdStr || Number(onChainShipmentIdStr) <= 0) {
+      this.logger.error(
+        `Shipment '${shipment.shipmentCode}' (ID: ${shipment.id}) does not exist on blockchain`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    // Pre-verify shipment existence on the smart contract before receiving
+    const blockchainShipmentIdNum = Number(onChainShipmentIdStr);
+    let onChainShipmentData: any;
+    try {
+      onChainShipmentData = await this.blockchainService.getShipment(
+        blockchainShipmentIdNum,
+      );
+    } catch (err: any) {
+      this.logger.error(
+        `Smart contract verification failed for shipment ID ${blockchainShipmentIdNum} (${shipment.shipmentCode}): ${err.message}`,
+        err.stack,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    if (!onChainShipmentData || onChainShipmentData.shipmentId === 0) {
+      this.logger.error(
+        `Shipment ID ${blockchainShipmentIdNum} has shipmentId 0 on smart contract`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลการจัดส่งบน Blockchain กรุณาตรวจสอบว่าการจัดส่งถูกสร้างขึ้นแล้ว',
+      );
+    }
+
+    const blockchainProductIdNum = Number(onChainProductIdStr);
+    if (onChainShipmentData.productId !== blockchainProductIdNum) {
+      this.logger.error(
+        `Shipment product mismatch on chain: shipment ${blockchainShipmentIdNum} belongs to product ${onChainShipmentData.productId}, but expected product is ${blockchainProductIdNum}`,
+      );
+      throw new BadRequestException(
+        'ข้อมูลสินค้าไม่ตรงกับข้อมูลการจัดส่งบน Blockchain',
+      );
+    }
+
+    const onChainProduct = BigInt(blockchainProductIdNum);
+    const onChainShipment = BigInt(blockchainShipmentIdNum);
 
     // Call Smart Contract: receiveProduct
     this.logger.log(
-      `Executing on-chain receipt & ownership transfer for shipment ${shipment.shipmentCode}`,
+      `Executing on-chain receipt & ownership transfer for shipment ${shipment.shipmentCode} (blockchainShipmentId: ${onChainShipmentIdStr})`,
     );
 
     const onChainReceipt = await this.blockchainService.receiveProduct(
@@ -772,9 +1005,36 @@ export class ShipmentsService {
 
     const targetWallet =
       targetOrg.walletAddress || '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
-    const onChainProduct = product.blockchainProductId
-      ? BigInt(product.blockchainProductId)
-      : BigInt(1);
+
+    let onChainProductIdStr = product.blockchainProductId;
+    if (!onChainProductIdStr) {
+      try {
+        const onChainProd = await this.blockchainService.getProductByCode(
+          product.productCode,
+        );
+        if (onChainProd && Number(onChainProd.productId) > 0) {
+          onChainProductIdStr = onChainProd.productId.toString();
+          await this.prisma.product.update({
+            where: { id: product.id },
+            data: { blockchainProductId: onChainProductIdStr },
+          });
+          product.blockchainProductId = onChainProductIdStr;
+        }
+      } catch {
+        // not found
+      }
+    }
+
+    if (!onChainProductIdStr || Number(onChainProductIdStr) <= 0) {
+      this.logger.error(
+        `Product '${product.productCode}' is not registered on blockchain`,
+      );
+      throw new ConflictException(
+        'ไม่พบข้อมูลสินค้าบน Blockchain กรุณาตรวจสอบว่าสินค้าได้รับการลงทะเบียนแล้ว',
+      );
+    }
+
+    const onChainProduct = BigInt(onChainProductIdStr);
 
     const onChainReceipt = await this.blockchainService.transferOwnership(
       onChainProduct,

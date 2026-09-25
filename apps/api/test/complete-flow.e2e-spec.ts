@@ -595,6 +595,38 @@ describe('Phase 16: Complete Supply Chain End-to-End Flow (Integration)', () => 
       shipmentId: 1n,
     }),
 
+    getShipment: jest.fn().mockImplementation((id) =>
+      Promise.resolve({
+        shipmentId: Number(id),
+        shipmentCode: 'SHP-MOCK-001',
+        productId: 1,
+        sender: mockManufacturerOrg.walletAddress,
+        receiver: mockDistributorOrg.walletAddress,
+        carrier: mockCarrierOrg.walletAddress,
+        status: 0,
+        createdAt: Math.floor(Date.now() / 1000),
+        shippedAt: 0,
+        receivedAt: 0,
+      }),
+    ),
+
+    getShipmentByCode: jest.fn().mockImplementation((code) =>
+      Promise.resolve({
+        shipmentId: 1,
+        shipmentCode: code,
+        productId: 1,
+        sender: mockManufacturerOrg.walletAddress,
+        receiver: mockDistributorOrg.walletAddress,
+        carrier: mockCarrierOrg.walletAddress,
+        status: 0,
+        createdAt: Math.floor(Date.now() / 1000),
+        shippedAt: 0,
+        receivedAt: 0,
+      }),
+    ),
+
+    verifyShipmentExists: jest.fn().mockResolvedValue(true),
+
     shipProduct: jest.fn().mockImplementation(() => {
       onChainProductState.status = 2; // SHIPPED
       return Promise.resolve({

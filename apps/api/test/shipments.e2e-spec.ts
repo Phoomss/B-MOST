@@ -316,6 +316,35 @@ describe('Shipment Management & Ownership Transfer API (e2e)', () => {
       productCode: 'PRD-APEX-001',
       status: 2, // READY_TO_SHIP
     }),
+    getShipment: jest.fn().mockImplementation((shipmentId) =>
+      Promise.resolve({
+        shipmentId: Number(shipmentId),
+        shipmentCode: 'SHP-APEX-GFD-001',
+        productId: 1,
+        sender: mockManufacturerOrg.walletAddress,
+        receiver: mockDistributorOrg.walletAddress,
+        carrier: mockCarrierOrg.walletAddress,
+        status: 0,
+        createdAt: Math.floor(Date.now() / 1000),
+        shippedAt: 0,
+        receivedAt: 0,
+      }),
+    ),
+    getShipmentByCode: jest.fn().mockImplementation((code) =>
+      Promise.resolve({
+        shipmentId: 1,
+        shipmentCode: code,
+        productId: 1,
+        sender: mockManufacturerOrg.walletAddress,
+        receiver: mockDistributorOrg.walletAddress,
+        carrier: mockCarrierOrg.walletAddress,
+        status: 0,
+        createdAt: Math.floor(Date.now() / 1000),
+        shippedAt: 0,
+        receivedAt: 0,
+      }),
+    ),
+    verifyShipmentExists: jest.fn().mockResolvedValue(true),
     getProductHistory: jest.fn().mockResolvedValue([]),
   };
 
