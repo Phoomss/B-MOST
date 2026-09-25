@@ -624,6 +624,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data || {}),
       }),
+    store: (id: string) => request<{ product: ProductItem }>(`products/${id}/store`, {
+      method: 'POST', body: JSON.stringify({}),
+    }),
     transfer: (id: string, data: { newOwnerOrganizationId: string; notes?: string }) =>
       request<{
         message: string;
@@ -702,6 +705,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data || {}),
       }),
+    markInTransit: (id: string) => request<{ shipment: ShipmentItem }>(`shipments/${id}/in-transit`, {
+      method: 'POST', body: JSON.stringify({}),
+    }),
     receive: (id: string, data?: { notes?: string }) =>
       request<{
         message: string;

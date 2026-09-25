@@ -344,6 +344,17 @@ export class ProductsController {
     return this.productsService.sellProduct(id, dto, user);
   }
 
+  @Post(':id/store')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Store a received product' })
+  async storeProduct(
+    @Param('id') id: string,
+    @Body() dto: SellProductDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.productsService.storeProduct(id, dto, user);
+  }
+
   @Get(':id/shipments')
   @ApiOperation({
     summary: 'Get product shipments history',

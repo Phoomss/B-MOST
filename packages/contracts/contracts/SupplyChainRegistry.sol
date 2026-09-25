@@ -279,8 +279,7 @@ contract SupplyChainRegistry is AccessControl {
             "UNAUTHORIZED_ACTION"
         );
 
-        require(product.status != ProductStatus.RECALLED, "INVALID_STATE_TRANSITION");
-        require(product.status != ProductStatus.SOLD, "INVALID_STATE_TRANSITION");
+        require(product.status == ProductStatus.REGISTERED, "INVALID_STATE_TRANSITION");
 
         _qualityCheckCounter++;
         QualityCheck memory check = QualityCheck({
@@ -331,11 +330,10 @@ contract SupplyChainRegistry is AccessControl {
         require(_shipmentCodeToId[shipmentCode] == 0, "SHIPMENT_ALREADY_EXISTS");
         require(receiver != address(0) && receiver != msg.sender, "INVALID_RECIPIENT");
 
-        // Valid statuses to ship from: QUALITY_CHECKED, STORED, or already READY_TO_SHIP
+        // A stored product may begin a new delivery leg after changing owner.
         require(
             product.status == ProductStatus.QUALITY_CHECKED ||
-            product.status == ProductStatus.STORED ||
-            product.status == ProductStatus.READY_TO_SHIP,
+            product.status == ProductStatus.STORED,
             "INVALID_STATE_TRANSITION"
         );
 
@@ -385,6 +383,7 @@ contract SupplyChainRegistry is AccessControl {
         Shipment storage shipment = _shipments[shipmentId];
         require(shipment.shipmentId != 0, "SHIPMENT_NOT_FOUND");
         require(shipment.productId == productId, "SHIPMENT_PRODUCT_MISMATCH");
+        require(shipment.status == ShipmentStatus.PENDING, "INVALID_STATE_TRANSITION");
 
         Product storage product = _products[productId];
 
@@ -396,12 +395,7 @@ contract SupplyChainRegistry is AccessControl {
             "UNAUTHORIZED_ACTION"
         );
 
-        require(
-            product.status == ProductStatus.READY_TO_SHIP ||
-            product.status == ProductStatus.QUALITY_CHECKED ||
-            product.status == ProductStatus.STORED,
-            "INVALID_STATE_TRANSITION"
-        );
+        require(product.status == ProductStatus.READY_TO_SHIP, "INVALID_STATE_TRANSITION");
 
         product.status = ProductStatus.SHIPPED;
         shipment.status = ShipmentStatus.SHIPPED;
@@ -422,6 +416,7 @@ contract SupplyChainRegistry is AccessControl {
         Shipment storage shipment = _shipments[shipmentId];
         require(shipment.shipmentId != 0, "SHIPMENT_NOT_FOUND");
         require(shipment.productId == productId, "SHIPMENT_PRODUCT_MISMATCH");
+        require(shipment.status == ShipmentStatus.SHIPPED, "INVALID_STATE_TRANSITION");
 
         Product storage product = _products[productId];
 
@@ -453,6 +448,10 @@ contract SupplyChainRegistry is AccessControl {
         Shipment storage shipment = _shipments[shipmentId];
         require(shipment.shipmentId != 0, "SHIPMENT_NOT_FOUND");
         require(shipment.productId == productId, "SHIPMENT_PRODUCT_MISMATCH");
+        require(
+            shipment.status == ShipmentStatus.SHIPPED || shipment.status == ShipmentStatus.IN_TRANSIT,
+            "INVALID_STATE_TRANSITION"
+        );
 
         require(
             msg.sender == shipment.receiver || hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
@@ -535,11 +534,7 @@ contract SupplyChainRegistry is AccessControl {
     function markAsSold(uint256 productId) external onlyProductOwner(productId) {
         Product storage product = _products[productId];
 
-        require(
-            product.status == ProductStatus.STORED ||
-            product.status == ProductStatus.RECEIVED,
-            "INVALID_STATE_TRANSITION"
-        );
+        require(product.status == ProductStatus.STORED, "INVALID_STATE_TRANSITION");
 
         product.status = ProductStatus.SOLD;
 

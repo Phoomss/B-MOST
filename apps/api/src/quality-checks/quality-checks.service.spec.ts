@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QualityChecksService } from './quality-checks.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import {
   BadRequestException,
   ConflictException,
@@ -115,6 +116,7 @@ describe('QualityChecksService', () => {
         productId: 1,
       }),
       verifyProductExists: jest.fn().mockResolvedValue(true),
+      getProduct: jest.fn().mockResolvedValue({ status: 0, productCode: mockProduct.productCode }),
       logTransactionAttempt: jest.fn(),
       getContractAddress: jest.fn().mockReturnValue('0xContractAddress'),
       getSigner: jest.fn().mockReturnValue({
@@ -122,11 +124,19 @@ describe('QualityChecksService', () => {
       }),
     };
 
+    const stateMachineMock = {
+      checkStateMismatch: jest.fn().mockReturnValue(false),
+      validateTransition: jest.fn(), // does not throw by default
+      getStatusName: jest.fn().mockReturnValue('REGISTERED'),
+      getAllowedStates: jest.fn().mockReturnValue([0, 1, 2, 3, 4, 5, 6]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QualityChecksService,
         { provide: PrismaService, useValue: prisma },
         { provide: BlockchainService, useValue: blockchain },
+        { provide: ProductStateMachineService, useValue: stateMachineMock },
       ],
     }).compile();
 

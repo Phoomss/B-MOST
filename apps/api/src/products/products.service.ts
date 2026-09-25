@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
@@ -35,11 +36,45 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly blockchainService: BlockchainService,
     private readonly configService: ConfigService,
+    private readonly stateMachine: ProductStateMachineService,
   ) {
     this.webUrl =
       this.configService.get<string>('NEXT_PUBLIC_WEB_URL') ||
       this.configService.get<string>('WEB_URL') ||
       'http://localhost:3000';
+  }
+
+  async storeProduct(id: string, dto: SellProductDto, currentUser: any) {
+    const product = await this.prisma.product.findFirst({
+      where: { OR: [{ id }, { productCode: id }] },
+      include: { currentOwner: true },
+    });
+    if (!product) throw new NotFoundException(`Product '${id}' not found`);
+    if (currentUser?.role !== UserRole.SUPER_ADMIN && currentUser?.organizationId !== product.currentOwnerId) {
+      throw new ForbiddenException('เฉพาะองค์กรเจ้าของสินค้าปัจจุบันเท่านั้นที่จัดเก็บสินค้าได้');
+    }
+    if (!product.blockchainProductId) {
+      throw new ConflictException('BLOCKCHAIN_ID_MISSING: สินค้ายังไม่ผูกกับ Blockchain');
+    }
+    const onChainProduct = await this.blockchainService.getProduct(Number(product.blockchainProductId));
+    if (onChainProduct.productCode !== product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    this.stateMachine.checkStateMismatch(product.status, onChainProduct.status, product.productCode, product.id,
+      product.blockchainProductId, 'storeProduct', this.blockchainService.getContractAddress());
+    this.stateMachine.validateTransition(onChainProduct.status, 'storeProduct', product.productCode, product.id,
+      product.blockchainProductId, product.status, this.blockchainService.getContractAddress());
+    const signer = await this.blockchainService.getSigner(dto?.signerPrivateKey).getAddress();
+    if (onChainProduct.currentOwner.toLowerCase() !== signer.toLowerCase() ||
+        product.currentOwner.walletAddress?.toLowerCase() !== signer.toLowerCase()) {
+      throw new ConflictException('BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน');
+    }
+    this.blockchainService.logTransactionAttempt({ productDbId: product.id,
+      productBlockchainId: product.blockchainProductId, productCode: product.productCode,
+      functionName: 'storeProduct' });
+    const receipt = await this.blockchainService.storeProduct(BigInt(product.blockchainProductId), dto?.signerPrivateKey);
+    const updatedProduct = await this.prisma.product.update({ where: { id: product.id }, data: { status: ProductStatus.STORED } });
+    return { product: updatedProduct, blockchain: { ...receipt, status: 'CONFIRMED' } };
   }
 
   /**
@@ -759,6 +794,42 @@ export class ProductsService {
           throw new ConflictException(
             'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
           );
+        }
+
+        // Pre-flight on-chain state validation for markAsSold
+        const onChainProductData =
+          await this.blockchainService.getProduct(onChainProductIdNum);
+        if (onChainProductData.productCode !== product.productCode) {
+          throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+        }
+        const onChainStatusNum = Number(onChainProductData.status);
+
+        // Log state comparison (DB vs Blockchain)
+        this.stateMachine.checkStateMismatch(
+          product.status as string,
+          onChainStatusNum,
+          product.productCode,
+          product.id,
+          product.blockchainProductId,
+          'markAsSold',
+          this.blockchainService.getContractAddress(),
+        );
+
+        // Validate the transition is allowed by the smart contract state machine
+        this.stateMachine.validateTransition(
+          onChainStatusNum,
+          'markAsSold',
+          product.productCode,
+          product.id,
+          product.blockchainProductId,
+          product.status,
+          this.blockchainService.getContractAddress(),
+        );
+
+        const senderWallet = await this.blockchainService.getSigner(dto?.signerPrivateKey).getAddress();
+        if (onChainProductData.currentOwner.toLowerCase() !== senderWallet.toLowerCase() ||
+            product.currentOwner.walletAddress?.toLowerCase() !== senderWallet.toLowerCase()) {
+          throw new ConflictException('BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน');
         }
 
         this.blockchainService.logTransactionAttempt({

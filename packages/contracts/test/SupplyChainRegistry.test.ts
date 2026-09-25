@@ -370,6 +370,62 @@ describe("SupplyChainRegistry", function () {
     });
   });
 
+  describe("Strict product lifecycle", function () {
+    it("completes every state, then delivers through warehouse and retailer", async function () {
+      await contract.connect(manufacturer).registerProduct(testProductCode, testProductHash);
+      expect((await contract.getProduct(1)).status).to.equal(Status.REGISTERED);
+      await contract.connect(auditor).recordQualityCheck(1, true, "Passed");
+      expect((await contract.getProduct(1)).status).to.equal(Status.QUALITY_CHECKED);
+      await contract.connect(manufacturer).createShipment("LEG-1", 1, distributor.address, carrier.address);
+      expect((await contract.getProduct(1)).status).to.equal(Status.READY_TO_SHIP);
+      await contract.connect(manufacturer).shipProduct(1, 1);
+      expect((await contract.getProduct(1)).status).to.equal(Status.SHIPPED);
+      await contract.connect(carrier).markInTransit(1, 1);
+      expect((await contract.getProduct(1)).status).to.equal(Status.IN_TRANSIT);
+      await contract.connect(distributor).receiveProduct(1, 1);
+      expect((await contract.getProduct(1)).status).to.equal(Status.RECEIVED);
+      expect((await contract.getProduct(1)).currentOwner).to.equal(distributor.address);
+      await contract.connect(distributor).storeProduct(1);
+      expect((await contract.getProduct(1)).status).to.equal(Status.STORED);
+
+      await contract.connect(distributor).createShipment("LEG-2", 1, warehouse.address, carrier.address);
+      await contract.connect(distributor).shipProduct(1, 2);
+      await contract.connect(carrier).markInTransit(1, 2);
+      await contract.connect(warehouse).receiveProduct(1, 2);
+      await contract.connect(warehouse).storeProduct(1);
+      await contract.connect(warehouse).createShipment("LEG-3", 1, retailer.address, carrier.address);
+      await contract.connect(warehouse).shipProduct(1, 3);
+      await contract.connect(carrier).markInTransit(1, 3);
+      await contract.connect(retailer).receiveProduct(1, 3);
+      await contract.connect(retailer).storeProduct(1);
+      await contract.connect(retailer).markAsSold(1);
+      expect((await contract.getProduct(1)).status).to.equal(Status.SOLD);
+      expect((await contract.getProduct(1)).currentOwner).to.equal(retailer.address);
+    });
+
+    it("rejects skipped states and reuse of a stale shipment", async function () {
+      await contract.connect(manufacturer).registerProduct(testProductCode, testProductHash);
+      await expect(contract.connect(manufacturer).markAsSold(1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await expect(contract.connect(manufacturer).shipProduct(1, 1)).to.be.revertedWith("SHIPMENT_NOT_FOUND");
+      await expect(contract.connect(distributor).receiveProduct(1, 1)).to.be.revertedWith("SHIPMENT_NOT_FOUND");
+      await contract.connect(auditor).recordQualityCheck(1, true, "Passed");
+      await expect(contract.connect(manufacturer).markAsSold(1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await contract.connect(manufacturer).createShipment("OLD", 1, distributor.address, carrier.address);
+      await expect(contract.connect(manufacturer).recordQualityCheck(1, true, "Again")).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await expect(contract.connect(manufacturer).createShipment("DUPLICATE", 1, distributor.address, carrier.address)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await contract.connect(manufacturer).shipProduct(1, 1);
+      await expect(contract.connect(manufacturer).markAsSold(1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await expect(contract.connect(manufacturer).shipProduct(1, 1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await contract.connect(distributor).receiveProduct(1, 1);
+      await expect(contract.connect(manufacturer).shipProduct(1, 1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await expect(contract.connect(distributor).markAsSold(1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await contract.connect(distributor).storeProduct(1);
+      await contract.connect(distributor).markAsSold(1);
+      await expect(contract.connect(distributor).shipProduct(1, 1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+      await expect(contract.connect(distributor).receiveProduct(1, 1)).to.be.revertedWith("INVALID_STATE_TRANSITION");
+    });
+  });
+
   describe("Product Recall", function () {
     beforeEach(async function () {
       await contract.connect(manufacturer).registerProduct(testProductCode, testProductHash);

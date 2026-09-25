@@ -5,6 +5,7 @@ import { BlockchainService } from './blockchain.service';
 import { BlockchainTransactionService } from './blockchain-transaction.service';
 import { BlockchainIndexerService } from './blockchain-indexer.service';
 import { BlockchainController } from './blockchain.controller';
+import { ProductStateMachineService } from './product-state-machine.service';
 
 @Module({
   imports: [ConfigModule.forFeature(blockchainConfig)],
@@ -13,11 +14,13 @@ import { BlockchainController } from './blockchain.controller';
     BlockchainService,
     BlockchainTransactionService,
     BlockchainIndexerService,
+    ProductStateMachineService,
   ],
   exports: [
     BlockchainService,
     BlockchainTransactionService,
     BlockchainIndexerService,
+    ProductStateMachineService,
   ],
 })
 export class BlockchainModule {}

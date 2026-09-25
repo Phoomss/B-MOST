@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ShipmentsService } from './shipments.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   ProductStatus,
@@ -156,7 +157,9 @@ describe('ShipmentsService', () => {
       }),
       getProduct: jest.fn().mockResolvedValue({
         productId: 1,
+        productCode: mockProduct.productCode,
         status: 1,
+        currentOwner: mockSenderOrg.walletAddress,
       }),
       getShipment: jest.fn().mockResolvedValue({
         shipmentId: 1,
@@ -173,7 +176,7 @@ describe('ShipmentsService', () => {
       logTransactionAttempt: jest.fn(),
       getContractAddress: jest.fn().mockReturnValue('0xContractAddress'),
       getSigner: jest.fn().mockReturnValue({
-        getAddress: jest.fn().mockResolvedValue('0xSignerAddress'),
+        getAddress: jest.fn().mockResolvedValue(mockSenderOrg.walletAddress),
       }),
     };
 
@@ -182,6 +185,15 @@ describe('ShipmentsService', () => {
         ShipmentsService,
         { provide: PrismaService, useValue: prisma },
         { provide: BlockchainService, useValue: blockchain },
+        {
+          provide: ProductStateMachineService,
+          useValue: {
+            checkStateMismatch: jest.fn().mockReturnValue(false),
+            validateTransition: jest.fn(), // does not throw by default
+            getStatusName: jest.fn().mockReturnValue('QUALITY_CHECKED'),
+            getAllowedStates: jest.fn().mockReturnValue([1, 2, 6]),
+          },
+        },
       ],
     }).compile();
 
@@ -348,6 +360,7 @@ describe('ShipmentsService', () => {
         status: ShipmentStatus.SHIPPED,
       };
       prisma.shipment.findFirst.mockResolvedValue(shippedRecord);
+      blockchain.getShipment.mockResolvedValue({ shipmentId: 1, productId: 1, status: 1 });
       prisma.shipment.update.mockResolvedValue({
         ...shippedRecord,
         status: ShipmentStatus.DELIVERED,
@@ -421,6 +434,24 @@ describe('ShipmentsService', () => {
         }),
       );
       expect(res.product.currentOwnerId).toBe(mockReceiverOrg.id);
+    });
+  });
+
+  describe('markInTransit', () => {
+    it('advances product and shipment together after on-chain confirmation', async () => {
+      const shipped = { ...mockShipmentRecord, status: ShipmentStatus.SHIPPED,
+        product: { ...mockProduct, status: ProductStatus.SHIPPED } };
+      prisma.shipment.findFirst.mockResolvedValue(shipped);
+      prisma.shipment.update.mockResolvedValue({ ...shipped, status: ShipmentStatus.IN_TRANSIT });
+      prisma.product.update.mockResolvedValue({ ...shipped.product, status: ProductStatus.IN_TRANSIT });
+      blockchain.getProduct.mockResolvedValue({ productCode: mockProduct.productCode, status: 3 });
+      blockchain.getShipment.mockResolvedValue({ productId: 1, status: 1 });
+      blockchain.markInTransit = jest.fn().mockResolvedValue({ txHash: '0xintransit', blockNumber: 54 });
+
+      const result = await service.markInTransit(shipped.id, {}, mockSenderUser);
+      expect(blockchain.markInTransit).toHaveBeenCalledWith(BigInt(1), BigInt(1), undefined);
+      expect(result.product.status).toBe(ProductStatus.IN_TRANSIT);
+      expect(result.shipment.status).toBe(ShipmentStatus.IN_TRANSIT);
     });
   });
 });

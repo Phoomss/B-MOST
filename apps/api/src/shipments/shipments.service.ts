@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { OnChainShipmentStatus, ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
 import { DispatchShipmentDto } from './dto/dispatch-shipment.dto';
@@ -29,7 +30,46 @@ export class ShipmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly blockchainService: BlockchainService,
+    private readonly stateMachine: ProductStateMachineService,
   ) {}
+
+  async markInTransit(shipmentIdOrCode: string, dto: DispatchShipmentDto, currentUser: any) {
+    const shipment = await this.prisma.shipment.findFirst({
+      where: { OR: [{ id: shipmentIdOrCode }, { shipmentCode: shipmentIdOrCode }] },
+      include: { product: true, sender: true, receiver: true, carrier: true },
+    });
+    if (!shipment) throw new NotFoundException(`Shipment '${shipmentIdOrCode}' was not found`);
+    this.assertShipmentActionAccess(shipment, currentUser, 'SHIP');
+    if (shipment.status !== ShipmentStatus.SHIPPED) {
+      throw new BadRequestException('การจัดส่งต้องอยู่ในสถานะ SHIPPED ก่อนเปลี่ยนเป็น IN_TRANSIT');
+    }
+    if (!shipment.product.blockchainProductId || !shipment.blockchainShipmentId) {
+      throw new ConflictException('BLOCKCHAIN_ID_MISSING: ไม่พบ ID สินค้าหรือการจัดส่งบน Blockchain');
+    }
+    const productId = Number(shipment.product.blockchainProductId);
+    const shipmentId = Number(shipment.blockchainShipmentId);
+    const [onChainProduct, onChainShipment] = await Promise.all([
+      this.blockchainService.getProduct(productId),
+      this.blockchainService.getShipment(shipmentId),
+    ]);
+    if (onChainProduct.productCode !== shipment.product.productCode ||
+        onChainShipment.productId !== productId || onChainShipment.status !== OnChainShipmentStatus.SHIPPED) {
+      throw new ConflictException('BLOCKCHAIN_STATE_MISMATCH: ข้อมูลสินค้าหรือการจัดส่งบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    this.stateMachine.checkStateMismatch(shipment.product.status, onChainProduct.status, shipment.product.productCode, shipment.product.id,
+      shipment.product.blockchainProductId, 'markInTransit', this.blockchainService.getContractAddress());
+    this.stateMachine.validateTransition(onChainProduct.status, 'markInTransit', shipment.product.productCode, shipment.product.id,
+      shipment.product.blockchainProductId, shipment.product.status, this.blockchainService.getContractAddress());
+    this.blockchainService.logTransactionAttempt({ productDbId: shipment.product.id,
+      productBlockchainId: shipment.product.blockchainProductId, productCode: shipment.product.productCode,
+      functionName: 'markInTransit' });
+    const receipt = await this.blockchainService.markInTransit(BigInt(productId), BigInt(shipmentId), dto.signerPrivateKey);
+    const [updatedShipment, updatedProduct] = await Promise.all([
+      this.prisma.shipment.update({ where: { id: shipment.id }, data: { status: ShipmentStatus.IN_TRANSIT } }),
+      this.prisma.product.update({ where: { id: shipment.product.id }, data: { status: ProductStatus.IN_TRANSIT } }),
+    ]);
+    return { shipment: updatedShipment, product: updatedProduct, blockchain: { ...receipt, status: 'CONFIRMED' } };
+  }
 
   /**
    * Creates a new shipment reference and commits it onto the EVM smart contract.
@@ -167,19 +207,35 @@ export class ShipmentsService {
       );
     }
 
-    // Ensure product is in valid status on-chain to create shipment
+    // Pre-flight on-chain state validation (prevents INVALID_STATE_TRANSITION revert)
     const onChainProd =
       await this.blockchainService.getProduct(onChainProductIdNum);
-    if (
-      onChainProd &&
-      onChainProd.status !== 1 && // QUALITY_CHECKED
-      onChainProd.status !== 6 && // STORED
-      onChainProd.status !== 2 // READY_TO_SHIP
-    ) {
-      throw new BadRequestException(
-        'สินค้าต้องผ่านการตรวจสอบคุณภาพ (Quality Checked) บน Blockchain ก่อนสร้างการจัดส่ง',
-      );
+    if (onChainProd.productCode !== product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
     }
+    const onChainStatusNum = Number(onChainProd.status);
+
+    // Log state comparison (DB vs Blockchain)
+    this.stateMachine.checkStateMismatch(
+      product.status as string,
+      onChainStatusNum,
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      'createShipment',
+      this.blockchainService.getContractAddress(),
+    );
+
+    // Validate the transition is allowed by the smart contract state machine
+    this.stateMachine.validateTransition(
+      onChainStatusNum,
+      'createShipment',
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      product.status,
+      this.blockchainService.getContractAddress(),
+    );
 
     // Log transaction attempt
     this.blockchainService.logTransactionAttempt({
@@ -410,6 +466,10 @@ export class ShipmentsService {
       );
     }
 
+    if (onChainShipmentData.status !== OnChainShipmentStatus.PENDING) {
+      throw new ConflictException('สถานะการจัดส่งบน Blockchain ไม่ใช่ PENDING กรุณาตรวจสอบก่อนจัดส่ง');
+    }
+
     if (onChainShipmentData.productId !== blockchainProductIdNum) {
       this.logger.error(
         `Shipment product mismatch on chain: shipment ${blockchainShipmentIdNum} belongs to product ${onChainShipmentData.productId}, but expected product is ${blockchainProductIdNum}`,
@@ -421,6 +481,37 @@ export class ShipmentsService {
 
     const onChainProduct = BigInt(blockchainProductIdNum);
     const onChainShipment = BigInt(blockchainShipmentIdNum);
+
+    // Pre-flight on-chain product state validation for shipProduct
+    const onChainProductData =
+      await this.blockchainService.getProduct(blockchainProductIdNum);
+    if (onChainProductData.productCode !== shipment.product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+
+    const onChainStatusNum = Number(onChainProductData.status);
+
+    // Log state comparison (DB vs Blockchain)
+    this.stateMachine.checkStateMismatch(
+      shipment.product.status as string,
+      onChainStatusNum,
+      shipment.product.productCode,
+      shipment.product.id,
+      shipment.product.blockchainProductId ?? undefined,
+      'shipProduct',
+      this.blockchainService.getContractAddress(),
+    );
+
+    // Validate the transition is allowed by the smart contract state machine
+    this.stateMachine.validateTransition(
+      onChainStatusNum,
+      'shipProduct',
+      shipment.product.productCode,
+      shipment.product.id,
+      shipment.product.blockchainProductId ?? undefined,
+      shipment.product.status,
+      this.blockchainService.getContractAddress(),
+    );
 
     // Structured logging before blockchain transaction
     this.blockchainService.logTransactionAttempt({
@@ -624,6 +715,41 @@ export class ShipmentsService {
 
     const onChainProduct = BigInt(blockchainProductIdNum);
     const onChainShipment = BigInt(blockchainShipmentIdNum);
+
+    // Pre-flight on-chain product state validation for receiveProduct
+    const expectedShipmentStatus = shipment.status === ShipmentStatus.SHIPPED
+      ? OnChainShipmentStatus.SHIPPED : OnChainShipmentStatus.IN_TRANSIT;
+    if (onChainShipmentData.status !== expectedShipmentStatus) {
+      throw new ConflictException('BLOCKCHAIN_STATE_MISMATCH: สถานะการจัดส่งบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    const onChainProductData =
+      await this.blockchainService.getProduct(blockchainProductIdNum);
+    if (onChainProductData.productCode !== shipment.product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    const onChainStatusNum = Number(onChainProductData.status);
+
+    // Log state comparison (DB vs Blockchain)
+    this.stateMachine.checkStateMismatch(
+      shipment.product.status as string,
+      onChainStatusNum,
+      shipment.product.productCode,
+      shipment.product.id,
+      shipment.product.blockchainProductId ?? undefined,
+      'receiveProduct',
+      this.blockchainService.getContractAddress(),
+    );
+
+    // Validate the transition is allowed by the smart contract state machine
+    this.stateMachine.validateTransition(
+      onChainStatusNum,
+      'receiveProduct',
+      shipment.product.productCode,
+      shipment.product.id,
+      shipment.product.blockchainProductId ?? undefined,
+      shipment.product.status,
+      this.blockchainService.getContractAddress(),
+    );
 
     // Structured logging before blockchain transaction
     this.blockchainService.logTransactionAttempt({
@@ -850,8 +976,10 @@ export class ShipmentsService {
       throw new BadRequestException('Cannot transfer ownership to yourself');
     }
 
-    const targetWallet =
-      targetOrg.walletAddress || '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
+    const targetWallet = targetOrg.walletAddress;
+    if (!targetWallet) {
+      throw new BadRequestException('องค์กรปลายทางยังไม่มี walletAddress สำหรับรับกรรมสิทธิ์บน Blockchain');
+    }
 
     const onChainProductIdStr = product.blockchainProductId;
     if (!onChainProductIdStr || Number(onChainProductIdStr) <= 0) {
@@ -874,6 +1002,34 @@ export class ShipmentsService {
       throw new ConflictException(
         'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
       );
+    }
+
+    const onChainProductData = await this.blockchainService.getProduct(blockchainProductIdNum);
+    if (onChainProductData.productCode !== product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    this.stateMachine.checkStateMismatch(
+      product.status as string,
+      Number(onChainProductData.status),
+      product.productCode,
+      product.id,
+      product.blockchainProductId ?? undefined,
+      'transferOwnership',
+      this.blockchainService.getContractAddress(),
+    );
+    this.stateMachine.validateTransition(
+      Number(onChainProductData.status),
+      'transferOwnership',
+      product.productCode,
+      product.id,
+      product.blockchainProductId ?? undefined,
+      product.status,
+      this.blockchainService.getContractAddress(),
+    );
+    const senderWallet = await this.blockchainService.getSigner(dto.signerPrivateKey).getAddress();
+    if (onChainProductData.currentOwner.toLowerCase() !== senderWallet.toLowerCase() ||
+        product.currentOwner.walletAddress?.toLowerCase() !== senderWallet.toLowerCase()) {
+      throw new ConflictException('BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน');
     }
 
     // Structured logging before blockchain transaction

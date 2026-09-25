@@ -116,6 +116,10 @@ function ShipmentsPageContent() {
       setErrorMessage('กรุณาเลือกสินค้าที่ต้องการจัดส่ง');
       return;
     }
+    if (!selectedProduct || !['QUALITY_CHECKED', 'STORED'].includes(selectedProduct.status)) {
+      setErrorMessage('สินค้าต้องผ่านการตรวจสอบคุณภาพหรืออยู่ในคลังก่อนสร้างการจัดส่ง');
+      return;
+    }
     if (!receiverOrgId) {
       setErrorMessage('กรุณาเลือกองค์กรผู้รับสินค้า');
       return;
@@ -212,6 +216,20 @@ function ShipmentsPageContent() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการรับสินค้า';
       setErrorMessage(msg);
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  const handleInTransit = async (shipmentId: string) => {
+    try {
+      setActionInProgressId(shipmentId);
+      setErrorMessage(null);
+      await api.shipments.markInTransit(shipmentId);
+      const shpRes = await api.shipments.list({ limit: 50 });
+      setShipments(shpRes.data || []);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'ไม่สามารถเปลี่ยนสถานะเป็นระหว่างขนส่งได้');
     } finally {
       setActionInProgressId(null);
     }
@@ -333,7 +351,7 @@ function ShipmentsPageContent() {
                     className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
                   >
                     <option value="">-- เลือกสินค้า --</option>
-                    {products.map((p) => (
+                    {products.filter((p) => p.status === 'QUALITY_CHECKED' || p.status === 'STORED').map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.productCode} — {p.name} [{THAI_PRODUCT_STATUS[p.status] || p.status}]
                       </option>
@@ -590,6 +608,15 @@ function ShipmentsPageContent() {
                               className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] disabled:opacity-50 transition cursor-pointer"
                             >
                               {isActing ? 'กำลังจัดส่ง...' : 'จัดส่งสินค้า'}
+                            </button>
+                          )}
+                          {shp.status === 'SHIPPED' && (
+                            <button
+                              onClick={() => shp.id && handleInTransit(shp.id)}
+                              disabled={isActing}
+                              className="px-2.5 py-1 rounded bg-amber-600 text-white font-semibold text-[11px] disabled:opacity-50 cursor-pointer"
+                            >
+                              ระหว่างขนส่ง
                             </button>
                           )}
                           {(shp.status === 'SHIPPED' || shp.status === 'IN_TRANSIT') && (

@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import { CreateQualityCheckDto } from './dto/create-quality-check.dto';
 import { QueryQualityCheckDto } from './dto/query-quality-check.dto';
 
@@ -26,6 +27,7 @@ export class QualityChecksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly blockchainService: BlockchainService,
+    private readonly stateMachine: ProductStateMachineService,
   ) {}
 
   /**
@@ -111,6 +113,36 @@ export class QualityChecksService {
         'Product exists in database but not found on blockchain (ไม่พบสินค้าใน Blockchain กรุณาตรวจสอบ Blockchain Product ID และสถานะของ Blockchain)',
       );
     }
+
+    // Pre-flight on-chain state validation (prevents INVALID_STATE_TRANSITION revert)
+    const onChainProduct =
+      await this.blockchainService.getProduct(onChainProductIdNum);
+    if (onChainProduct.productCode !== product.productCode) {
+      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+    }
+    const onChainStatusNum = Number(onChainProduct.status);
+
+    // Log state comparison (DB vs Blockchain)
+    this.stateMachine.checkStateMismatch(
+      product.status as string,
+      onChainStatusNum,
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      'recordQualityCheck',
+      this.blockchainService.getContractAddress(),
+    );
+
+    // Validate the transition is allowed by the smart contract state machine
+    this.stateMachine.validateTransition(
+      onChainStatusNum,
+      'recordQualityCheck',
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      product.status,
+      this.blockchainService.getContractAddress(),
+    );
 
     // Structured logging before blockchain transaction
     this.blockchainService.logTransactionAttempt({

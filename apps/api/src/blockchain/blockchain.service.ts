@@ -113,7 +113,7 @@ export class BlockchainService implements OnModuleDestroy {
 
   logTransactionAttempt(details: {
     productDbId?: string;
-    productBlockchainId?: string | number | bigint;
+    productBlockchainId?: string | number | bigint | null;
     productCode?: string;
     functionName: string;
     contractAddress?: string;

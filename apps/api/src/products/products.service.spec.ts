@@ -9,6 +9,7 @@ import {
 import { ProductsService } from './products.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BlockchainService } from '../blockchain/blockchain.service';
+import { ProductStateMachineService } from '../blockchain/product-state-machine.service';
 import { OrganizationType, ProductStatus, UserRole } from '@prisma/client';
 
 describe('ProductsService', () => {
@@ -89,6 +90,7 @@ describe('ProductsService', () => {
     prisma = {
       product: {
         create: jest.fn().mockResolvedValue(sampleProduct),
+        findFirst: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn().mockResolvedValue([sampleProduct]),
         count: jest.fn().mockResolvedValue(1),
@@ -174,10 +176,35 @@ describe('ProductsService', () => {
             }),
           },
         },
+        {
+          provide: ProductStateMachineService,
+          useValue: {
+            checkStateMismatch: jest.fn().mockReturnValue(false),
+            validateTransition: jest.fn(), // does not throw by default
+            getStatusName: jest.fn().mockReturnValue('STORED'),
+            getAllowedStates: jest.fn().mockReturnValue([5, 6]),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
+  });
+
+  describe('storeProduct', () => {
+    it('stores a received product only after matching on-chain owner and state', async () => {
+      const received = { ...sampleProduct, status: ProductStatus.RECEIVED, blockchainProductId: '1' };
+      prisma.product.findFirst.mockResolvedValue(received);
+      prisma.product.update.mockResolvedValue({ ...received, status: ProductStatus.STORED });
+      blockchainService.getProduct.mockResolvedValue({ productCode: received.productCode,
+        currentOwner: mockManufacturerOrg.walletAddress, status: 5 });
+      blockchainService.getSigner.mockReturnValue({ getAddress: jest.fn().mockResolvedValue(mockManufacturerOrg.walletAddress) });
+      blockchainService.storeProduct = jest.fn().mockResolvedValue({ txHash: '0xstore', blockNumber: 55 });
+
+      const result = await service.storeProduct(received.id, {}, mockManufacturerUser);
+      expect(blockchainService.storeProduct).toHaveBeenCalledWith(BigInt(1), undefined);
+      expect(result.product.status).toBe(ProductStatus.STORED);
+    });
   });
 
   describe('create', () => {

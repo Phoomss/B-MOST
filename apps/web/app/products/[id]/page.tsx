@@ -35,6 +35,7 @@ export default function ProductDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
+  const [storing, setStoring] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -86,6 +87,20 @@ export default function ProductDetailPage({
       setError(msg);
     } finally {
       setRegistering(false);
+    }
+  };
+
+  const handleStore = async () => {
+    if (!product) return;
+    try {
+      setStoring(true);
+      setError(null);
+      const result = await api.products.store(product.id);
+      setProduct(result.product);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถจัดเก็บสินค้าได้');
+    } finally {
+      setStoring(false);
     }
   };
 
@@ -179,7 +194,7 @@ export default function ProductDetailPage({
               </span>
             )}
 
-            {product.status !== 'RECALLED' && product.status !== 'SOLD' && (
+            {product.status === 'REGISTERED' && (
               <Link
                 href={`/quality?productId=${encodeURIComponent(product.id)}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition"
@@ -190,8 +205,7 @@ export default function ProductDetailPage({
             )}
 
             {(product.status === 'QUALITY_CHECKED' ||
-              product.status === 'STORED' ||
-              product.status === 'READY_TO_SHIP') && (
+              product.status === 'STORED') && (
               <Link
                 href={`/shipments?productId=${encodeURIComponent(product.id)}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition"
@@ -199,6 +213,16 @@ export default function ProductDetailPage({
                 <TruckIcon className="w-3.5 h-3.5" />
                 <span>จัดส่งสินค้า</span>
               </Link>
+            )}
+
+            {product.status === 'RECEIVED' && (
+              <button
+                onClick={handleStore}
+                disabled={storing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                {storing ? 'กำลังจัดเก็บ...' : 'จัดเก็บสินค้า'}
+              </button>
             )}
 
             <Link

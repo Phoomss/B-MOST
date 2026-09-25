@@ -114,6 +114,17 @@ export class ShipmentsController {
     return this.shipmentsService.ship(id, dto, user);
   }
 
+  @Post(':id/in-transit')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Mark a shipped product as in transit' })
+  async markInTransit(
+    @Param('id') id: string,
+    @Body() dto: DispatchShipmentDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.shipmentsService.markInTransit(id, dto, user);
+  }
+
   @Post(':id/receive')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
