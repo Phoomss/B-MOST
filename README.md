@@ -8,17 +8,17 @@
 
 ## ðŸ“‘ Documentation Index
 
-Comprehensive system documentation is available in the [`docs/`](file:///Users/mac/Desktop/workspace/B-MOST/docs) directory:
+Comprehensive system documentation is available in the [`docs/`](docs/) directory:
 
-- [Product Requirements Document (PRD)](file:///Users/mac/Desktop/workspace/B-MOST/docs/PRD.md) â€” Product vision, actor personas, functional/non-functional requirements, and lifecycle state machine.
-- [System Architecture](file:///Users/mac/Desktop/workspace/B-MOST/docs/ARCHITECTURE.md) â€” Monorepo design, dual-layer storage (PostgreSQL + EVM), indexing loop, and component interactions.
-- [Database Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/DATABASE.md) â€” Complete Prisma schema, relational models, enums, indexes, and isolation policies.
-- [Blockchain Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/BLOCKCHAIN.md) â€” `SupplyChainRegistry.sol` contract ABI, method specifications, event definitions, and gas benchmarks.
-- [Backend API Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/API.md) â€” RESTful API endpoints, request/response DTOs, authentication, and HTTP status codes.
-- [User Interface Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/UI.md) â€” Next.js 16 App Router UI routes, component hierarchy, client hooks, and responsive UX.
-- [Security Specification](file:///Users/mac/Desktop/workspace/B-MOST/docs/SECURITY.md) â€” Multi-tenant data isolation, RBAC matrix, EVM signer protection, and Keccak-256 data integrity.
-- [Development Plan & Progress](file:///Users/mac/Desktop/workspace/B-MOST/docs/DEVELOPMENT_PLAN.md) â€” Phased milestone tracking and Definition of Done.
-
+- [Product Requirements Document (PRD)](docs/PRD.md) — Product vision, actor personas, functional/non-functional requirements, and lifecycle state machine (Mermaid stateDiagram).
+- [System Architecture](docs/ARCHITECTURE.md) — Monorepo design, dual-layer storage (PostgreSQL + EVM), Mermaid system flow, indexer, auth sequences, and custody transfer workflow.
+- [Database Specification](docs/DATABASE.md) — Complete Prisma schema, relational models, enums, indexes, and isolation policies.
+- [Blockchain Specification](docs/BLOCKCHAIN.md) — `SupplyChainRegistry.sol` ABI, method specs, events, and gas benchmarks. Sepolia: `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`.
+- [Backend API Specification](docs/API.md) — RESTful API endpoints, request/response DTOs, authentication, and HTTP status codes.
+- [User Interface Specification](docs/UI.md) — Next.js 16 App Router UI routes, component hierarchy, client hooks, and responsive UX.
+- [Security Specification](docs/SECURITY.md) — Multi-tenant data isolation, RBAC matrix, EVM signer protection, and Keccak-256 data integrity.
+- [Development Plan & Progress](docs/DEVELOPMENT_PLAN.md) — Phased milestone tracking (Phases 1-20) and Definition of Done.
+- [Wallet & Role Mapping](docs/WALLET_ROLES.md) — Current Sepolia wallet addresses, on-chain role assignments, and wallet management guide.
 ---
 
 ## ðŸ— Monorepo Architecture
@@ -187,35 +187,24 @@ For the current public wallet addresses, application roles, and Sepolia contract
 
 ---
 
-## ðŸ”„ Complete Supply Chain Lifecycle Flow
+## ?? Complete Supply Chain Lifecycle & Workflow
 
-```text
-Manufacturer Login (Apex Manufacturing)
-        â†“
-Create Product (Deterministic Keccak-256 Hash Generated)
-        â†“
-Register on Blockchain (SupplyChainRegistry.sol)
-        â†“
-Quality Check Inspection (Passed -> QUALITY_CHECKED / Failed -> RECALLED)
-        â†“
-Create Shipment & Dispatch (READY_TO_SHIP -> SHIPPED -> IN_TRANSIT)
-        â†“
-Distributor Receives (Nexus Logistics confirms receipt -> RECEIVED)
-        â†“
-Transfer Ownership (Nexus Logistics -> Metro Warehousing)
-        â†“
-Warehouse Receives & Stores (STORED)
-        â†“
-Retailer Receives (Urban Retail Store)
-        â†“
-Sell Product to Consumer (POST /api/products/:id/sell -> SOLD)
-        â†“
-Consumer Scans QR Code (/verify/{productCode})
-        â†“
-Verify Traceability & Blockchain Authenticity (Keccak-256 cryptographic match)
-```
+The platform implements a 12-stage multi-actor supply chain flow validated by the integration test suite (`pnpm test:integration`):
 
----
+| Stage | Actor | Action | On-Chain Event | Product State |
+|---|---|---|---|---|
+| 1 | Manufacturer | Login & create product | — | — |
+| 2 | Manufacturer | `POST /api/products` | — | _(pending)_ |
+| 3 | Manufacturer | `POST /api/products/:id/register-blockchain` | `ProductRegistered` | `REGISTERED` |
+| 4 | Manufacturer / Auditor | `POST /api/products/:id/quality-check` (PASS) | `QualityChecked` | `QUALITY_CHECKED` |
+| 5 | Manufacturer | `POST /api/shipments` (to Distributor) | `ShipmentCreated` | `READY_TO_SHIP` |
+| 6 | Manufacturer | `POST /api/shipments/:id/ship` | `ProductShipped` | `SHIPPED` |
+| 7 | Distributor | `POST /api/shipments/:id/receive` | `ProductReceived`, `OwnershipTransferred` | `RECEIVED` - Distributor |
+| 8 | Distributor | `POST /api/shipments` (to Warehouse) + ship | `ShipmentCreated`, `ProductShipped` | `SHIPPED` |
+| 9 | Warehouse | `POST /api/shipments/:id/receive` | `ProductReceived`, `OwnershipTransferred` | `STORED` - Warehouse |
+| 10 | Warehouse | `POST /api/shipments` (to Retailer) + ship | `ShipmentCreated`, `ProductShipped` | `SHIPPED` |
+| 11 | Retailer | `POST /api/shipments/:id/receive` + `POST /api/products/:id/sell` | `ProductReceived`, `ProductSold` | `SOLD` |
+| 12 | Consumer | `GET /verify/{productCode}` | (read-only) | Keccak-256 VERIFIED |
 
 ## ðŸ“‹ Implemented Modules & Features
 
@@ -311,3 +300,11 @@ Verify Traceability & Blockchain Authenticity (Keccak-256 cryptographic match)
   - Dedicated `/login` authentication page consuming the existing `POST /api/auth/login` endpoint with email validation, password visibility toggle, quick demo logins, and loading states.
   - Route protection via Next.js Edge Middleware (`apps/web/middleware.ts`) enforcing session authentication for dashboard, products, shipments, QC, traceability, blockchain, and audit pages while preserving public unauthenticated access for `/login` and `/verify`.
   - Global `useAuth` React hook providing session synchronization with `document.cookie` and `localStorage`, dynamic profile fetching (`GET /api/auth/me`), and clean logout handling.
+- [x] **Phase 20 - Documentation Refresh & Workflow Diagrams**:
+  - Replaced ASCII flow/sequence diagrams with Mermaid flowcharts, sequence diagrams, and stateDiagrams across all core docs.
+  - Updated `docs/ARCHITECTURE.md` with Mermaid system flow, indexer sequence, auth flow, wallet management, and custody transfer diagrams.
+  - Updated `docs/PRD.md` with Mermaid state machine for the product lifecycle and system vision flowchart.
+  - Updated `README.md` supply chain lifecycle section with a structured 12-stage workflow table.
+  - Added FR-14 (Wallet Address & On-Chain Role Management) and Admin Wallets UI (`/admin/wallets`) to all relevant docs.
+  - Fixed all stale macOS absolute file paths in documentation links.
+  - Added Phase 20 to `docs/DEVELOPMENT_PLAN.md`.

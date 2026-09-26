@@ -134,14 +134,25 @@ export default function PublicVerifyPage({
       {/* Top Banner & Navigation */}
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-2xs">
         <Link href="/verify" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white text-xs shadow-xs group-hover:bg-blue-700 transition">
-            B
-          </div>
-          <div>
-            <span className="font-bold text-sm tracking-tight text-slate-900 block leading-tight">
-              B-MOST
-            </span>
-            <span className="text-[10px] text-slate-500 font-medium">
+          <img
+            src="/icon_logo.png"
+            alt="B-MOST"
+            className="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-200"
+          />
+        
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold tracking-tight text-slate-900 text-base">
+                B-MOST
+              </span>
+        
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                EVM
+              </span>
+            </div>
+        
+            <span className="hidden sm:inline-block text-[10px] text-slate-500 font-medium -mt-0.5">
               ระบบตรวจสอบความถูกต้องสินค้าผ่านบล็อกเชน
             </span>
           </div>

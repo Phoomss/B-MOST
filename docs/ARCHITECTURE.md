@@ -1,50 +1,30 @@
 # System Architecture Specification
 
+> **Last Updated**: September 26, 2026
+
 ## 1. High-Level System Architecture
 
 B-MOST is built as a **Modular Monolith** organized within a pnpm monorepo workspace. It unites a high-velocity relational database for application queries with an immutable Ethereum Virtual Machine (EVM) blockchain for multi-organization trust and verification.
 
-```text
-                                  ┌─────────────────────────────┐
-                                  │      Public Consumer        │
-                                  │     (Mobile Smartphone)     │
-                                  └──────────────┬──────────────┘
-                                                 │ HTTPS (QR Code)
-                                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                               Next.js 16 Web Application                                │
-│                                                                                         │
-│  Executive Dashboard │ Products & Provenance │ Quality Control │ Logistics & Shipments  │
-│  Traceability Explorer │ Public QR Verification │ Blockchain Explorer │ Audit Log Portal │
-└────────────────────────────────────────────┬────────────────────────────────────────────┘
-                                             │ REST API (JSON / Bearer JWT)
-                                             ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   NestJS 11 REST API                                    │
-│                                                                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ Auth Module  │  │ Org Module   │  │ Users Module │  │ Products Mod │  │  QC Module │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └────────────┘ │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐ │
-│  │ Shipment Mod │  │ Trace Module │  │ PublicVerify │  │ Audit Module │  │ Dash Module│ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └────────────┘ │
-│                                                                                         │
-│  ┌────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │                              Blockchain Module                                     │ │
-│  │  ┌──────────────────────────────┐        ┌──────────────────────────────────────┐  │ │
-│  │  │   EthersBlockchainService    │        │       BlockchainIndexerService       │  │ │
-│  │  │   (Contract Calls / Writes)  │        │   (Continuous Polling / Syncer)      │  │ │
-│  │  └──────────────────────────────┘        └──────────────────────────────────────┘  │ │
-│  └────────────────────────────────────────────────────────────────────────────────────┘ │
-└──────────────────────────┬───────────────────────────────────────┬──────────────────────┘
-                           │ Prisma ORM                            │ JSON-RPC (HTTP/WS)
-                           ▼                                       ▼
-             ┌───────────────────────────┐           ┌───────────────────────────┐
-             │       PostgreSQL 16       │           │   Hardhat EVM Blockchain  │
-             │   Application Metadata,   │           │    SupplyChainRegistry    │
-             │    Users, Orgs, Audit     │           │   State & Critical Events │
-             └───────────────────────────┘           └───────────────────────────┘
+```mermaid
+flowchart TD
+    Consumer["📱 Public Consumer\n(Mobile Smartphone — QR Scan)"]
+    Web["🌐 Next.js 16 Web Application\nDashboard · Products · QC · Shipments\nTraceability · QR Verify · Blockchain · Audit · Admin"]
+    API["⚙️ NestJS 11 REST API\nAuth · Organizations · Products · QC\nShipments · Traceability · Audit · Dashboard · Blockchain"]
+    BlockchainSvc["🔗 Blockchain Module\nEthersBlockchainService (Writes)\nBlockchainIndexerService (Polling Sync)"]
+    PG["🗄️ PostgreSQL 16\nUsers · Orgs · Products\nShipments · Audit · BlockchainTx"]
+    EVM["⛓️ EVM Blockchain\nSupplyChainRegistry.sol\nSepolia Testnet / Hardhat Local"]
+
+    Consumer -- "HTTPS (QR Code)" --> Web
+    Web -- "REST API · Bearer JWT" --> API
+    API --> BlockchainSvc
+    API -- "Prisma ORM" --> PG
+    BlockchainSvc -- "JSON-RPC (HTTP/WS)" --> EVM
+    BlockchainSvc -- "Index Events" --> PG
 ```
+
+> [!NOTE]
+> The current production deployment uses **Ethereum Sepolia Testnet** (Chain ID `11155111`) at contract address `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`. The local **Hardhat** node (Chain ID `31337`, port `8545`) is available for development and testing.
 
 ---
 
@@ -58,7 +38,7 @@ B-MOST/
 │   │   │   ├── schema.prisma
 │   │   │   └── migrations/
 │   │   ├── src/
-│   │   │   ├── audit-logs/           # Audit logging module & controller
+│   │   │   ├── audit/                # Audit logging module & controller
 │   │   │   ├── auth/                 # JWT authentication, guards & strategies
 │   │   │   ├── blockchain/           # Smart contract adapter & indexing service
 │   │   │   ├── common/               # Decorators, filters, interceptors, guards
@@ -76,34 +56,40 @@ B-MOST/
 │   │   └── test/                     # End-to-end (e2e) test suites & integration
 │   │
 │   └── web/                          # Next.js 16 (App Router) Frontend
-│       ├── app/                      # Next.js App Router pages
+│       ├── app/
+│       │   ├── admin/
+│       │   │   └── wallets/          # Super Admin: wallet address management UI
 │       │   ├── audit/                # Compliance & audit trail UI
 │       │   ├── blockchain/           # Live blockchain explorer UI
 │       │   ├── login/                # Authentication & login portal
-│       │   ├── page.tsx              # Executive dashboard UI (ภาพรวมระบบ)
 │       │   ├── products/             # Product catalog, new product, detail
 │       │   ├── quality/              # Quality control portal
 │       │   ├── shipments/            # Logistics & shipment tracking
 │       │   ├── traceability/         # Multi-actor provenance search
-│       │   └── verify/               # Public QR consumer verification
+│       │   ├── verify/               # Public QR consumer verification
+│       │   ├── page.tsx              # Executive dashboard (/)
+│       │   └── layout.tsx            # Root layout with Navbar
 │       ├── components/               # Reusable UI components, Navbar, modals
-│       ├── hooks/                    # React custom hooks (useAuth)
-│       ├── lib/                      # Axios API client, utils, thai-locale
+│       ├── hooks/                    # React custom hooks (useAuth, useWallet)
+│       ├── lib/                      # Axios API client, blockchain utils, thai-locale
 │       ├── middleware.ts             # Route guard & authentication middleware
 │       └── test/                     # Vitest UI test suites
 │
 ├── packages/
 │   └── contracts/                    # Smart Contracts Workspace
-│       ├── contracts/                # Solidity source code
+│       ├── contracts/
 │       │   └── SupplyChainRegistry.sol
-│       ├── scripts/                  # Deployment & verification scripts
+│       ├── scripts/
 │       │   └── deploy.ts
-│       ├── test/                     # Hardhat contract unit tests
+│       ├── deployments/
+│       │   └── hardhat.json          # Latest deployment addresses
+│       ├── test/
 │       │   └── SupplyChainRegistry.test.ts
 │       └── hardhat.config.ts         # EVM compiler & network settings
 │
 ├── docs/                             # Comprehensive system documentation
-├── docker-compose.yml                # Docker PostgreSQL 16 container
+├── docker-compose.yml                # Full production stack (4 containers)
+├── docker-compose.dev.yml            # Development stack with source sync
 ├── pnpm-workspace.yaml               # Monorepo workspace configuration
 └── tsconfig.base.json                # Shared TypeScript compiler options
 ```
@@ -135,6 +121,7 @@ B-MOST/
 - **Standard Libraries**: OpenZeppelin Contracts v5 (AccessControl)
 - **Client Integration Library**: Ethers.js v6 for JSON-RPC provider and contract invocation
 - **Local EVM Node**: Hardhat Network on port 8545 (Chain ID 31337)
+- **Production Network**: Ethereum Sepolia Testnet (Chain ID 11155111)
 
 ---
 
@@ -153,33 +140,29 @@ B-MOST/
 
 ## 5. Blockchain Integration & Indexer Architecture
 
-```text
-┌─────────────────────────┐
-│     EVM Blockchain      │
-│  SupplyChainRegistry    │
-└────────────┬────────────┘
-             │ Emits Event (e.g., ProductShipped)
-             ▼
-┌─────────────────────────────────────────────────────────┐
-│                BlockchainIndexerService                 │
-│                                                         │
-│  1. Polls latest confirmed blocks on interval (3000ms)  │
-│  2. Extracts event topics & logs                        │
-│  3. Formats parameters (productId, shipmentId, actor)   │
-│  4. Inserts / Updates BlockchainTransaction record      │
-│  5. Reconciles state in Product / Shipment table        │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                  PostgreSQL Database                    │
-│                                                         │
-│  BlockchainTransaction:                                 │
-│  [ txHash | blockNumber | status: CONFIRMED | entityId ]│
-└─────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant API as NestJS API
+    participant EVM as SupplyChainRegistry.sol
+    participant Indexer as BlockchainIndexerService
+    participant PG as PostgreSQL
+
+    API->>EVM: Call contract method (e.g., shipProduct)
+    EVM-->>API: Return tx receipt (txHash, blockNumber, gasUsed)
+    API->>PG: Optimistic DB update (status = SHIPPED)
+
+    loop Every 3000ms
+        Indexer->>EVM: provider.getBlockNumber()
+        EVM-->>Indexer: currentBlock
+        Indexer->>EVM: queryFilter(events, lastBlock → currentBlock)
+        EVM-->>Indexer: [ProductShipped, OwnershipTransferred, ...]
+        Indexer->>PG: Upsert BlockchainTransaction record
+        Indexer->>PG: Reconcile Product / Shipment status
+    end
 ```
 
 ### 5.1 Deterministic Cryptographic Fingerprint
+
 To verify that operational product records in PostgreSQL have not been altered, B-MOST computes a deterministic Keccak-256 hash:
 
 $$\text{ProductHash} = \text{keccak256}\Big(\text{productCode} \parallel \text{serialNumber} \parallel \text{manufacturerId} \parallel \text{name}\Big)$$
@@ -193,22 +176,14 @@ When queried via `/api/traceability/:code` or `/api/public/verify/:productCode`:
 
 ## 6. Multi-Tenant Data Isolation
 
-```text
-Incoming HTTP Request
-         │
-         ▼
-[ JwtAuthGuard ] ──► Validates JWT token & extracts { userId, role, organizationId }
-         │
-         ▼
-[ RolesGuard ] ──► Validates @Roles(...) decorator against user role
-         │
-         ▼
-[ OrganizationIsolationGuard ]
-         │
-         ├── If user is SUPER_ADMIN or AUDITOR ──► Bypass (Global read access granted)
-         │
-         └── If user is regular tenant ──► Injects user's organizationId into query filter
-                                            Verifies resource currentOwnerId == user.orgId
+```mermaid
+flowchart TD
+    Req["Incoming HTTP Request"] --> JWT["JwtAuthGuard\nValidates token → extracts userId, role, organizationId"]
+    JWT --> Roles["RolesGuard\nChecks @Roles(...) decorator"]
+    Roles --> Iso["OrganizationIsolationGuard"]
+    Iso --> Admin{"Is SUPER_ADMIN\nor AUDITOR?"}
+    Admin -- Yes --> Global["Global read access granted ✅"]
+    Admin -- No --> Tenant["Inject organizationId into query filter\nVerify resource.currentOwnerId == user.orgId\nReject with 403 on mismatch ❌"]
 ```
 
 Every database write and state modification verifies that the caller's organization owns the resource:
@@ -217,81 +192,100 @@ Every database write and state modification verifies that the caller's organizat
 - Only the declared shipment receiver can execute the `receive` action to transfer custody.
 
 ### 6.1 Frontend Edge Route Guarding & Authentication Lifecycle
-```text
-Browser Client                           Next.js Edge Middleware                       NestJS API
-     │                                            │                                        │
-     │ 1. Navigates to /products                  │                                        │
-     ├───────────────────────────────────────────►│                                        │
-     │                                            │ 2. Check cookie: bmost_token           │
-     │                                            │    or Authorization header             │
-     │                                            ├───┐                                    │
-     │                                            │   │ Unauthenticated                    │
-     │                                            │◄──┘                                    │
-     │ 3. Redirect 307: /login?redirect=/products │                                        │
-     │◄───────────────────────────────────────────┤                                        │
-     │                                            │                                        │
-     │ 4. Submits Login Form                      │                                        │
-     ├────────────────────────────────────────────┼───────────────────────────────────────►│ 5. POST /api/auth/login
-     │                                            │                                        │ 6. Validates credentials
-     │                                            │                                        │ 7. Signs JWT token
-     │ 8. Response 200 OK: { access_token, user } │                                        │
-     │◄───────────────────────────────────────────┼────────────────────────────────────────┤
-     │                                            │                                        │
-     │ 9. Sets document.cookie ('bmost_token')    │                                        │
-     │    Sets localStorage ('token')             │                                        │
-     │    Redirects to target /products           │                                        │
-     ├───────────────────────────────────────────►│                                        │
-     │                                            │ 10. bmost_token Present                │
-     │                                            │     Allows Request Next()              │
-     │ 11. Renders Protected Products Page        │                                        │
-     │◄───────────────────────────────────────────┤                                        │
+
+```mermaid
+sequenceDiagram
+    participant Browser as Browser Client
+    participant MW as Next.js Edge Middleware
+    participant API as NestJS API
+
+    Browser->>MW: Navigate to /products
+    MW->>MW: Check cookie bmost_token
+    alt Token missing
+        MW-->>Browser: 307 Redirect → /login?redirect=/products
+        Browser->>API: POST /api/auth/login { email, password }
+        API-->>Browser: 200 OK { accessToken, user }
+        Browser->>Browser: Set cookie bmost_token + localStorage token
+        Browser->>MW: Navigate to /products (with token)
+    end
+    MW->>MW: Token present → allow Next()
+    MW-->>Browser: Render protected /products page
 ```
+
 - **Public Whitelist**: `/login`, `/verify`, `/verify/:code`, static assets (`/_next`, `/favicon.ico`) bypass Edge middleware.
 - **Route Aliasing**: Middleware automatically rewrites legacy paths (e.g., `/dashboard` ──► `/`, `/quality-checks` ──► `/quality`).
 - **Profile Synchronization**: The client `useAuth` hook validates the active session on initial load against `GET /api/auth/me`. If the token is invalid or expired, the user is cleanly logged out and redirected.
 
 ---
 
-## 7. End-to-End Sequence Diagram: Custody Transfer
+## 7. Wallet Address & On-Chain Role Management
 
-The following sequence illustrates how a physical product moves between two organizations with simultaneous on-chain settlement and relational indexing:
+Super Admins can manage organization and user wallet addresses via `/admin/wallets`. This is a two-layer process:
 
-```text
-Distributor (Sender)       NestJS API                Hardhat EVM           Receiver (Warehouse)
-         │                      │                         │                         │
-         │ 1. POST /shipments/ship                        │                         │
-         ├─────────────────────►│                         │                         │
-         │                      │ 2. Validate Ownership   │                         │
-         │                      │ 3. shipProduct(...)     │                         │
-         │                      ├────────────────────────►│                         │
-         │                      │                         │ 4. Emit ProductShipped  │
-         │                      │ 5. Update Status:       │                         │
-         │                      │    Product -> SHIPPED   │                         │
-         │                      │    Shipment -> SHIPPED  │                         │
-         │ 6. Return 200 OK     │                         │                         │
-         │◄─────────────────────┤                         │                         │
-         │                      │                         │                         │
-         │                      │                         │ 7. Physically Delivered │
-         │                      │                         │    to Warehouse         │
-         │                      │                         │                         │
-         │                      │ 8. POST /shipments/receive                        │
-         │                      │◄──────────────────────────────────────────────────┤
-         │                      │ 9. Verify caller is declared receiver             │
-         │                      │ 10. receiveProduct(...)                           │
-         │                      ├────────────────────────►│                         │
-         │                      │                         │ 11. Emit ProductReceived│
-         │                      │                         │ 12. Emit OwnershipTransf│
-         │                      │ 13. Update Status:      │                         │
-         │                      │     Product -> RECEIVED │                         │
-         │                      │     Owner -> Receiver   │                         │
-         │                      │     Shipment -> DELIVRD │                         │
-         │                      │ 14. Return 200 OK       │                         │
-         │                      ├──────────────────────────────────────────────────►│
+```mermaid
+flowchart LR
+    SA["Super Admin\n(/admin/wallets)"] -->|"PATCH /api/organizations/:id\nwalletAddress"| DB["PostgreSQL\nOrganization.walletAddress"]
+    DB -->|"Used as signer identity for\non-chain tx submissions"| EVM["SupplyChainRegistry.sol"]
+    SA -->|"grantRole via DEFAULT_ADMIN wallet"| EVM
+    EVM -->|"hasRole check on each method call"| Result["✅ Authorized / ❌ Reverted"]
+```
+
+> [!IMPORTANT]
+> Setting a wallet address in `/admin/wallets` does **not** automatically grant on-chain roles. The `DEFAULT_ADMIN_ROLE` holder must separately call `grantRole` on the smart contract. See [WALLET_ROLES.md](WALLET_ROLES.md) for current address-to-role mapping.
+
+---
+
+## 8. End-to-End Sequence: Custody Transfer
+
+```mermaid
+sequenceDiagram
+    participant Dist as Distributor (Sender)
+    participant API as NestJS API
+    participant EVM as Hardhat / Sepolia EVM
+    participant WH as Warehouse (Receiver)
+
+    Dist->>API: POST /api/shipments/:id/ship
+    API->>API: Validate ownership (currentOwnerId == Dist.orgId)
+    API->>EVM: shipProduct(productId, shipmentId)
+    EVM-->>API: Emit ProductShipped + txReceipt
+    API->>API: Update Product → SHIPPED, Shipment → SHIPPED
+    API-->>Dist: 200 OK { txHash, blockNumber }
+
+    Note over Dist,WH: Physical goods in transit...
+
+    WH->>API: POST /api/shipments/:id/receive
+    API->>API: Verify caller is declared receiver
+    API->>EVM: receiveProduct(productId, shipmentId)
+    EVM-->>API: Emit ProductReceived + OwnershipTransferred
+    API->>API: Product → RECEIVED, Owner → Warehouse, Shipment → DELIVERED
+    API-->>WH: 200 OK { txHash, blockNumber }
 ```
 
 ---
 
-## 8. Resilience & Error Handling
+## 9. Complete Supply Chain Workflow
+
+```mermaid
+flowchart TD
+    A["🏭 Manufacturer Login"] --> B["Create Product\n(Keccak-256 hash generated)"]
+    B --> C["Register on Blockchain\nPOST /api/products/:id/register-blockchain"]
+    C --> D["Quality Inspection\nPOST /api/products/:id/quality-check"]
+    D --> |"PASS → QUALITY_CHECKED"| E["Create Shipment to Distributor\nPOST /api/shipments"]
+    D --> |"FAIL → RECALLED"| Z["🚨 RECALLED (Terminal)"]
+    E --> F["Dispatch Shipment\nPOST /api/shipments/:id/ship → SHIPPED"]
+    F --> G["Distributor Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED\nOwnership → Distributor"]
+    G --> H["Distributor Creates Shipment to Warehouse\nPOST /api/shipments → READY_TO_SHIP"]
+    H --> I["Warehouse Confirms Receipt & Stores\nPOST /api/shipments/:id/receive → STORED"]
+    I --> J["Warehouse Creates Shipment to Retailer\nPOST /api/shipments → READY_TO_SHIP"]
+    J --> K["Retailer Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED"]
+    K --> L["Retailer Sells to Consumer\nPOST /api/products/:id/sell → SOLD ✅"]
+    L --> M["Consumer Scans QR Code\n/verify/{productCode}"]
+    M --> N["Cryptographic Verification\nKeccak-256 hash match → VERIFIED 🛡️"]
+```
+
+---
+
+## 10. Resilience & Error Handling
 
 1. **Transactional Reversions**: All multi-step database mutations use Prisma interactive transactions (`prisma.$transaction`) to prevent orphan states if an operation aborts mid-flight.
 2. **Blockchain Timeout Protection**: Blockchain RPC invocations are handled with timeout fallbacks and translated into clean HTTP error payloads:
@@ -300,3 +294,4 @@ Distributor (Sender)       NestJS API                Hardhat EVM           Recei
    - `UNAUTHORIZED_ACTION` (403)
    - `TRANSACTION_FAILED` (500)
 3. **Audit Log Resiliency**: Audit logging is implemented through a global `AuditInterceptor`. If an audit record insertion encounters an internal database glitch, it fails gracefully without blocking the user's primary transaction.
+4. **Blockchain Indexer Recovery**: On API restart, the `BlockchainIndexerService` replays all events from the last indexed block number stored in PostgreSQL, ensuring no on-chain events are permanently missed during downtime.

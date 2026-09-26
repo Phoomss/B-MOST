@@ -1,5 +1,7 @@
 # Product Requirements Document (PRD)
 
+> **Last Updated**: September 26, 2026
+
 ## 1. Project Overview
 
 ### Project Title
@@ -11,16 +13,16 @@
 ### System Vision
 B-MOST is an enterprise-grade, web-based supply-chain provenance and traceability platform. It integrates a relational PostgreSQL operational layer with an Ethereum Virtual Machine (EVM) Smart Contract ledger to deliver transparent, tamper-resistant, verifiable, and auditable tracking of physical goods as they flow through multiple independent organizations.
 
-```text
-[ Manufacturer ] ──► [ Distributor ] ──► [ Warehouse ] ──► [ Retailer ] ──► [ Consumer ]
-       │                     │                  │               │                │
-       └─────────────────────┴──────────────────┴───────────────┴────────────────┘
-                                          │
-                            ▼───────────────────────────▼
-                            │   B-MOST Shared Platform  │
-                            │  PostgreSQL 16 + Hardhat  │
-                            │  SupplyChainRegistry.sol  │
-                            ▲───────────────────────────▲
+```mermaid
+flowchart LR
+    MFG["🏭 Manufacturer"] --> DIST["🚚 Distributor"]
+    DIST --> WH["🏪 Warehouse"]
+    WH --> RTL["🛒 Retailer"]
+    RTL --> CON["👤 Consumer"]
+
+    MFG & DIST & WH & RTL & CON --- PLATFORM
+
+    PLATFORM["B-MOST Shared Platform\nPostgreSQL 16 + SupplyChainRegistry.sol\nSepolia Testnet (Chain ID 11155111)"]
 ```
 
 ---
@@ -65,7 +67,7 @@ B-MOST resolves these challenges using a **Dual-Layer Storage Architecture**:
 
 | Role | Permitted Actions |
 |---|---|
-| **SUPER_ADMIN** | Global platform administration: manage all organizations, assign wallet addresses, access global audit logs and blockchain metrics. |
+| **SUPER_ADMIN** | Global platform administration: manage all organizations, assign wallet addresses via `/admin/wallets`, access global audit logs and blockchain metrics. |
 | **ORG_ADMIN** | Organization administration: create and manage staff users within their organization, view tenant-specific records and shipments. |
 | **MANUFACTURER** | Create products, register products on-chain, perform QC checks, create and ship dispatches. |
 | **DISTRIBUTOR** | Receive dispatched products, transfer product custody, create outbound shipments to warehouses or retailers. |
@@ -81,29 +83,32 @@ B-MOST resolves these challenges using a **Dual-Layer Storage Architecture**:
 
 The product lifecycle is strictly enforced by both NestJS business guards and the EVM smart contract logic:
 
-```text
-       [ REGISTERED ] ◄── (Product created & anchored on-chain)
-             │
-             ▼
-    [ QUALITY_CHECKED ] ──(Inspection Failed)──► [ RECALLED ] (Terminal)
-             │
-             ▼
-     [ READY_TO_SHIP ]
-             │
-             ▼
-        [ SHIPPED ]
-             │
-             ▼
-       [ IN_TRANSIT ]
-             │
-             ▼
-       [ RECEIVED ]
-             │
-             ▼
-        [ STORED ] ──(Can re-ship to next hop)──► [ READY_TO_SHIP ]
-             │
-             ▼
-         [ SOLD ] (Terminal - End of Supply Chain)
+```mermaid
+stateDiagram-v2
+    [*] --> REGISTERED : Manufacturer creates & anchors product on-chain
+
+    REGISTERED --> QUALITY_CHECKED : QC Inspection PASS
+    REGISTERED --> RECALLED : QC Inspection FAIL
+
+    QUALITY_CHECKED --> READY_TO_SHIP : Create shipment manifest
+    QUALITY_CHECKED --> RECALLED : Emergency recall
+
+    READY_TO_SHIP --> SHIPPED : Dispatch / ship product
+
+    SHIPPED --> IN_TRANSIT : Carrier marks in-transit
+    SHIPPED --> RECEIVED : Direct receipt confirmation
+
+    IN_TRANSIT --> RECEIVED : Receiver confirms delivery
+
+    RECEIVED --> STORED : Warehouse marks as stored
+    RECEIVED --> SOLD : Direct retail sale
+    RECEIVED --> RECALLED : Emergency recall
+
+    STORED --> READY_TO_SHIP : Re-ship to next hop
+    STORED --> SOLD : Retail point-of-sale
+
+    SOLD --> [*] : Terminal ✅ End of supply chain
+    RECALLED --> [*] : Terminal 🚨 Safety recall
 ```
 
 ### State Definitions:
@@ -181,6 +186,11 @@ The product lifecycle is strictly enforced by both NestJS business guards and th
 - Provides real-time operational statistics (`GET /api/dashboard/statistics`) with zero fake data.
 - Aggregates lifecycle stage distributions, shipment counts, organization participation, and 7-day transaction velocity.
 
+### FR-14: Wallet Address & On-Chain Role Management
+- Super Admins can assign and update Ethereum wallet addresses for organizations and users via `PATCH /api/organizations/:id` and `/admin/wallets` in the UI.
+- Wallet-to-role mapping on the smart contract must be managed separately by the `DEFAULT_ADMIN_ROLE` holder.
+- Current wallet assignments and on-chain roles are documented in [WALLET_ROLES.md](WALLET_ROLES.md).
+
 ---
 
 ## 7. Non-Functional Requirements
@@ -204,6 +214,7 @@ The product lifecycle is strictly enforced by both NestJS business guards and th
 ### 7.4 Usability & Accessibility
 - The Web UI must follow enterprise SaaS standards: responsive Tailwind layout, accessible ARIA labels, Lucide icons, clear empty/loading/error states.
 - The consumer verification view must be mobile-optimized for instant smartphone QR code camera scans.
+- All user-facing strings must be Thai-first with critical technical terms preserved in English.
 
 ---
 
@@ -235,3 +246,4 @@ The B-MOST platform meets all defined success criteria when:
 4. A retailer can finalize the product lifecycle by marking the item as `SOLD`.
 5. An unauthenticated consumer can scan a generated QR code on a mobile device and receive instant verification confirming that the physical goods match the smart contract state with 100% hash parity.
 6. The entire automated test suite (contract tests, API unit tests, e2e suites, and complete integration flow) passes with 100% success.
+7. Super Admin can successfully manage wallet addresses via `/admin/wallets` and verify on-chain role assignments via `GET /api/blockchain/roles/{wallet}`.

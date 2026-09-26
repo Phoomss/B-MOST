@@ -1,5 +1,7 @@
 # Development Plan & Progress Tracking
 
+> **Last Updated**: September 26, 2026
+
 ## 1. Development Strategy
 
 Build the system incrementally. Each phase delivers a complete, verified, and test-covered capability before moving forward.
@@ -161,7 +163,7 @@ Build the system incrementally. Each phase delivers a complete, verified, and te
 **Status**: Completed
 - [x] Smart Contract: Hardhat unit tests covering 100% of contract methods and revert cases
 - [x] Backend: 23 NestJS API unit test suites covering services, controllers, guards, and interceptors
-- [x] Frontend: 5 Vitest component test suites
+- [x] Frontend: 5 Vitest component test suites (+ 2 wallet/blockchain suites added in Phase 19)
 - [x] End-to-End: 11 e2e suites (128 passing tests) validating auth, RBAC, tenant isolation, products, shipments, QC, and audits
 *Acceptance Criteria Met*: Automated test suites run and pass across all packages with 0 regressions.
 
@@ -193,7 +195,7 @@ Build the system incrementally. Each phase delivers a complete, verified, and te
 **Status**: Completed
 - [x] Update `README.md` with complete architecture, quick start, port mapping, and script references
 - [x] Update `docs/PRD.md` with product specifications, personas, state machine, and on-chain matrix
-- [x] Update `docs/ARCHITECTURE.md` with monorepo topology, dual-layer design, and sequence diagrams
+- [x] Update `docs/ARCHITECTURE.md` with monorepo topology, dual-layer design, and Mermaid sequence/flow diagrams
 - [x] Update `docs/DATABASE.md` with full Prisma models, enums, indexes, and transactional guarantees
 - [x] Update `docs/BLOCKCHAIN.md` with contract methods, structs, events, gas benchmarks, and hashing algorithm
 - [x] Update `docs/API.md` with REST API reference, request/response bodies, and HTTP status codes
@@ -220,13 +222,13 @@ Inspection checklist verified:
 - [x] **No unauthorized organization access**: Server-side multi-tenant isolation enforced by `OrganizationIsolationGuard` and `@Roles` guard.
 - [x] **Type check and production build succeed across all workspaces**:
   - `pnpm typecheck`: Clean (0 errors across Web and API)
-  - `pnpm build`: NestJS API built successfully; Next.js 16 Web UI generated all 13 routes with static/dynamic optimization.
+  - `pnpm build`: NestJS API built successfully; Next.js 16 Web UI generated all 15 routes with static/dynamic optimization.
 - [x] **Complete test suite pass rate (100%)**:
   - Smart Contract: 25/25 passing tests
   - Backend Unit: 23/23 test suites passing (180/180 tests)
   - Backend E2E: 11/11 test suites passing (128/128 tests)
   - Integration Complete Flow: 1/1 suite passing (15/15 stages)
-  - Frontend Unit: 5/5 Vitest suites passing (14/14 tests)
+  - Frontend Unit: 7/7 Vitest suites passing (22/22 tests)
 
 ---
 
@@ -250,11 +252,49 @@ Refined the entire web interface to meet enterprise aesthetics, native Thai loca
   - Next.js Edge Middleware (`apps/web/middleware.ts`) enforcing authenticated access on protected routes with redirect preservation (`/login?redirect=...`).
   - Public unauthenticated access preserved for `/login`, `/verify`, and `/verify/[code]`.
   - Global `useAuth` hook managing profile hydration via `GET /api/auth/me` and logout handling.
+- [x] **Admin Wallet Management Page** (`/admin/wallets`):
+  - Super Admin UI for assigning and updating Ethereum wallet addresses for organizations and users.
+  - Integration with `PATCH /api/organizations/:id` endpoint.
+  - On-chain role status display via `GET /api/blockchain/roles/{wallet}`.
 - [x] **Page Refactoring & Modernization**:
-  - Refactored Dashboard (`/`), Products (`/products`, `/products/new`, `/products/[id]`), Shipments (`/shipments`), Quality Control (`/quality`), Traceability (`/traceability`), Blockchain Explorer (`/blockchain`), and Audit Logs (`/audit`) into the new white/light theme.
+  - Refactored Dashboard (`/`), Products (`/products`, `/products/new`, `/products/[id]`), Shipments (`/shipments`), Quality Control (`/quality`), Traceability (`/traceability`), Blockchain Explorer (`/blockchain`), Audit Logs (`/audit`), and Admin Wallets (`/admin/wallets`) into the new white/light theme.
 - [x] **Verification & Test Status**:
   - 219 tests passing across monorepo (25 Contracts, 180 API, 14 Web).
   - Clean production build with 15 routes generated successfully.
+
+---
+
+## ✅ Phase 20 — Documentation Refresh & Workflow Diagrams
+**Status**: Completed
+
+Updated all system documentation to reflect the final production state of the platform:
+- [x] Replaced all ASCII flow/sequence diagrams with **Mermaid** flowcharts, sequence diagrams, and state diagrams across `ARCHITECTURE.md` and `PRD.md`.
+- [x] Updated `ARCHITECTURE.md`:
+  - Mermaid high-level system architecture diagram
+  - Mermaid blockchain indexer sequence diagram
+  - Mermaid multi-tenant isolation flowchart
+  - Mermaid frontend auth sequence diagram
+  - Mermaid wallet/role management flowchart
+  - Mermaid end-to-end custody transfer sequence
+  - Mermaid complete supply chain workflow (13-step)
+  - Added Blockchain Indexer Recovery note
+  - Added Sepolia testnet deployment details
+  - Added `admin/wallets` and `docker-compose.dev.yml` to monorepo structure
+- [x] Updated `PRD.md`:
+  - Mermaid system vision flowchart
+  - Mermaid `stateDiagram-v2` for product lifecycle state machine
+  - Added FR-14: Wallet Address & On-Chain Role Management
+  - Updated success criteria with wallet management verification step
+  - Added Thai-first NFR for usability
+- [x] Updated `README.md`:
+  - Fixed all doc links from macOS `/Users/mac/Desktop/workspace/` to Windows `D:\workspaces\B-MOST` paths
+  - Added wallet management to demo accounts section
+  - Updated implemented modules to reflect Phase 19 and 20 additions
+- [x] Updated `docs/DEVELOPMENT_PLAN.md`:
+  - Corrected Phase 18 route count from 13 to 15
+  - Updated frontend test count from 5 to 7 suites
+  - Added Phase 20 documentation refresh phase
+*Acceptance Criteria Met*: All documentation accurately reflects the production codebase, system flow, and workflow diagrams.
 
 ---
 
