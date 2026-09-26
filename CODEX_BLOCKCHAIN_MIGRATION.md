@@ -40,7 +40,7 @@ anything.
 ``` text
 Network: Sepolia
 Chain ID: 11155111
-Contract: 0x12871de9ab1c55b3e59c1248a66e24bc582a29ee
+Contract: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 
 Account 1:
 - SUPER_ADMIN
@@ -118,7 +118,7 @@ The deployed smart contract is fixed:
 ``` text
 Sepolia
 Chain ID: 11155111
-0x12871de9ab1c55b3e59c1248a66e24bc582a29ee
+0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 ```
 
 Do not modify:
@@ -140,14 +140,14 @@ Backend target:
 
 ``` env
 BLOCKCHAIN_RPC_URL=<SEPOLIA_RPC_URL>
-CONTRACT_ADDRESS=0x12871de9ab1c55b3e59c1248a66e24bc582a29ee
+CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 ```
 
 Frontend target:
 
 ``` env
 NEXT_PUBLIC_CHAIN_ID=11155111
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x12871de9ab1c55b3e59c1248a66e24bc582a29ee
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 ```
 
 Update appropriate `.env.example` files.
@@ -530,7 +530,7 @@ New environment:
 ``` text
 Network: Sepolia
 Chain ID: 11155111
-Contract: 0x12871de9ab1c55b3e59c1248a66e24bc582a29ee
+Contract: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 ```
 
 Old local-chain data must not be assumed to exist on Sepolia.

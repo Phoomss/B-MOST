@@ -57,7 +57,11 @@ describe('BlockchainActionService', () => {
   const blockchain = {
     getStatus: jest.fn(),
     getContractAddress: jest.fn(() => address),
-    getReadOnlyContract: jest.fn(() => ({ interface: iface })),
+    getReadOnlyContract: jest.fn(() => ({
+      interface: iface,
+      MANUFACTURER_ROLE: jest.fn().mockResolvedValue('0xmanufacturer'),
+      hasRole: jest.fn().mockResolvedValue(true),
+    })),
     getProvider: jest.fn(() => provider),
     getProduct: jest.fn(),
   };
@@ -137,6 +141,21 @@ describe('BlockchainActionService', () => {
         },
       ),
     ).rejects.toThrow(ConflictException);
+  });
+
+  it('rejects registration before simulation when the wallet lacks MANUFACTURER_ROLE', async () => {
+    blockchain.getReadOnlyContract.mockReturnValueOnce({
+      interface: iface,
+      MANUFACTURER_ROLE: jest.fn().mockResolvedValue('0xmanufacturer'),
+      hasRole: jest.fn().mockResolvedValue(false),
+    });
+    await expect(
+      service.prepare(
+        { action: UserSignedAction.REGISTER_PRODUCT, entityId: product.id },
+        user,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(provider.call).not.toHaveBeenCalled();
   });
 
   it('confirms a matching on-chain registration event before assigning the Sepolia ID', async () => {
@@ -231,10 +250,17 @@ describe('BlockchainActionService', () => {
       userId: user.id,
       status: 'PENDING',
     });
-    prisma.blockchainActionIntent.findFirst.mockResolvedValue({ id: 'intent-2' });
+    prisma.blockchainActionIntent.findFirst.mockResolvedValue({
+      id: 'intent-2',
+    });
     provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
     provider.getTransaction.mockResolvedValue({ to: address, from: wallet });
-    provider.getTransactionReceipt.mockResolvedValue({ hash, to: address, from: wallet, status: 1 });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash,
+      to: address,
+      from: wallet,
+      status: 1,
+    });
 
     await expect(
       service.confirm({ intentId: 'intent-1', transactionHash: hash }, user),

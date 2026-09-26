@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  GoneException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -16,13 +17,10 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 import { QualityChecksService } from './quality-checks.service';
 import { CreateQualityCheckDto } from './dto/create-quality-check.dto';
 import { QueryQualityCheckDto } from './dto/query-quality-check.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Quality Checks')
@@ -33,23 +31,13 @@ export class QualityChecksController {
   constructor(private readonly qualityChecksService: QualityChecksService) {}
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ORG_ADMIN,
-    UserRole.AUDITOR,
-    UserRole.MANUFACTURER,
-  )
-  @HttpCode(HttpStatus.CREATED)
+  @HttpCode(HttpStatus.GONE)
   @ApiOperation({
-    summary: 'Record quality control inspection (Auditor & Manufacturer)',
+    summary: 'Legacy quality write route; use wallet-signed blockchain actions',
     description:
-      'Records inspection verdict (PASS / FAIL) for a product, submits an on-chain transaction to the SupplyChainRegistry smart contract, and writes an audit log.',
+      'Prepare recordQualityCheck with POST /api/blockchain/actions/prepare, sign in MetaMask, then confirm the receipt.',
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Quality check completed and committed on-chain',
-  })
+  @ApiResponse({ status: 410, description: 'Use wallet-signed blockchain actions' })
   @ApiResponse({
     status: 400,
     description: 'Invalid result or recalled product',
@@ -62,10 +50,10 @@ export class QualityChecksController {
   })
   @ApiResponse({ status: 404, description: 'Product not found' })
   async create(@Body() dto: CreateQualityCheckDto, @CurrentUser() user: any) {
-    return this.qualityChecksService.performQualityCheck(
-      dto.productId || '',
-      dto,
-      user,
+    void dto;
+    void user;
+    throw new GoneException(
+      'ใช้ /api/blockchain/actions/prepare และ /api/blockchain/actions/confirm เพื่อให้ MetaMask ลงนามธุรกรรม',
     );
   }
 

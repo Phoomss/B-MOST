@@ -67,7 +67,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bmost_db}?schema=public
       DB_HOST: postgres
       DB_PORT: 5432
-      AUTO_SEED: "true"
+      AUTO_SEED: "false"
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       BLOCKCHAIN_RPC_URL: ${BLOCKCHAIN_RPC_URL:?Set a Sepolia RPC URL}
@@ -94,7 +94,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
         NEXT_PUBLIC_CHAIN_ID: 11155111
         NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
-        NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "false"
+        NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "true"
     container_name: bmost-web
     restart: unless-stopped
     depends_on:
@@ -108,7 +108,7 @@ services:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
       NEXT_PUBLIC_CHAIN_ID: 11155111
       NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
-      NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "false"
+      NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "true"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/login || exit 1"]
       interval: 15s

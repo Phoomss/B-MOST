@@ -185,8 +185,8 @@ export function Navbar() {
           {/* 1. Brand Logo */}
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center font-black text-white text-base shadow-sm group-hover:scale-105 transition-transform duration-200">
-                B
+              <img src="/brand_logo.png" alt="B-MOST" className="h-9 w-9 rounded-xl object-cover group-hover:scale-105 transition-transform duration-200" />
+
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">

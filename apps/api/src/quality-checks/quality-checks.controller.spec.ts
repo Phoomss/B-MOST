@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QualityChecksController } from './quality-checks.controller';
 import { QualityChecksService } from './quality-checks.service';
 import { QualityCheckResult } from '@prisma/client';
+import { GoneException } from '@nestjs/common';
 
 describe('QualityChecksController', () => {
   let controller: QualityChecksController;
@@ -48,20 +49,15 @@ describe('QualityChecksController', () => {
     controller = module.get<QualityChecksController>(QualityChecksController);
   });
 
-  it('creates a quality check inspection via POST /quality-checks', async () => {
+  it('rejects the legacy backend-signed quality route', async () => {
     const dto = {
       productId: 'prod-1',
       result: QualityCheckResult.PASSED,
       notes: 'Meets ISO benchmarks',
     };
 
-    const res = await controller.create(dto, mockUser);
-    expect(service.performQualityCheck).toHaveBeenCalledWith(
-      'prod-1',
-      dto,
-      mockUser,
-    );
-    expect(res.qualityCheck.id).toBe('qc-1');
+    await expect(controller.create(dto, mockUser)).rejects.toThrow(GoneException);
+    expect(service.performQualityCheck).not.toHaveBeenCalled();
   });
 
   it('lists quality checks via GET /quality-checks', async () => {

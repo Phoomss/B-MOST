@@ -10,6 +10,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  GoneException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -144,19 +145,14 @@ export class ProductsController {
   }
 
   @Post(':id/register-blockchain')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ORG_ADMIN, UserRole.MANUFACTURER)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.GONE)
   @ApiOperation({
-    summary: 'Register product on blockchain',
+    summary: 'Legacy registration route; use wallet-signed blockchain actions',
     description:
-      'Invokes the SupplyChainRegistry smart contract registerProduct function with the deterministic product hash. Stores on-chain product ID and transaction hash in PostgreSQL.',
+      'Prepare with POST /api/blockchain/actions/prepare, sign in MetaMask, then confirm with POST /api/blockchain/actions/confirm.',
   })
   @ApiParam({ name: 'id', description: 'Product UUID' })
-  @ApiResponse({
-    status: 200,
-    description: 'Product registered on blockchain successfully',
-  })
+  @ApiResponse({ status: 410, description: 'Use wallet-signed blockchain actions' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
@@ -172,32 +168,23 @@ export class ProductsController {
     @Body() registerDto: RegisterBlockchainDto,
     @CurrentUser() user: any,
   ) {
-    return this.productsService.registerOnBlockchain(
-      id,
-      user,
-      registerDto?.signerPrivateKey,
+    void id;
+    void registerDto;
+    void user;
+    throw new GoneException(
+      'ใช้ /api/blockchain/actions/prepare และ /api/blockchain/actions/confirm เพื่อให้ MetaMask ลงนามธุรกรรม',
     );
   }
 
   @Post(':id/quality-check')
-  @UseGuards(RolesGuard)
-  @Roles(
-    UserRole.SUPER_ADMIN,
-    UserRole.ORG_ADMIN,
-    UserRole.AUDITOR,
-    UserRole.MANUFACTURER,
-  )
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.GONE)
   @ApiOperation({
-    summary: 'Perform quality check (FR-05 & Phase 8)',
+    summary: 'Legacy quality write route; use wallet-signed blockchain actions',
     description:
-      'Records quality check inspection verdict (PASS / FAIL), executes on-chain verification on SupplyChainRegistry smart contract, and transitions product status.',
+      'Prepare recordQualityCheck with POST /api/blockchain/actions/prepare, sign in MetaMask, then confirm the receipt.',
   })
   @ApiParam({ name: 'id', description: 'Product UUID or unique productCode' })
-  @ApiResponse({
-    status: 200,
-    description: 'Quality check verified and recorded on blockchain',
-  })
+  @ApiResponse({ status: 410, description: 'Use wallet-signed blockchain actions' })
   @ApiResponse({
     status: 400,
     description: 'Invalid result or recalled product',
@@ -213,7 +200,12 @@ export class ProductsController {
     @Body() dto: CreateQualityCheckDto,
     @CurrentUser() user: any,
   ) {
-    return this.qualityChecksService.performQualityCheck(id, dto, user);
+    void id;
+    void dto;
+    void user;
+    throw new GoneException(
+      'ใช้ /api/blockchain/actions/prepare และ /api/blockchain/actions/confirm เพื่อให้ MetaMask ลงนามธุรกรรม',
+    );
   }
 
   @Get(':id/quality-checks')

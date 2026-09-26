@@ -233,15 +233,27 @@ export class BlockchainActionService {
   }
 
   async getRoles(targetWallet: string) {
-    if (!ethers.isAddress(targetWallet)) throw new BadRequestException('walletAddress ไม่ถูกต้อง');
+    if (!ethers.isAddress(targetWallet))
+      throw new BadRequestException('walletAddress ไม่ถูกต้อง');
     const contract = this.blockchain.getReadOnlyContract();
-    const roles = ['DISTRIBUTOR_ROLE', 'WAREHOUSE_ROLE', 'RETAILER_ROLE'] as const;
-    const entries = await Promise.all(roles.map(async (role) => {
-      const roleHash: string = await contract[role]();
-      const granted: boolean = await contract.hasRole(roleHash, targetWallet);
-      return [role, granted] as const;
-    }));
-    return { targetWallet: ethers.getAddress(targetWallet), roles: Object.fromEntries(entries) };
+    const roles = [
+      'DEFAULT_ADMIN_ROLE',
+      'MANUFACTURER_ROLE',
+      'DISTRIBUTOR_ROLE',
+      'WAREHOUSE_ROLE',
+      'RETAILER_ROLE',
+    ] as const;
+    const entries = await Promise.all(
+      roles.map(async (role) => {
+        const roleHash: string = await contract[role]();
+        const granted: boolean = await contract.hasRole(roleHash, targetWallet);
+        return [role, granted] as const;
+      }),
+    );
+    return {
+      targetWallet: ethers.getAddress(targetWallet),
+      roles: Object.fromEntries(entries),
+    };
   }
 
   async prepareRoleChange(dto: PrepareRoleChangeDto, user: AuthUser) {
@@ -251,16 +263,28 @@ export class BlockchainActionService {
     const roleHash: string = await contract[dto.role]();
     const adminHash: string = await contract.DEFAULT_ADMIN_ROLE();
     if (!(await contract.hasRole(adminHash, wallet))) {
-      throw new ForbiddenException('wallet ของผู้ดูแลระบบไม่มี DEFAULT_ADMIN_ROLE บนสัญญา');
+      throw new ForbiddenException(
+        'wallet ของผู้ดูแลระบบไม่มี DEFAULT_ADMIN_ROLE บนสัญญา',
+      );
     }
     const target = ethers.getAddress(dto.targetWallet);
     const current: boolean = await contract.hasRole(roleHash, target);
-    if ((dto.action === 'grantRole' && current) || (dto.action === 'revokeRole' && !current)) {
-      throw new ConflictException('บทบาทของ wallet นี้อยู่ในสถานะที่ร้องขอแล้ว');
+    if (
+      (dto.action === 'grantRole' && current) ||
+      (dto.action === 'revokeRole' && !current)
+    ) {
+      throw new ConflictException(
+        'บทบาทของ wallet นี้อยู่ในสถานะที่ร้องขอแล้ว',
+      );
     }
-    const data = contract.interface.encodeFunctionData(dto.action, [roleHash, target]);
+    const data = contract.interface.encodeFunctionData(dto.action, [
+      roleHash,
+      target,
+    ]);
     try {
-      await this.blockchain.getProvider().call({ to: this.blockchain.getContractAddress(), from: wallet, data });
+      await this.blockchain
+        .getProvider()
+        .call({ to: this.blockchain.getContractAddress(), from: wallet, data });
     } catch (error) {
       this.mapRevert(error);
     }
@@ -318,6 +342,13 @@ export class BlockchainActionService {
         throw new ConflictException('สินค้าลงทะเบียนบน Blockchain แล้ว');
       if (!product.productHash)
         throw new ConflictException('สินค้าไม่มี productHash');
+      const contract = this.blockchain.getReadOnlyContract();
+      const manufacturerRole: string = await contract.MANUFACTURER_ROLE();
+      if (!(await contract.hasRole(manufacturerRole, wallet))) {
+        throw new ForbiddenException(
+          'กระเป๋าที่เชื่อมต่อไม่มี MANUFACTURER_ROLE บนสัญญา Sepolia',
+        );
+      }
       args = [product.productCode, product.productHash];
     } else {
       const live = await this.onChainProduct(product, dto.action);

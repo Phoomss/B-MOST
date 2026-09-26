@@ -63,9 +63,14 @@ export async function writeSupplyChainAction(params: {
   }
   const account = assertExpectedWallet(params.account, params.expectedWallet);
   const client = getWalletClient();
-  if (await client.getChainId() !== SEPOLIA_CHAIN_ID) {
+  const [chainId, connectedAccounts] = await Promise.all([
+    client.getChainId(),
+    client.getAddresses(),
+  ]);
+  if (chainId !== SEPOLIA_CHAIN_ID) {
     throw new Error('กรุณาเปลี่ยนเครือข่าย MetaMask เป็น Sepolia');
   }
+  assertExpectedWallet(connectedAccounts[0] ?? null, account);
   if (
     process.env.NEXT_PUBLIC_BLOCKCHAIN_ABI_READY !== 'true' ||
     (supplyChainRegistryAbi as readonly unknown[]).length === 0
@@ -83,6 +88,15 @@ export async function writeSupplyChainAction(params: {
     if (type === 'bool') return value === true || value === 'true';
     return value;
   });
+  if (process.env.NODE_ENV !== 'production') {
+    console.info('[Sepolia write]', {
+      chainId,
+      contractAddress: SEPOLIA_CONTRACT_ADDRESS,
+      connectedWallet: connectedAccounts[0],
+      expectedUserWallet: params.expectedWallet,
+      functionName: params.functionName,
+    });
+  }
   const hash = await client.writeContract({
     account,
     address: SEPOLIA_CONTRACT_ADDRESS,

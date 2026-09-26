@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
+import { SEPOLIA_CONTRACT_ADDRESS } from '../../lib/blockchain/wallet';
 import {
   api,
   BlockchainStatusData,
@@ -230,7 +231,7 @@ function BlockchainExplorerContent() {
         api.blockchain.getStatus().catch((e) => {
           return {
             connected: false,
-            contractAddress: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+            contractAddress: SEPOLIA_CONTRACT_ADDRESS,
             error: e.message || 'Cannot connect to blockchain node',
           };
         }),

@@ -5,6 +5,7 @@ import { ProductsService } from './products.service';
 import { QualityChecksService } from '../quality-checks/quality-checks.service';
 import { ShipmentsService } from '../shipments/shipments.service';
 import { UserRole } from '@prisma/client';
+import { GoneException } from '@nestjs/common';
 
 describe('ProductsController & PublicProductsController', () => {
   let controller: ProductsController;
@@ -112,14 +113,11 @@ describe('ProductsController & PublicProductsController', () => {
     expect(service.update).toHaveBeenCalledWith('prod-1', dto, mockUser);
   });
 
-  it('should call registerOnBlockchain service', async () => {
-    const res = await controller.registerOnBlockchain('prod-1', {}, mockUser);
-    expect(res).toEqual(mockProduct);
-    expect(service.registerOnBlockchain).toHaveBeenCalledWith(
-      'prod-1',
-      mockUser,
-      undefined,
-    );
+  it('rejects the legacy backend-signed registration route', async () => {
+    await expect(
+      controller.registerOnBlockchain('prod-1', {}, mockUser),
+    ).rejects.toThrow(GoneException);
+    expect(service.registerOnBlockchain).not.toHaveBeenCalled();
   });
 
   it('should call getHistory service', async () => {
@@ -134,15 +132,10 @@ describe('ProductsController & PublicProductsController', () => {
     expect(service.getQr).toHaveBeenCalledWith('prod-1', mockUser);
   });
 
-  it('should call qualityCheck service with id, dto, and current user', async () => {
+  it('rejects the legacy backend-signed quality route', async () => {
     const dto: any = { result: 'PASSED', notes: 'Checked OK' };
-    const res = await controller.qualityCheck('prod-1', dto, mockUser);
-    expect(res).toEqual({ status: 'QUALITY_CHECKED' });
-    expect(qcService.performQualityCheck).toHaveBeenCalledWith(
-      'prod-1',
-      dto,
-      mockUser,
-    );
+    await expect(controller.qualityCheck('prod-1', dto, mockUser)).rejects.toThrow(GoneException);
+    expect(qcService.performQualityCheck).not.toHaveBeenCalled();
   });
 
   it('should call getProductQualityChecks service with product id and current user', async () => {

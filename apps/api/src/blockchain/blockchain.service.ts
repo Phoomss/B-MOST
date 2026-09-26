@@ -139,14 +139,13 @@ export class BlockchainService implements OnModuleDestroy {
   getSigner(privateKey?: string): ethers.Wallet {
     void privateKey;
     throw new ServiceUnavailableException(
-      'Backend signing disabled. TODO: Waiting for SupplyChainRegistry ABI and MetaMask transaction flow',
+      'Backend signing disabled. Use MetaMask with /api/blockchain/actions/prepare and /api/blockchain/actions/confirm',
     );
   }
 
   getContract(
     signerOrProvider?: ethers.Signer | ethers.Provider,
   ): ethers.Contract {
-    // Legacy callers remain until their ABI-dependent UI flows are migrated.
     // Never attach a signer to the backend contract.
     void signerOrProvider;
     if (
