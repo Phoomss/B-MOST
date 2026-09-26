@@ -79,9 +79,17 @@ All errors follow standard RFC 7807 formatted JSON envelopes:
 ```
 
 ### 3.3 Update Organization Wallet
-`PATCH /api/organizations/:id/wallet`
+`PATCH /api/organizations/:id`
 - **Access**: `SUPER_ADMIN`
-- **Request Body**: `{ "walletAddress": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC" }`
+- **Request Body**: `{ "walletAddress": "0x...public address..." }`
+
+### 3.4 List and Update User Wallets
+`GET /api/auth/users` returns user IDs, emails, application roles, organization IDs, and public wallet addresses (`SUPER_ADMIN` only).
+
+`PATCH /api/auth/users/:id/wallet` sets a user's public address (`SUPER_ADMIN` only).
+- **Request Body**: `{ "walletAddress": "0x...public address...", "syncOrganization": true }`
+- `syncOrganization: true` updates the user's organization wallet to the same address in one database transaction. Omit it or set `false` to update only the user.
+- The web UI for these operations is `/admin/wallets`. See [Wallet and Role Mapping](WALLET_ROLES.md) for the current Sepolia role snapshot.
 
 ---
 

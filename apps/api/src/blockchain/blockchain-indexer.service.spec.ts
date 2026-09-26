@@ -16,7 +16,9 @@ describe('BlockchainIndexerService', () => {
     product: {
       findFirst: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
+    shipment: { findUnique: jest.fn(), update: jest.fn() },
   };
 
   const mockBlockchainService = {
@@ -170,9 +172,76 @@ describe('BlockchainIndexerService', () => {
       const result = await service.syncHistoricalEvents(0, 5);
 
       expect(mockContract.queryFilter).toHaveBeenCalledWith('*', 0, 5);
-      expect(result.syncedEvents).toBe(1);
+      expect(result.syncedEvents).toBe(0);
       expect(result.fromBlock).toBe(0);
       expect(result.toBlock).toBe(5);
+    });
+
+    it('links a matching ShipmentCreated event and advances the product state', async () => {
+      const address = mockBlockchainService.getContractAddress();
+      const sender = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+      const receiver = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
+      mockPrisma.shipment.findUnique.mockResolvedValue({
+        id: 'shipment-1', productId: 'prod-uuid-3', blockchainShipmentId: null,
+        product: { blockchainProductId: '3' },
+        sender: { walletAddress: sender },
+        receiver: { walletAddress: receiver },
+        carrier: null,
+      });
+      mockPrisma.shipment.update.mockResolvedValue({});
+      mockPrisma.product.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.blockchainTransaction.upsert.mockResolvedValue({});
+
+      const synced = await service.handleEvent({
+        eventName: BLOCKCHAIN_EVENTS.SHIPMENT_CREATED,
+        txHash: '0xshipment', blockNumber: 16, contractAddress: address,
+        entityType: 'Shipment', entityId: '1', walletAddress: sender,
+        additionalData: {
+          shipmentCode: 'SHP-001', productId: '3', receiver,
+          carrier: '0x0000000000000000000000000000000000000000',
+        },
+      });
+
+      expect(synced).toBe(true);
+      expect(mockPrisma.shipment.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'shipment-1' },
+        data: expect.objectContaining({ blockchainShipmentId: '1' }),
+      }));
+      expect(mockPrisma.product.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'prod-uuid-3',
+          status: { in: [ProductStatus.REGISTERED, ProductStatus.QUALITY_CHECKED] },
+        },
+        data: { status: ProductStatus.READY_TO_SHIP },
+      });
+    });
+
+    it('restores the recorded quality result when replaying a historical event', async () => {
+      const address = mockBlockchainService.getContractAddress();
+      const mockContract = {
+        queryFilter: jest.fn().mockResolvedValue([{
+          eventName: BLOCKCHAIN_EVENTS.QUALITY_CHECKED,
+          transactionHash: '0xquality',
+          blockNumber: 15,
+          address,
+          args: [3n, '0xInspector', true, 'passed', 1700000n],
+        }]),
+      };
+      (blockchainService.getReadOnlyContract as jest.Mock).mockReturnValue(mockContract);
+      mockPrisma.product.findFirst.mockResolvedValue({
+        id: 'prod-uuid-3', blockchainProductId: '3', blockchainChainId: 11155111,
+        blockchainContractAddress: address,
+      });
+      mockPrisma.product.update.mockResolvedValue({});
+      mockPrisma.blockchainTransaction.upsert.mockResolvedValue({});
+
+      const result = await service.syncHistoricalEvents(15, 15);
+
+      expect(result.syncedEvents).toBe(1);
+      expect(mockPrisma.product.update).toHaveBeenCalledWith({
+        where: { id: 'prod-uuid-3' },
+        data: { status: ProductStatus.QUALITY_CHECKED },
+      });
     });
   });
 });

@@ -6,6 +6,17 @@ RUN apk add --no-cache libc6-compat wget curl
 RUN corepack enable && corepack prepare pnpm@11.1.1 --activate
 WORKDIR /app
 
+# Development image used with Compose Watch and Next.js Fast Refresh.
+FROM base AS development
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/contracts/package.json ./packages/contracts/
+RUN pnpm install --frozen-lockfile
+COPY apps/web ./apps/web
+WORKDIR /app/apps/web
+CMD ["pnpm", "exec", "next", "dev", "-H", "0.0.0.0", "-p", "3000"]
+
 # Stage 2: Workspace dependency resolution and building
 FROM base AS builder
 WORKDIR /app

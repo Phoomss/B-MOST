@@ -1,0 +1,74 @@
+services:
+  api:
+    build:
+      target: development
+    environment:
+      NODE_ENV: development
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/api/src
+          target: /app/apps/api/src
+        - action: sync
+          path: ./apps/api/test
+          target: /app/apps/api/test
+        - action: rebuild
+          path: ./apps/api/prisma
+        - action: rebuild
+          path: ./apps/api/package.json
+        - action: rebuild
+          path: ./apps/api/nest-cli.json
+        - action: rebuild
+          path: ./apps/api/tsconfig.json
+        - action: rebuild
+          path: ./apps/api/tsconfig.build.json
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-workspace.yaml
+        - action: rebuild
+          path: ./tsconfig.base.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml
+
+  web:
+    build:
+      target: development
+    environment:
+      NODE_ENV: development
+    develop:
+      watch:
+        - action: sync
+          path: ./apps/web/app
+          target: /app/apps/web/app
+        - action: sync
+          path: ./apps/web/components
+          target: /app/apps/web/components
+        - action: sync
+          path: ./apps/web/hooks
+          target: /app/apps/web/hooks
+        - action: sync
+          path: ./apps/web/lib
+          target: /app/apps/web/lib
+        - action: sync
+          path: ./apps/web/public
+          target: /app/apps/web/public
+        - action: sync
+          path: ./apps/web/middleware.ts
+          target: /app/apps/web/middleware.ts
+        - action: rebuild
+          path: ./apps/web/package.json
+        - action: rebuild
+          path: ./apps/web/next.config.ts
+        - action: rebuild
+          path: ./apps/web/postcss.config.mjs
+        - action: rebuild
+          path: ./apps/web/tsconfig.json
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./pnpm-workspace.yaml
+        - action: rebuild
+          path: ./tsconfig.base.json
+        - action: rebuild
+          path: ./pnpm-lock.yaml

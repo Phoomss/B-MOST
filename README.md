@@ -105,6 +105,11 @@ pnpm blockchain:deploy
 
 #### Step 4.4: Start Development Servers
 ```bash
+# Run API and web inside Docker with automatic source sync and hot reload.
+# Keep this command running; code edits do not need docker compose down/up.
+pnpm docker:dev
+
+# Or run the servers on the host:
 # Concurrently run API (port 4000) and Next.js (port 3000)
 pnpm dev
 
@@ -112,6 +117,14 @@ pnpm dev
 pnpm dev:api   # NestJS API
 pnpm dev:web   # Next.js Web UI
 ```
+
+`docker:dev` uses `docker-compose.dev.yml` and Docker Compose Watch. Edits to
+`apps/api/src` and the web app, components, hooks, lib, or public files sync
+into the running containers; NestJS watch mode and Next.js Fast Refresh apply
+them automatically. Changes to Prisma files, package manifests, the lockfile,
+or the watched configuration files rebuild the affected service automatically.
+Environment variable changes require restarting the development command.
+The production `pnpm docker:up` command continues to use `docker-compose.yml`.
 
 ---
 
@@ -142,6 +155,8 @@ Password for all pre-seeded demo accounts is: `password123`
 
 *One-click quick login buttons for all these roles are available directly on the `/login` page.*
 
+For the current public wallet addresses, application roles, and Sepolia contract roles, see [Wallet and Role Mapping](docs/WALLET_ROLES.md). Super Admin can update user and organization public addresses at `/admin/wallets`.
+
 ---
 
 ## 🛠 Available Scripts
@@ -151,6 +166,7 @@ Password for all pre-seeded demo accounts is: `password123`
 | `pnpm dev` | Start API and Web applications concurrently |
 | `pnpm dev:api` | Start NestJS API in watch mode (`http://localhost:4000`) |
 | `pnpm dev:web` | Start Next.js Web UI in development mode (`http://localhost:3000`) |
+| `pnpm docker:dev` | Start Docker development services with source sync and hot reload |
 | `pnpm build` | Build all workspace applications for production |
 | `pnpm typecheck` | Run TypeScript type checking across all monorepo workspaces |
 | `pnpm test` | Run unit tests across all workspaces (Hardhat, NestJS, Vitest) |

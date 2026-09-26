@@ -42,7 +42,11 @@ export class AuthController {
   @Roles(UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   async setUserWallet(@Param('id') id: string, @Body() dto: SetUserWalletDto) {
-    return this.authService.setUserWallet(id, dto.walletAddress);
+    return this.authService.setUserWallet(
+      id,
+      dto.walletAddress,
+      dto.syncOrganization,
+    );
   }
 
   @Post('login')

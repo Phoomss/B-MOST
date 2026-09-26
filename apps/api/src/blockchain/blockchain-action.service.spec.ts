@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ProductStatus, UserRole } from '@prisma/client';
 import { ethers } from 'ethers';
 import { PrismaService } from '../prisma/prisma.service';
@@ -40,7 +44,7 @@ describe('BlockchainActionService', () => {
     getTransactionReceipt: jest.fn(),
   };
   const tx = {
-    shipment: { create: jest.fn() },
+    shipment: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     blockchainActionIntent: { create: jest.fn(), update: jest.fn() },
     product: { update: jest.fn() },
     qualityCheck: { findFirst: jest.fn(), create: jest.fn() },
@@ -49,6 +53,7 @@ describe('BlockchainActionService', () => {
   };
   const prisma = {
     product: { findFirst: jest.fn(), findUnique: jest.fn() },
+    shipment: { findUnique: jest.fn() },
     blockchainActionIntent: { findUnique: jest.fn(), findFirst: jest.fn() },
     $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
       callback(tx),
@@ -221,6 +226,146 @@ describe('BlockchainActionService', () => {
     );
   });
 
+  it('confirms a quality check routed through a wallet when the registry event matches the intent', async () => {
+    const forwardedTo = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+    const qualityProduct = { ...product, blockchainProductId: '3', blockchainChainId: 11155111, blockchainContractAddress: address };
+    const log = iface.encodeEventLog(iface.getEvent('QualityChecked')!, [
+      3n, wallet, true, '', 1n,
+    ]);
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1', userId: user.id, status: 'PENDING',
+      action: UserSignedAction.QUALITY_CHECK, entityType: 'Product',
+      entityId: product.id, functionName: 'recordQualityCheck',
+      args: ['3', 'true', ''], metadata: {},
+    });
+    prisma.product.findUnique.mockResolvedValue(qualityProduct);
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({ to: forwardedTo, from: wallet, data: '0xcef6d209', value: 0n });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash, to: forwardedTo, from: wallet, status: 1, blockNumber: 123,
+      logs: [{ address, topics: log.topics, data: log.data }],
+    });
+    tx.product.update.mockResolvedValue({ ...qualityProduct, status: ProductStatus.QUALITY_CHECKED });
+    tx.qualityCheck.findFirst.mockResolvedValue(null);
+
+    await expect(service.confirm({ intentId: 'intent-1', transactionHash: hash }, user))
+      .resolves.toMatchObject({ verified: true, synced: true });
+    expect(tx.qualityCheck.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ productId: product.id, blockchainTxHash: hash }),
+    }));
+  });
+
+  it('confirms an older registration without rolling back a product that passed quality check', async () => {
+    const forwardedTo = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+    const log = iface.encodeEventLog(iface.getEvent('ProductRegistered')!, [
+      3n, 'BM-001', productHash, wallet, 1n,
+    ]);
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1', userId: user.id, status: 'PENDING',
+      action: UserSignedAction.REGISTER_PRODUCT, entityType: 'Product',
+      entityId: product.id, functionName: 'registerProduct',
+      args: ['BM-001', productHash], metadata: {},
+    });
+    prisma.product.findUnique.mockResolvedValue({
+      ...product, blockchainProductId: '3', status: ProductStatus.QUALITY_CHECKED,
+    });
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({ to: forwardedTo, from: wallet, data: '0xcef6d209', value: 0n });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash, to: forwardedTo, from: wallet, status: 1, blockNumber: 123,
+      logs: [{ address, topics: log.topics, data: log.data }],
+    });
+    tx.product.update.mockResolvedValue({ ...product, status: ProductStatus.QUALITY_CHECKED });
+
+    await expect(service.confirm({ intentId: 'intent-1', transactionHash: hash }, user))
+      .resolves.toMatchObject({ verified: true, synced: true });
+    expect(tx.product.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.not.objectContaining({ status: ProductStatus.REGISTERED }),
+    }));
+  });
+
+  it('rejects a forwarded quality check whose event result differs from the intent', async () => {
+    const forwardedTo = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+    const log = iface.encodeEventLog(iface.getEvent('QualityChecked')!, [
+      3n, wallet, false, '', 1n,
+    ]);
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1', userId: user.id, status: 'PENDING',
+      action: UserSignedAction.QUALITY_CHECK, entityType: 'Product',
+      entityId: product.id, functionName: 'recordQualityCheck',
+      args: ['3', 'true', ''], metadata: {},
+    });
+    prisma.product.findUnique.mockResolvedValue({ ...product, blockchainProductId: '3' });
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({ to: forwardedTo, from: wallet, data: '0xcef6d209', value: 0n });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash, to: forwardedTo, from: wallet, status: 1, blockNumber: 123,
+      logs: [{ address, topics: log.topics, data: log.data }],
+    });
+
+    await expect(service.confirm({ intentId: 'intent-1', transactionHash: hash }, user))
+      .rejects.toThrow(ConflictException);
+    expect(tx.product.update).not.toHaveBeenCalled();
+  });
+
+  it('confirms a shipment created through a wallet using the registry event', async () => {
+    const forwardedTo = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+    const receiver = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
+    const shipment = { id: 'shipment-1', shipmentCode: 'SHP-001', product: { ...product, blockchainProductId: '3' }, blockchainShipmentId: '1' };
+    const log = iface.encodeEventLog(iface.getEvent('ShipmentCreated')!, [
+      1n, shipment.shipmentCode, 3n, wallet, receiver, wallet, 1n,
+    ]);
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1', userId: user.id, status: 'PENDING',
+      action: UserSignedAction.CREATE_SHIPMENT, entityType: 'Shipment',
+      entityId: shipment.id, functionName: 'createShipment',
+      args: [shipment.shipmentCode, '3', receiver, wallet], metadata: {},
+    });
+    prisma.shipment.findUnique.mockResolvedValue(shipment);
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({ to: forwardedTo, from: wallet, data: '0xcef6d209', value: 0n });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash, to: forwardedTo, from: wallet, status: 1, blockNumber: 123,
+      logs: [{ address, topics: log.topics, data: log.data }],
+    });
+    tx.product.update.mockResolvedValue({ ...shipment.product, status: ProductStatus.READY_TO_SHIP });
+
+    await expect(service.confirm({ intentId: 'intent-1', transactionHash: hash }, user))
+      .resolves.toMatchObject({ verified: true, synced: true, shipmentDbId: shipment.id });
+    expect(tx.shipment.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: shipment.id },
+      data: expect.objectContaining({ blockchainShipmentId: '1', blockchainTxHash: hash }),
+    }));
+  });
+
+  it('rejects a forwarded shipment event with a different receiver', async () => {
+    const forwardedTo = '0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3';
+    const receiver = '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC';
+    const log = iface.encodeEventLog(iface.getEvent('ShipmentCreated')!, [
+      1n, 'SHP-001', 3n, wallet, wallet, wallet, 1n,
+    ]);
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1', userId: user.id, status: 'PENDING',
+      action: UserSignedAction.CREATE_SHIPMENT, entityType: 'Shipment',
+      entityId: 'shipment-1', functionName: 'createShipment',
+      args: ['SHP-001', '3', receiver, wallet], metadata: {},
+    });
+    prisma.shipment.findUnique.mockResolvedValue({
+      id: 'shipment-1', shipmentCode: 'SHP-001',
+      product: { ...product, blockchainProductId: '3' },
+    });
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({ to: forwardedTo, from: wallet, data: '0xcef6d209', value: 0n });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash, to: forwardedTo, from: wallet, status: 1, blockNumber: 123,
+      logs: [{ address, topics: log.topics, data: log.data }],
+    });
+
+    await expect(service.confirm({ intentId: 'intent-1', transactionHash: hash }, user))
+      .rejects.toThrow(ConflictException);
+    expect(tx.shipment.update).not.toHaveBeenCalled();
+  });
+
   it('rejects a transaction sent by a different wallet', async () => {
     prisma.blockchainActionIntent.findUnique.mockResolvedValue({
       id: 'intent-1',
@@ -241,7 +386,48 @@ describe('BlockchainActionService', () => {
     });
     await expect(
       service.confirm({ intentId: 'intent-1', transactionHash: hash }, user),
-    ).rejects.toThrow(ForbiddenException);
+    ).rejects.toThrow(
+      'wallet ผู้ส่งธุรกรรมไม่ตรงกับ walletAddress ของบัญชีผู้ใช้งาน',
+    );
+  });
+
+  it.each([
+    {
+      receiptStatus: 0,
+      transactionTo: address,
+      message: 'ธุรกรรมบน Blockchain ล้มเหลว',
+    },
+    {
+      receiptStatus: 1,
+      transactionTo: wallet,
+      message: 'ธุรกรรมนี้ไม่ได้ส่งไปยัง SupplyChainRegistry ที่กำหนด',
+    },
+  ])('identifies a failed or wrong-contract transaction: $message', async ({
+    receiptStatus,
+    transactionTo,
+    message,
+  }) => {
+    prisma.blockchainActionIntent.findUnique.mockResolvedValue({
+      id: 'intent-1',
+      userId: user.id,
+      status: 'PENDING',
+    });
+    provider.getNetwork.mockResolvedValue({ chainId: 11155111n });
+    provider.getTransaction.mockResolvedValue({
+      to: transactionTo,
+      from: wallet,
+    });
+    provider.getTransactionReceipt.mockResolvedValue({
+      hash,
+      to: transactionTo,
+      from: wallet,
+      status: receiptStatus,
+      logs: [],
+    });
+
+    await expect(
+      service.confirm({ intentId: 'intent-1', transactionHash: hash }, user),
+    ).rejects.toThrow(new BadRequestException(message));
   });
 
   it('rejects a transaction hash already assigned to another intent', async () => {

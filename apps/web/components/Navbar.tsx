@@ -185,19 +185,26 @@ export function Navbar() {
           {/* 1. Brand Logo */}
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <img src="/brand_logo.png" alt="B-MOST" className="h-9 w-9 rounded-xl object-cover group-hover:scale-105 transition-transform duration-200" />
+              {/* Icon Logo */}
+              <img
+                src="/icon_logo.png"
+                alt="B-MOST"
+                className="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-200"
+              />
 
-              </div>
+              {/* Brand */}
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold tracking-tight text-slate-900 text-base">
                     B-MOST
                   </span>
+
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     EVM
                   </span>
                 </div>
+
                 <span className="hidden xl:inline-block text-[10px] text-slate-400 font-medium -mt-0.5">
                   Supply Chain Traceability
                 </span>
@@ -299,7 +306,7 @@ export function Navbar() {
             {isAuthenticated && user && (
               <div className="hidden md:flex items-center gap-1" title={wallet.error || undefined}>
                 <button type="button" onClick={wallet.connect}
-                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs cursor-pointer">
                   {wallet.account ? `${wallet.account.slice(0, 6)}…${wallet.account.slice(-4)}` : 'เชื่อมต่อ MetaMask'}
                 </button>
                 {wallet.account && !wallet.isSepolia && (
@@ -423,6 +430,15 @@ export function Navbar() {
 
                     {/* Quick Profile Links */}
                     <div className="py-1 text-xs">
+                      {user.role === 'SUPER_ADMIN' && (
+                        <Link
+                          href="/admin/wallets"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 transition"
+                        >
+                          จัดการ Wallet ผู้ใช้
+                        </Link>
+                      )}
                       <Link
                         href="/products"
                         onClick={() => setUserMenuOpen(false)}
@@ -605,6 +621,15 @@ export function Navbar() {
 
           {/* Action Buttons in Mobile */}
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+            {user?.role === 'SUPER_ADMIN' && (
+              <Link
+                href="/admin/wallets"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center py-2 px-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold"
+              >
+                จัดการ Wallet ผู้ใช้
+              </Link>
+            )}
             <Link
               href="/products/new"
               onClick={() => setMobileMenuOpen(false)}

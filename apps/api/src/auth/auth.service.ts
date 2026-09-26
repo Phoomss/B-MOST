@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -31,22 +32,42 @@ export class AuthService {
     });
   }
 
-  async setUserWallet(id: string, walletAddress: string) {
+  async setUserWallet(
+    id: string,
+    walletAddress: string,
+    syncOrganization = false,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, organizationId: true },
     });
     if (!user) throw new NotFoundException('ไม่พบบัญชีผู้ใช้');
-    return this.prisma.user.update({
-      where: { id },
-      data: { walletAddress: ethers.getAddress(walletAddress) },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        organizationId: true,
-        walletAddress: true,
-      },
+    if (syncOrganization && !user.organizationId) {
+      throw new BadRequestException('ผู้ใช้ไม่มีองค์กรให้ตั้งค่า walletAddress');
+    }
+    if (!ethers.isAddress(walletAddress)) {
+      throw new BadRequestException('walletAddress ไม่ถูกต้อง');
+    }
+    const address = ethers.getAddress(walletAddress);
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id },
+        data: { walletAddress: address },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          organizationId: true,
+          walletAddress: true,
+        },
+      });
+      if (syncOrganization && user.organizationId) {
+        await tx.organization.update({
+          where: { id: user.organizationId },
+          data: { walletAddress: address },
+        });
+      }
+      return updated;
     });
   }
 

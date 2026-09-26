@@ -22,6 +22,8 @@
 
 องค์กรจำลองครบทุกประเภทตามมาตรฐานห่วงโซ่อุปทาน (Supply Chain Hierarchy):
 
+> **หมายเหตุ:** Wallet ในตารางนี้เป็นตัวอย่างข้อมูลทดสอบเดิม ไม่ใช่ค่าในฐานข้อมูลหรือ role บนสัญญา Sepolia ปัจจุบัน สำหรับ Account 1/2 ให้เทียบ public address และดูสถานะที่ตรวจจริงใน [Wallet และ Role ที่ใช้งานจริง](WALLET_ROLES.md)
+
 | รหัสองค์กร (Code) | ชื่อองค์กร (Organization Name) | ประเภท (Type) | กระเป๋าบล็อกเชน (Wallet Address) | บทบาทในระบบ |
 | :--- | :--- | :--- | :--- | :--- |
 | **`ORG-MFG-001`** | **Apex Tech Manufacturing** | `MANUFACTURER` | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` | โรงงานผู้ผลิตต้นทาง, ลงทะเบียนสินค้า, บันทึกลง Smart Contract |

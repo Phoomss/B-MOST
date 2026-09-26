@@ -48,6 +48,15 @@ export interface OrganizationItem {
   status: string;
 }
 
+export interface UserWalletItem {
+  id: string;
+  email: string;
+  role: string;
+  organizationId: string | null;
+  walletAddress: string | null;
+  status: string;
+}
+
 export interface ShipmentItem {
   id?: string;
   shipmentCode: string;
@@ -542,6 +551,12 @@ export const api = {
         body: JSON.stringify(credentials),
       }),
     me: () => request<any>('auth/me'),
+    listUserWallets: () => request<UserWalletItem[]>('auth/users'),
+    setUserWallet: (id: string, walletAddress: string, syncOrganization: boolean) =>
+      request<UserWalletItem>(`auth/users/${id}/wallet`, {
+        method: 'PATCH',
+        body: JSON.stringify({ walletAddress, syncOrganization }),
+      }),
   },
   products: {
     list: (params?: {
@@ -724,6 +739,7 @@ export const api = {
       request<{ data: OrganizationItem[] } | OrganizationItem[]>('organizations').then((res) =>
         Array.isArray(res) ? res : res.data || [],
       ),
+    get: (id: string) => request<OrganizationItem>(`organizations/${id}`),
   },
   qualityChecks: {
     list: (params?: {

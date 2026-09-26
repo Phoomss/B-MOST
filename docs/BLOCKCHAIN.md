@@ -1,5 +1,7 @@
 # Blockchain & Smart Contract Specification
 
+The application currently uses the Sepolia deployment at `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a` (Chain ID `11155111`). See [Wallet and Role Mapping](WALLET_ROLES.md) for the current database addresses and verified contract roles. The local Hardhat details below describe an optional development network.
+
 ## 1. Network & Infrastructure
 
 ### 1.1 Development Environment

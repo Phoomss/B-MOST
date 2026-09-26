@@ -76,7 +76,7 @@ export class BlockchainActionService {
   private wallet(user: AuthUser): string {
     if (!user.walletAddress || !ethers.isAddress(user.walletAddress)) {
       throw new ForbiddenException(
-        'กรุณากำหนด walletAddress ให้บัญชีผู้ใช้ก่อนทำธุรกรรม',
+        'ยังไม่กำหนด public wallet address ให้ผู้ใช้ โปรดให้ Super Admin ตั้งค่า walletAddress ของบัญชีผู้ใช้ก่อน แล้วลองใหม่',
       );
     }
     return ethers.getAddress(user.walletAddress);
@@ -105,7 +105,7 @@ export class BlockchainActionService {
     }
     if (!this.sameAddress(orgWallet, wallet)) {
       throw new ConflictException(
-        'walletAddress ขององค์กรไม่ตรงกับบัญชีผู้ใช้',
+        'walletAddress ขององค์กรไม่ตรงกับบัญชีผู้ใช้ โปรดให้ Super Admin ตั้งค่า walletAddress ขององค์กรให้เป็น MetaMask บัญชีเดียวกัน',
       );
     }
   }
@@ -656,37 +656,47 @@ export class BlockchainActionService {
       throw new ConflictException('ธุรกรรมนี้ถูกใช้ยืนยันคำขออื่นแล้ว');
     }
     const address = this.blockchain.getContractAddress();
+    if (receipt.status !== 1) {
+      throw new BadRequestException('ธุรกรรมบน Blockchain ล้มเหลว');
+    }
+    const directCall =
+      transaction.to?.toLowerCase() === address.toLowerCase() &&
+      receipt.to?.toLowerCase() === address.toLowerCase();
     if (
-      transaction.to?.toLowerCase() !== address.toLowerCase() ||
-      receipt.to?.toLowerCase() !== address.toLowerCase() ||
+      transaction.to?.toLowerCase() !== receipt.to?.toLowerCase()
+    ) {
+      throw new BadRequestException('ปลายทางของธุรกรรมและใบรับธุรกรรมไม่ตรงกัน');
+    }
+    if (
       !this.sameAddress(transaction.from, wallet) ||
-      !this.sameAddress(receipt.from, wallet) ||
-      receipt.status !== 1
+      !this.sameAddress(receipt.from, wallet)
     ) {
       throw new ForbiddenException(
-        'ธุรกรรมไม่สำเร็จหรือผู้ส่ง/สัญญาไม่ตรงกับคำขอ',
+        'wallet ผู้ส่งธุรกรรมไม่ตรงกับ walletAddress ของบัญชีผู้ใช้งาน',
       );
     }
     const contract = this.blockchain.getReadOnlyContract();
-    const decoded = contract.interface.parseTransaction({
-      data: transaction.data,
-      value: transaction.value,
-    });
-    if (!decoded || decoded.name !== intent.functionName)
-      throw new ConflictException('ฟังก์ชันในธุรกรรมไม่ตรงกับคำขอ');
     const args = intent.args as string[];
-    const encoded = contract.interface.encodeFunctionData(
-      intent.functionName,
-      args.map((value, index) => {
-        const input = contract.interface.getFunction(intent.functionName)
-          ?.inputs[index];
-        if (input?.type.startsWith('uint')) return BigInt(value);
-        if (input?.type === 'bool') return value === 'true';
-        return value;
-      }),
-    );
-    if (encoded.toLowerCase() !== transaction.data.toLowerCase()) {
-      throw new ConflictException('ข้อมูลธุรกรรมไม่ตรงกับคำขอที่เตรียมไว้');
+    if (directCall) {
+      const decoded = contract.interface.parseTransaction({
+        data: transaction.data,
+        value: transaction.value,
+      });
+      if (!decoded || decoded.name !== intent.functionName)
+        throw new ConflictException('ฟังก์ชันในธุรกรรมไม่ตรงกับคำขอ');
+      const encoded = contract.interface.encodeFunctionData(
+        intent.functionName,
+        args.map((value, index) => {
+          const input = contract.interface.getFunction(intent.functionName)
+            ?.inputs[index];
+          if (input?.type.startsWith('uint')) return BigInt(value);
+          if (input?.type === 'bool') return value === 'true';
+          return value;
+        }),
+      );
+      if (encoded.toLowerCase() !== transaction.data.toLowerCase()) {
+        throw new ConflictException('ข้อมูลธุรกรรมไม่ตรงกับคำขอที่เตรียมไว้');
+      }
     }
     const expectedEvent = EVENTS[intent.action as UserSignedAction];
     const logs = receipt.logs
@@ -699,6 +709,10 @@ export class BlockchainActionService {
         }
       });
     const event = logs.find((log) => log?.name === expectedEvent);
+    if (!event && !directCall)
+      throw new BadRequestException(
+        'ธุรกรรมนี้ไม่ได้ส่งไปยัง SupplyChainRegistry ที่กำหนด',
+      );
     if (!event)
       throw new ConflictException(`ไม่พบ event ${expectedEvent} จากสัญญา`);
     const action = intent.action as UserSignedAction;
@@ -718,8 +732,12 @@ export class BlockchainActionService {
     if (action === UserSignedAction.REGISTER_PRODUCT) {
       if (
         event.args.productCode !== product.productCode ||
+        event.args.productCode !== args[0] ||
+        (product.blockchainProductId &&
+          eventProductId.toString() !== product.blockchainProductId) ||
         String(event.args.productHash).toLowerCase() !==
           product.productHash?.toLowerCase() ||
+        String(event.args.productHash).toLowerCase() !== args[1]?.toLowerCase() ||
         !this.sameAddress(event.args.manufacturer, wallet)
       ) {
         throw new ConflictException('ProductRegistered event ไม่ตรงกับสินค้า');
@@ -734,6 +752,10 @@ export class BlockchainActionService {
       if (
         !shipment ||
         event.args.shipmentCode !== shipment.shipmentCode ||
+        event.args.shipmentCode !== args[0] ||
+        (shipment.blockchainShipmentId &&
+          String(event.args.shipmentId) !== shipment.blockchainShipmentId) ||
+        eventProductId.toString() !== args[1] ||
         String(event.args.receiver).toLowerCase() !== args[2].toLowerCase() ||
         String(event.args.carrier).toLowerCase() !== args[3].toLowerCase() ||
         !this.sameAddress(event.args.sender, wallet)
@@ -746,6 +768,7 @@ export class BlockchainActionService {
     if (
       action === UserSignedAction.QUALITY_CHECK &&
       (Boolean(event.args.passed) !== (args[1] === 'true') ||
+        eventProductId.toString() !== args[0] ||
         String(event.args.notes) !== args[2] ||
         !this.sameAddress(event.args.inspector, wallet))
     ) {
@@ -756,6 +779,44 @@ export class BlockchainActionService {
       !this.sameAddress(event.args.receiver, wallet)
     ) {
       throw new ConflictException('ProductReceived event ไม่ตรงกับผู้รับ');
+    }
+    if (
+      action === UserSignedAction.SHIP_PRODUCT &&
+      !this.sameAddress(event.args.sender, wallet)
+    ) {
+      throw new ConflictException('ProductShipped event ไม่ตรงกับผู้ส่ง');
+    }
+    if (
+      action === UserSignedAction.MARK_IN_TRANSIT &&
+      !this.sameAddress(event.args.carrier, wallet)
+    ) {
+      throw new ConflictException('ShipmentInTransit event ไม่ตรงกับผู้ขนส่ง');
+    }
+    if (
+      action === UserSignedAction.STORE_PRODUCT &&
+      !this.sameAddress(event.args.owner, wallet)
+    ) {
+      throw new ConflictException('ProductStored event ไม่ตรงกับเจ้าของ');
+    }
+    if (
+      action === UserSignedAction.MARK_SOLD &&
+      !this.sameAddress(event.args.seller, wallet)
+    ) {
+      throw new ConflictException('ProductSold event ไม่ตรงกับผู้ขาย');
+    }
+    if (
+      action === UserSignedAction.TRANSFER_OWNERSHIP &&
+      (!this.sameAddress(event.args.previousOwner, wallet) ||
+        !this.sameAddress(event.args.newOwner, args[1]))
+    ) {
+      throw new ConflictException('OwnershipTransferred event ไม่ตรงกับคำขอ');
+    }
+    if (
+      action === UserSignedAction.RECALL_PRODUCT &&
+      (!this.sameAddress(event.args.recalledBy, wallet) ||
+        String(event.args.reason) !== args[1])
+    ) {
+      throw new ConflictException('ProductRecalled event ไม่ตรงกับคำขอ');
     }
     if (
       [
@@ -776,7 +837,14 @@ export class BlockchainActionService {
         : NEXT_STATUS[action];
     const result = await this.prisma.$transaction(async (tx) => {
       const productData: Prisma.ProductUpdateInput = {};
-      if (nextStatus) productData.status = nextStatus;
+      if (
+        nextStatus &&
+        !(action === UserSignedAction.REGISTER_PRODUCT &&
+          product.blockchainProductId &&
+          product.status !== ProductStatus.REGISTERED)
+      ) {
+        productData.status = nextStatus;
+      }
       if (action === UserSignedAction.REGISTER_PRODUCT) {
         productData.blockchainProductId = eventProductId.toString();
         productData.blockchainChainId = 11155111;
@@ -868,8 +936,13 @@ export class BlockchainActionService {
           status: TxStatus.CONFIRMED,
         },
         update: {
+          blockNumber: BigInt(receipt.blockNumber),
           chainId: 11155111,
           contractAddress: address,
+          eventType: expectedEvent,
+          entityType: intent.entityType,
+          entityId: intent.entityId,
+          walletAddress: wallet,
           status: TxStatus.CONFIRMED,
           productId: product.id,
         },

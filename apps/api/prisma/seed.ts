@@ -44,7 +44,6 @@ async function main() {
       address: '88 Industrial Park Road, Bangkok, Thailand',
       contactEmail: 'contact@apextech.com',
       phone: '+66 2 123 4567',
-      walletAddress: '0x70997970C51812dc3A010C7d01b50e0d17dc79C8',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -57,7 +56,6 @@ async function main() {
       address: '102 Logistics Boulevard, Samut Prakan, Thailand',
       contactEmail: 'ops@globalexpress.com',
       phone: '+66 2 765 4321',
-      walletAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -70,7 +68,6 @@ async function main() {
       address: '45 Warehouse District, Chonburi, Thailand',
       contactEmail: 'support@safehub.com',
       phone: '+66 38 123 999',
-      walletAddress: '0x90F79bf6EB2c4f870365E785982E1f101E93b906',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -83,7 +80,6 @@ async function main() {
       address: '999 Sukhumvit Road, Bangkok, Thailand',
       contactEmail: 'store@primeretail.com',
       phone: '+66 2 999 8888',
-      walletAddress: '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -96,7 +92,6 @@ async function main() {
       address: '1 Financial Tower, Sathorn, Bangkok, Thailand',
       contactEmail: 'audit@chainaudit.com',
       phone: '+66 2 555 1212',
-      walletAddress: '0x9965507D1a55bcC2695C58ba16FB37d819B0A4df',
       status: OrganizationStatus.ACTIVE,
     },
   });

@@ -6,6 +6,22 @@ RUN apk add --no-cache libc6-compat openssl netcat-openbsd curl
 RUN corepack enable && corepack prepare pnpm@11.1.1 --activate
 WORKDIR /app
 
+# Development image: keep dependencies and generated Prisma client in the image
+# while Compose Watch syncs source files into the running container.
+FROM base AS development
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/contracts/package.json ./packages/contracts/
+RUN pnpm install --frozen-lockfile
+COPY apps/api ./apps/api
+RUN pnpm --filter @b-most/api run prisma:generate
+COPY apps/api/docker-entrypoint.sh /usr/local/bin/bmost-api-entrypoint
+RUN sed -i 's/\r$//' /usr/local/bin/bmost-api-entrypoint && chmod +x /usr/local/bin/bmost-api-entrypoint
+WORKDIR /app/apps/api
+ENTRYPOINT ["/usr/local/bin/bmost-api-entrypoint"]
+CMD ["pnpm", "run", "start:dev"]
+
 # Stage 2: Workspace dependency resolution and building
 FROM base AS builder
 WORKDIR /app
