@@ -12,6 +12,7 @@ import {
   getProductStatusBadge,
   THAI_PRODUCT_STATUS,
 } from '../../../lib/thai-locale';
+import { executeUserSignedAction } from '../../../lib/blockchain/wallet';
 import {
   LinkIcon,
   ShieldCheckIcon,
@@ -36,6 +37,7 @@ export default function ProductDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [registering, setRegistering] = useState(false);
   const [storing, setStoring] = useState(false);
+  const [selling, setSelling] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,9 +79,12 @@ export default function ProductDetailPage({
       setRegistering(true);
       setRegisterSuccess(null);
       setError(null);
-      const res = await api.products.registerOnBlockchain(product.id);
-      setProduct(res);
-      setRegisterSuccess('บันทึกข้อมูลสินค้าลงบน Ethereum Smart Contract สำเร็จ!');
+      const res = await executeUserSignedAction(
+        { action: 'registerProduct', entityId: product.id },
+        setRegisterSuccess,
+      );
+      setProduct(await api.products.get(product.id));
+      setRegisterSuccess(`บันทึกบน Sepolia สำเร็จ: ${res.transactionHash}`);
       const hist = await api.products.getHistory(product.id).catch(() => null);
       setHistory(hist);
     } catch (err: unknown) {
@@ -95,12 +100,27 @@ export default function ProductDetailPage({
     try {
       setStoring(true);
       setError(null);
-      const result = await api.products.store(product.id);
-      setProduct(result.product);
+      await executeUserSignedAction({ action: 'storeProduct', entityId: product.id });
+      setProduct(await api.products.get(product.id));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถจัดเก็บสินค้าได้');
     } finally {
       setStoring(false);
+    }
+  };
+
+  const handleSell = async () => {
+    if (!product) return;
+    try {
+      setSelling(true);
+      setError(null);
+      const result = await executeUserSignedAction({ action: 'markAsSold', entityId: product.id });
+      setProduct(await api.products.get(product.id));
+      setRegisterSuccess(`ขายสินค้าบน Sepolia สำเร็จ: ${result.transactionHash}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกการขายได้');
+    } finally {
+      setSelling(false);
     }
   };
 
@@ -222,6 +242,16 @@ export default function ProductDetailPage({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
               >
                 {storing ? 'กำลังจัดเก็บ...' : 'จัดเก็บสินค้า'}
+              </button>
+            )}
+
+            {product.status === 'STORED' && (
+              <button
+                onClick={handleSell}
+                disabled={selling}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                {selling ? 'กำลังบันทึกการขาย...' : 'ขายสินค้า'}
               </button>
             )}
 

@@ -809,6 +809,41 @@ export const api = {
     getFilterOptions: () => request<AuditFilterOptions>('audit-logs/filters/options'),
   },
   blockchain: {
+    prepareAction: (data: {
+      action: string;
+      entityId: string;
+      passed?: boolean;
+      notes?: string;
+      receiverOrganizationId?: string;
+      carrierOrganizationId?: string;
+      origin?: string;
+      destination?: string;
+      shipmentCode?: string;
+      newOwnerOrganizationId?: string;
+    }) => request<{
+      intentId: string;
+      functionName: string;
+      args: string[];
+      expectedWallet: string;
+      chainId: number;
+      contractAddress: string;
+      productDbId: string;
+      shipmentDbId: string | null;
+      expiresAt: string;
+    }>('blockchain/actions/prepare', { method: 'POST', body: JSON.stringify(data) }),
+    confirmAction: (intentId: string, transactionHash: string) =>
+      request<{
+        verified: boolean;
+        synced: boolean;
+        transactionHash: string;
+        blockNumber: number;
+        chainId: number;
+        product: ProductItem;
+        shipmentDbId: string | null;
+      }>('blockchain/actions/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ intentId, transactionHash }),
+      }),
     verifyTransaction: (transactionHash: string) =>
       request<{
         verified: boolean;

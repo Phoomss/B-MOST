@@ -103,7 +103,7 @@ describe('ShipmentsPage Component', () => {
     expect(shippedTab).toBeInTheDocument();
   });
 
-  it('allows opening shipment modal and submitting a new shipment', async () => {
+  it('allows opening the new shipment form', async () => {
     vi.mocked(api.products.list).mockResolvedValueOnce({
       data: [
         {
@@ -148,11 +148,11 @@ describe('ShipmentsPage Component', () => {
     render(<ShipmentsPage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /\+ create shipment/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /สร้างการจัดส่งใหม่/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /\+ create shipment/i }));
+    fireEvent.click(screen.getByRole('button', { name: /สร้างการจัดส่งใหม่/i }));
 
-    expect(screen.getByText(/create new shipment reference/i)).toBeInTheDocument();
+    expect(screen.getByText(/สร้างการจัดส่งใหม่ \(Create Shipment\)/i)).toBeInTheDocument();
   });
 });

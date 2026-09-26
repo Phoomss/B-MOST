@@ -54,7 +54,7 @@ export async function writeSupplyChainAction(params: {
   expectedWallet: string;
   functionName: string;
   args: readonly unknown[];
-}): Promise<{ hash: Hash; blockNumber: bigint; synced: boolean }> {
+}): Promise<{ hash: Hash; blockNumber: bigint }> {
   if (
     Number(process.env.NEXT_PUBLIC_CHAIN_ID) !== SEPOLIA_CHAIN_ID ||
     process.env.NEXT_PUBLIC_CONTRACT_ADDRESS?.toLowerCase() !== SEPOLIA_CONTRACT_ADDRESS.toLowerCase()
@@ -73,22 +73,61 @@ export async function writeSupplyChainAction(params: {
     throw new Error('TODO: Waiting for SupplyChainRegistry ABI');
   }
   const abi = supplyChainRegistryAbi as Abi;
-  if (!abi.some((item) => item.type === 'function' && item.name === params.functionName)) {
+  const fragment = abi.find((item) => item.type === 'function' && item.name === params.functionName);
+  if (!fragment || fragment.type !== 'function') {
     throw new Error('ไม่พบฟังก์ชันนี้ใน ABI ของ Contract');
   }
+  const args = params.args.map((value, index) => {
+    const type = fragment.inputs[index]?.type;
+    if (type?.startsWith('uint') || type?.startsWith('int')) return BigInt(String(value));
+    if (type === 'bool') return value === true || value === 'true';
+    return value;
+  });
   const hash = await client.writeContract({
     account,
     address: SEPOLIA_CONTRACT_ADDRESS,
     abi,
     functionName: params.functionName,
-    args: params.args,
+    args,
     chain: sepolia,
   });
   const receipt = await getPublicClient().waitForTransactionReceipt({ hash });
   if (receipt.status !== 'success') throw new Error('ธุรกรรมบน Blockchain ล้มเหลว');
-  const verification = await api.blockchain.verifyTransaction(hash);
-  if (!verification.verified || verification.transactionHash.toLowerCase() !== hash.toLowerCase()) {
-    throw new Error('ตรวจสอบธุรกรรมบน Sepolia ไม่สำเร็จ');
+  return { hash, blockNumber: receipt.blockNumber };
+}
+
+export async function executeUserSignedAction(
+  data: Parameters<typeof api.blockchain.prepareAction>[0],
+  onProgress?: (message: string) => void,
+) {
+  onProgress?.('กำลังตรวจสอบสถานะสินค้าและเตรียมธุรกรรม...');
+  const prepared = await api.blockchain.prepareAction(data);
+  const account = await connectWallet();
+  assertExpectedWallet(account, prepared.expectedWallet);
+  if (Date.now() >= new Date(prepared.expiresAt).getTime()) {
+    throw new Error('คำขอธุรกรรมหมดอายุ กรุณาลองใหม่');
   }
-  return { hash, blockNumber: receipt.blockNumber, synced: verification.synced };
+  onProgress?.('กรุณายืนยันธุรกรรมใน MetaMask');
+  let hash: Hash;
+  try {
+    ({ hash } = await writeSupplyChainAction({
+      account,
+      expectedWallet: prepared.expectedWallet,
+      functionName: prepared.functionName,
+      args: prepared.args,
+    }));
+  } catch (error) {
+    const code = (error as { code?: number | string })?.code;
+    if (code === 4001 || code === 'ACTION_REJECTED') {
+      throw new Error('ผู้ใช้ยกเลิกธุรกรรมใน MetaMask');
+    }
+    throw error;
+  }
+  onProgress?.('กำลังตรวจสอบธุรกรรมและซิงก์ข้อมูล...');
+  const confirmed = await api.blockchain.confirmAction(prepared.intentId, hash);
+  if (!confirmed.verified || !confirmed.synced) {
+    throw new Error(`ธุรกรรม ${hash} ยืนยันแล้ว แต่ยังซิงก์ข้อมูลไม่สำเร็จ`);
+  }
+  onProgress?.('ธุรกรรมสำเร็จ');
+  return confirmed;
 }

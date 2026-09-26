@@ -6,6 +6,7 @@ import { BlockchainService } from './blockchain.service';
 import { BlockchainTransactionService } from './blockchain-transaction.service';
 import { BlockchainIndexerService } from './blockchain-indexer.service';
 import { BlockchainVerificationService } from './blockchain-verification.service';
+import { BlockchainActionService } from './blockchain-action.service';
 
 describe('BlockchainController', () => {
   let controller: BlockchainController;
@@ -93,6 +94,10 @@ describe('BlockchainController', () => {
         {
           provide: BlockchainVerificationService,
           useValue: { verifyTransaction: jest.fn() },
+        },
+        {
+          provide: BlockchainActionService,
+          useValue: { prepare: jest.fn(), confirm: jest.fn() },
         },
       ],
     }).compile();

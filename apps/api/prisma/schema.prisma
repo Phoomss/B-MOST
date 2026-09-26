@@ -235,6 +235,25 @@ model BlockchainTransaction {
   @@index([status])
 }
 
+model BlockchainActionIntent {
+  id              String    @id @default(uuid())
+  userId          String
+  action          String
+  entityType      String
+  entityId        String
+  functionName    String
+  args            Json
+  metadata        Json?
+  transactionHash String?   @unique
+  status          String    @default("PENDING")
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  confirmedAt     DateTime?
+
+  @@index([userId, status])
+  @@index([entityType, entityId])
+}
+
 model AuditLog {
   id             String        @id @default(uuid())
   userId         String?

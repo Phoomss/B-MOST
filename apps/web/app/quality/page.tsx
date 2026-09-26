@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { api, ProductItem, QualityCheckItem } from '../../lib/api';
+import { executeUserSignedAction } from '../../lib/blockchain/wallet';
 import { getQcBadge, THAI_PRODUCT_STATUS } from '../../lib/thai-locale';
 import {
   CheckIcon,
@@ -88,17 +89,17 @@ function QualityPageContent() {
       setErrorMessage(null);
       setSuccessData(null);
 
-      const res = await api.qualityChecks.create({
-        productId: selectedProductId,
-        result: resultVerdict,
-        inspectorName: inspectorName.trim() || undefined,
-        notes: notes.trim() || undefined,
+      const res = await executeUserSignedAction({
+        action: 'recordQualityCheck',
+        entityId: selectedProductId,
+        passed: resultVerdict === 'PASSED',
+        notes: notes.trim(),
       });
 
       setSuccessData({
         message: 'บันทึกผลการตรวจสอบคุณภาพเรียบร้อยแล้ว',
-        txHash: res.blockchain?.txHash || '',
-        productCode: res.product?.productCode || '',
+        txHash: res.transactionHash,
+        productCode: res.product.productCode,
         newStatus: res.product?.status || (resultVerdict === 'PASSED' ? 'QUALITY_CHECKED' : 'RECALLED'),
       });
 

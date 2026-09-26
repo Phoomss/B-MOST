@@ -2,6 +2,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CreateProductPage from '../app/products/new/page';
 import { api } from '../lib/api';
+import { executeUserSignedAction } from '../lib/blockchain/wallet';
+
+vi.mock('../lib/blockchain/wallet', () => ({ executeUserSignedAction: vi.fn() }));
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -34,7 +37,7 @@ describe('Product Registration Page', () => {
     expect(screen.getByPlaceholderText('e.g. PRD-2026-0001')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g. SN-8921473')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g. Industrial IoT Sensor Probe')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('e.g. Electronics, Pharmaceuticals, Consumer Goods')).toBeInTheDocument();
+    expect(screen.getByLabelText(/category/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/register immediately onto smart contract/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /register product/i })).toBeInTheDocument();
   });
@@ -55,6 +58,7 @@ describe('Product Registration Page', () => {
   });
 
   it('submits form with correct payload including registerOnBlockchain flag and redirects to product detail', async () => {
+    vi.mocked(executeUserSignedAction).mockResolvedValueOnce({ verified: true, synced: true } as any);
     vi.mocked(api.products.create).mockResolvedValueOnce({
       id: 'prod-new-uuid',
       productCode: 'PRD-TEST-001',
@@ -92,8 +96,9 @@ describe('Product Registration Page', () => {
         name: 'High Precision Sensor',
         category: undefined,
         description: undefined,
-        registerOnBlockchain: true,
+        registerOnBlockchain: false,
       });
+      expect(executeUserSignedAction).toHaveBeenCalledWith({ action: 'registerProduct', entityId: 'prod-new-uuid' });
       expect(mockPush).toHaveBeenCalledWith('/products/prod-new-uuid');
     });
   });

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
+import { executeUserSignedAction } from '../../lib/blockchain/wallet';
 import {
   api,
   ProductItem,
@@ -143,8 +144,9 @@ function ShipmentsPageContent() {
       setSubmitting(true);
       setErrorMessage(null);
 
-      const res = await api.shipments.create({
-        productId: selectedProductId,
+      const res = await executeUserSignedAction({
+        action: 'createShipment',
+        entityId: selectedProductId,
         receiverOrganizationId: receiverOrgId,
         carrierOrganizationId: carrierOrgId || undefined,
         origin: origin.trim(),
@@ -154,8 +156,8 @@ function ShipmentsPageContent() {
 
       setSuccessMessage({
         title: 'สร้างใบจัดส่งสินค้าเรียบร้อยแล้ว',
-        details: `รหัสการจัดส่ง: ${res.shipment.shipmentCode}`,
-        txHash: res.blockchain?.txHash,
+        details: `บันทึกบน Sepolia แล้ว (Shipment DB ID: ${res.shipmentDbId})`,
+        txHash: res.transactionHash,
       });
 
       setShowCreateModal(false);
@@ -181,12 +183,12 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
-      const res = await api.shipments.ship(shipmentId);
+      const res = await executeUserSignedAction({ action: 'shipProduct', entityId: shipmentId });
 
       setSuccessMessage({
         title: 'จัดส่งสินค้าเรียบร้อยแล้ว (Dispatched)',
         details: `สถานะสินค้าเปลี่ยนเป็น SHIPPED`,
-        txHash: res.blockchain?.txHash,
+        txHash: res.transactionHash,
       });
 
       const shpRes = await api.shipments.list({ limit: 50 });
@@ -203,12 +205,12 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
-      const res = await api.shipments.receive(shipmentId);
+      const res = await executeUserSignedAction({ action: 'receiveProduct', entityId: shipmentId });
 
       setSuccessMessage({
         title: 'รับมอบสินค้าและโอนกรรมสิทธิ์เรียบร้อยแล้ว (Delivered & Ownership Transferred)',
         details: `สถานะสินค้าเปลี่ยนเป็น RECEIVED และกรรมสิทธิ์ถูกโอนไปยังองค์กรผู้รับ`,
-        txHash: res.blockchain?.txHash,
+        txHash: res.transactionHash,
       });
 
       const shpRes = await api.shipments.list({ limit: 50 });
@@ -225,7 +227,7 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
-      await api.shipments.markInTransit(shipmentId);
+      await executeUserSignedAction({ action: 'markInTransit', entityId: shipmentId });
       const shpRes = await api.shipments.list({ limit: 50 });
       setShipments(shpRes.data || []);
     } catch (err: unknown) {

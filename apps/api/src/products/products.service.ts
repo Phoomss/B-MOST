@@ -50,31 +50,74 @@ export class ProductsService {
       include: { currentOwner: true },
     });
     if (!product) throw new NotFoundException(`Product '${id}' not found`);
-    if (currentUser?.role !== UserRole.SUPER_ADMIN && currentUser?.organizationId !== product.currentOwnerId) {
-      throw new ForbiddenException('เฉพาะองค์กรเจ้าของสินค้าปัจจุบันเท่านั้นที่จัดเก็บสินค้าได้');
+    if (
+      currentUser?.role !== UserRole.SUPER_ADMIN &&
+      currentUser?.organizationId !== product.currentOwnerId
+    ) {
+      throw new ForbiddenException(
+        'เฉพาะองค์กรเจ้าของสินค้าปัจจุบันเท่านั้นที่จัดเก็บสินค้าได้',
+      );
     }
     if (!product.blockchainProductId) {
-      throw new ConflictException('BLOCKCHAIN_ID_MISSING: สินค้ายังไม่ผูกกับ Blockchain');
+      throw new ConflictException(
+        'BLOCKCHAIN_ID_MISSING: สินค้ายังไม่ผูกกับ Blockchain',
+      );
     }
-    const onChainProduct = await this.blockchainService.getProduct(Number(product.blockchainProductId));
+    const onChainProduct = await this.blockchainService.getProduct(
+      Number(product.blockchainProductId),
+    );
     if (onChainProduct.productCode !== product.productCode) {
-      throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+      throw new ConflictException(
+        'BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล',
+      );
     }
-    this.stateMachine.checkStateMismatch(product.status, onChainProduct.status, product.productCode, product.id,
-      product.blockchainProductId, 'storeProduct', this.blockchainService.getContractAddress());
-    this.stateMachine.validateTransition(onChainProduct.status, 'storeProduct', product.productCode, product.id,
-      product.blockchainProductId, product.status, this.blockchainService.getContractAddress());
-    const signer = await this.blockchainService.getSigner(dto?.signerPrivateKey).getAddress();
-    if (onChainProduct.currentOwner.toLowerCase() !== signer.toLowerCase() ||
-        product.currentOwner.walletAddress?.toLowerCase() !== signer.toLowerCase()) {
-      throw new ConflictException('BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน');
+    this.stateMachine.checkStateMismatch(
+      product.status,
+      onChainProduct.status,
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      'storeProduct',
+      this.blockchainService.getContractAddress(),
+    );
+    this.stateMachine.validateTransition(
+      onChainProduct.status,
+      'storeProduct',
+      product.productCode,
+      product.id,
+      product.blockchainProductId,
+      product.status,
+      this.blockchainService.getContractAddress(),
+    );
+    const signer = await this.blockchainService
+      .getSigner(dto?.signerPrivateKey)
+      .getAddress();
+    if (
+      onChainProduct.currentOwner.toLowerCase() !== signer.toLowerCase() ||
+      product.currentOwner.walletAddress?.toLowerCase() !== signer.toLowerCase()
+    ) {
+      throw new ConflictException(
+        'BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน',
+      );
     }
-    this.blockchainService.logTransactionAttempt({ productDbId: product.id,
-      productBlockchainId: product.blockchainProductId, productCode: product.productCode,
-      functionName: 'storeProduct' });
-    const receipt = await this.blockchainService.storeProduct(BigInt(product.blockchainProductId), dto?.signerPrivateKey);
-    const updatedProduct = await this.prisma.product.update({ where: { id: product.id }, data: { status: ProductStatus.STORED } });
-    return { product: updatedProduct, blockchain: { ...receipt, status: 'CONFIRMED' } };
+    this.blockchainService.logTransactionAttempt({
+      productDbId: product.id,
+      productBlockchainId: product.blockchainProductId,
+      productCode: product.productCode,
+      functionName: 'storeProduct',
+    });
+    const receipt = await this.blockchainService.storeProduct(
+      BigInt(product.blockchainProductId),
+      dto?.signerPrivateKey,
+    );
+    const updatedProduct = await this.prisma.product.update({
+      where: { id: product.id },
+      data: { status: ProductStatus.STORED },
+    });
+    return {
+      product: updatedProduct,
+      blockchain: { ...receipt, status: 'CONFIRMED' },
+    };
   }
 
   /**
@@ -224,16 +267,7 @@ export class ProductsService {
       })
       .catch(() => {});
 
-    // 7. Optional automatic blockchain registration
-    if (createDto.registerOnBlockchain) {
-      try {
-        return await this.registerOnBlockchain(product.id, currentUser);
-      } catch (error: any) {
-        this.logger.warn(
-          `Product created in DB, but blockchain auto-registration failed: ${error.message}`,
-        );
-      }
-    }
+    // Registration is now a separate MetaMask transaction after the DB record exists.
 
     // 8. Generate QR code
     const qr = await generateProductQr(product.productCode, this.webUrl);
@@ -624,9 +658,11 @@ export class ProductsService {
 
     // Check for duplicate assignment before updating database
     const conflict = await this.prisma.product.findFirst({
-      where: { blockchainProductId: onChainIdStr,
+      where: {
+        blockchainProductId: onChainIdStr,
         blockchainChainId: 11155111,
-        blockchainContractAddress: this.blockchainService.getContractAddress() },
+        blockchainContractAddress: this.blockchainService.getContractAddress(),
+      },
       select: { id: true, productCode: true },
     });
 
@@ -647,7 +683,8 @@ export class ProductsService {
         data: {
           blockchainProductId: onChainIdStr,
           blockchainChainId: 11155111,
-          blockchainContractAddress: this.blockchainService.getContractAddress(),
+          blockchainContractAddress:
+            this.blockchainService.getContractAddress(),
           blockchainTxHash: receipt.txHash,
           productHash,
         },
@@ -804,7 +841,9 @@ export class ProductsService {
         const onChainProductData =
           await this.blockchainService.getProduct(onChainProductIdNum);
         if (onChainProductData.productCode !== product.productCode) {
-          throw new ConflictException('BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล');
+          throw new ConflictException(
+            'BLOCKCHAIN_PRODUCT_MISMATCH: รหัสสินค้าบน Blockchain ไม่ตรงกับฐานข้อมูล',
+          );
         }
         const onChainStatusNum = Number(onChainProductData.status);
 
@@ -830,10 +869,18 @@ export class ProductsService {
           this.blockchainService.getContractAddress(),
         );
 
-        const senderWallet = await this.blockchainService.getSigner(dto?.signerPrivateKey).getAddress();
-        if (onChainProductData.currentOwner.toLowerCase() !== senderWallet.toLowerCase() ||
-            product.currentOwner.walletAddress?.toLowerCase() !== senderWallet.toLowerCase()) {
-          throw new ConflictException('BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน');
+        const senderWallet = await this.blockchainService
+          .getSigner(dto?.signerPrivateKey)
+          .getAddress();
+        if (
+          onChainProductData.currentOwner.toLowerCase() !==
+            senderWallet.toLowerCase() ||
+          product.currentOwner.walletAddress?.toLowerCase() !==
+            senderWallet.toLowerCase()
+        ) {
+          throw new ConflictException(
+            'BLOCKCHAIN_OWNER_MISMATCH: wallet ผู้ลงนามไม่ใช่เจ้าของสินค้าปัจจุบัน',
+          );
         }
 
         this.blockchainService.logTransactionAttempt({

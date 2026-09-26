@@ -3,6 +3,8 @@ import {
   Post,
   Body,
   Get,
+  Patch,
+  Param,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -20,11 +22,28 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { SetUserWalletDto } from './dto/set-user-wallet.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Get('users')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth()
+  async listUserWallets() {
+    return this.authService.listUserWallets();
+  }
+
+  @Patch('users/:id/wallet')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth()
+  async setUserWallet(@Param('id') id: string, @Body() dto: SetUserWalletDto) {
+    return this.authService.setUserWallet(id, dto.walletAddress);
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

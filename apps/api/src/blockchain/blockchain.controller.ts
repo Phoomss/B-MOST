@@ -29,6 +29,12 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BlockchainVerificationService } from './blockchain-verification.service';
 import { VerifyTransactionDto } from './dto/verify-transaction.dto';
+import { BlockchainActionService } from './blockchain-action.service';
+import {
+  ConfirmBlockchainActionDto,
+  PrepareBlockchainActionDto,
+  PrepareRoleChangeDto,
+} from './dto/blockchain-action.dto';
 
 @ApiTags('Blockchain')
 @Controller('blockchain')
@@ -40,13 +46,58 @@ export class BlockchainController {
     private readonly transactionService: BlockchainTransactionService,
     private readonly indexerService: BlockchainIndexerService,
     private readonly verificationService: BlockchainVerificationService,
+    private readonly actionService: BlockchainActionService,
   ) {}
+
+  @Post('actions/prepare')
+  @HttpCode(HttpStatus.OK)
+  async prepareAction(
+    @Body() dto: PrepareBlockchainActionDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.actionService.prepare(dto, user);
+  }
+
+  @Post('actions/confirm')
+  @HttpCode(HttpStatus.OK)
+  async confirmAction(
+    @Body() dto: ConfirmBlockchainActionDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.actionService.confirm(dto, user);
+  }
+
+  @Get('roles/:wallet')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  async getWalletRoles(@Param('wallet') wallet: string) {
+    return this.actionService.getRoles(wallet);
+  }
+
+  @Post('roles/prepare')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async prepareRoleChange(
+    @Body() dto: PrepareRoleChangeDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.actionService.prepareRoleChange(dto, user);
+  }
 
   @Post('verify-transaction')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Independently verify a user-signed Sepolia transaction' })
-  async verifyTransaction(@Body() dto: VerifyTransactionDto, @CurrentUser() user: any) {
-    return this.verificationService.verifyTransaction(dto.transactionHash, user?.walletAddress);
+  @ApiOperation({
+    summary: 'Independently verify a user-signed Sepolia transaction',
+  })
+  async verifyTransaction(
+    @Body() dto: VerifyTransactionDto,
+    @CurrentUser() user: any,
+  ) {
+    return this.verificationService.verifyTransaction(
+      dto.transactionHash,
+      user?.walletAddress,
+    );
   }
 
   @Get('status')

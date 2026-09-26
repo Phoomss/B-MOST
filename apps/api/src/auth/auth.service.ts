@@ -1,9 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { ethers } from 'ethers';
 
 @Injectable()
 export class AuthService {
@@ -11,6 +16,39 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
   ) {}
+
+  async listUserWallets() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        organizationId: true,
+        walletAddress: true,
+        status: true,
+      },
+      orderBy: { email: 'asc' },
+    });
+  }
+
+  async setUserWallet(id: string, walletAddress: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('ไม่พบบัญชีผู้ใช้');
+    return this.prisma.user.update({
+      where: { id },
+      data: { walletAddress: ethers.getAddress(walletAddress) },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        organizationId: true,
+        walletAddress: true,
+      },
+    });
+  }
 
   async validateUser(email: string, pass: string) {
     const user = await this.prisma.user.findUnique({

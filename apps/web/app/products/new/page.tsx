@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../../components/Navbar';
 import { api } from '../../../lib/api';
+import { executeUserSignedAction } from '../../../lib/blockchain/wallet';
 
 const PRODUCT_CATEGORIES = [
   { value: '', label: '-- เลือกหมวดหมู่สินค้า --' },
@@ -34,9 +35,14 @@ export default function CreateProductPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (createdProductId) {
+      router.push(`/products/${createdProductId}`);
+      return;
+    }
     setError(null);
     setLoading(true);
 
@@ -50,9 +56,12 @@ export default function CreateProductPage() {
         name: name.trim(),
         category: resolvedCategory || undefined,
         description: description.trim() || undefined,
-        registerOnBlockchain,
+        registerOnBlockchain: false,
       });
-
+      setCreatedProductId(created.id);
+      if (registerOnBlockchain) {
+        await executeUserSignedAction({ action: 'registerProduct', entityId: created.id });
+      }
       router.push(`/products/${created.id}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลงทะเบียนสินค้า';
@@ -105,6 +114,11 @@ export default function CreateProductPage() {
               <span className="text-xs font-mono text-red-600">(Registration Error)</span>
             </div>
             <div>{error}</div>
+            {createdProductId && (
+              <Link href={`/products/${createdProductId}`} className="underline font-semibold">
+                สินค้าถูกสร้างในฐานข้อมูลแล้ว เปิดหน้าสินค้าเพื่อลองบันทึกบน Blockchain อีกครั้ง
+              </Link>
+            )}
           </div>
         )}
 

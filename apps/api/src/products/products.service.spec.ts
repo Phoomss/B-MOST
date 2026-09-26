@@ -193,16 +193,39 @@ describe('ProductsService', () => {
 
   describe('storeProduct', () => {
     it('stores a received product only after matching on-chain owner and state', async () => {
-      const received = { ...sampleProduct, status: ProductStatus.RECEIVED, blockchainProductId: '1' };
+      const received = {
+        ...sampleProduct,
+        status: ProductStatus.RECEIVED,
+        blockchainProductId: '1',
+      };
       prisma.product.findFirst.mockResolvedValue(received);
-      prisma.product.update.mockResolvedValue({ ...received, status: ProductStatus.STORED });
-      blockchainService.getProduct.mockResolvedValue({ productCode: received.productCode,
-        currentOwner: mockManufacturerOrg.walletAddress, status: 5 });
-      blockchainService.getSigner.mockReturnValue({ getAddress: jest.fn().mockResolvedValue(mockManufacturerOrg.walletAddress) });
-      blockchainService.storeProduct = jest.fn().mockResolvedValue({ txHash: '0xstore', blockNumber: 55 });
+      prisma.product.update.mockResolvedValue({
+        ...received,
+        status: ProductStatus.STORED,
+      });
+      blockchainService.getProduct.mockResolvedValue({
+        productCode: received.productCode,
+        currentOwner: mockManufacturerOrg.walletAddress,
+        status: 5,
+      });
+      blockchainService.getSigner.mockReturnValue({
+        getAddress: jest
+          .fn()
+          .mockResolvedValue(mockManufacturerOrg.walletAddress),
+      });
+      blockchainService.storeProduct = jest
+        .fn()
+        .mockResolvedValue({ txHash: '0xstore', blockNumber: 55 });
 
-      const result = await service.storeProduct(received.id, {}, mockManufacturerUser);
-      expect(blockchainService.storeProduct).toHaveBeenCalledWith(BigInt(1), undefined);
+      const result = await service.storeProduct(
+        received.id,
+        {},
+        mockManufacturerUser,
+      );
+      expect(blockchainService.storeProduct).toHaveBeenCalledWith(
+        BigInt(1),
+        undefined,
+      );
       expect(result.product.status).toBe(ProductStatus.STORED);
     });
   });
@@ -321,7 +344,7 @@ describe('ProductsService', () => {
       );
     });
 
-    it('automatically registers on blockchain when registerOnBlockchain is true', async () => {
+    it('creates the product without backend signing when registerOnBlockchain is true', async () => {
       prisma.product.findUnique
         .mockResolvedValueOnce(null) // code check
         .mockResolvedValueOnce(null) // serial check
@@ -342,7 +365,7 @@ describe('ProductsService', () => {
 
       const result = await service.create(dto, mockManufacturerUser);
       expect(result).toBeDefined();
-      expect(blockchainService.registerProduct).toHaveBeenCalled();
+      expect(blockchainService.registerProduct).not.toHaveBeenCalled();
     });
   });
 
