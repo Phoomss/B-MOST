@@ -93,9 +93,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
           {/* Logo & Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 font-bold text-2xl mb-3 shadow-xs">
-              B
-            </div>
+            <img src="/brand_logo.png" alt="B-MOST" className="inline-flex items-center justify-center w-12 h-12 rounded-xl object-cover mb-3 shadow-xs" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               เข้าสู่ระบบ
             </h1>
