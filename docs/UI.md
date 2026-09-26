@@ -1,4 +1,4 @@
-# User Interface Specification (ข้อกำหนดส่วนต่อประสานผู้ใช้)
+﻿# User Interface Specification (ข้อกำหนดส่วนต่อประสานผู้ใช้)
 
 ## 1. Design System & Frontend Architecture (ระบบการออกแบบและสถาปัตยกรรมส่วนหน้า)
 

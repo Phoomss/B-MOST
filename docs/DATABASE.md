@@ -1,4 +1,4 @@
-# Database Design & Specification
+﻿# Database Design & Specification
 
 ## 1. Overview
 

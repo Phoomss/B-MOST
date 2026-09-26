@@ -1,4 +1,4 @@
-# Wallet และ Role ที่ใช้งานจริง
+﻿# Wallet และ Role ที่ใช้งานจริง
 
 ตรวจสอบเมื่อ 26 กันยายน 2026 จากฐานข้อมูลที่รันอยู่และสัญญา `SupplyChainRegistry` บน Ethereum Sepolia (Chain ID `11155111`) ที่ `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a` ข้อมูลนี้เป็น snapshot; หาก Super Admin เปลี่ยน wallet หรือ grant/revoke role ต้องตรวจใหม่
 

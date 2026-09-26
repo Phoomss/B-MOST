@@ -1,4 +1,4 @@
-# Product Requirements Document (PRD)
+﻿# Product Requirements Document (PRD)
 
 > **Last Updated**: September 26, 2026
 

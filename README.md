@@ -1,4 +1,4 @@
-# B-MOST (Blockchain Multi-Organization Supply Chain Traceability)
+﻿# B-MOST (Blockchain Multi-Organization Supply Chain Traceability)
 
 > **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
 >
@@ -10,15 +10,15 @@
 
 Comprehensive system documentation is available in the [`docs/`](docs/) directory:
 
-- [Product Requirements Document (PRD)](docs/PRD.md) � Product vision, actor personas, functional/non-functional requirements, and lifecycle state machine (Mermaid stateDiagram).
-- [System Architecture](docs/ARCHITECTURE.md) � Monorepo design, dual-layer storage (PostgreSQL + EVM), Mermaid system flow, indexer, auth sequences, and custody transfer workflow.
-- [Database Specification](docs/DATABASE.md) � Complete Prisma schema, relational models, enums, indexes, and isolation policies.
-- [Blockchain Specification](docs/BLOCKCHAIN.md) � `SupplyChainRegistry.sol` ABI, method specs, events, and gas benchmarks. Sepolia: `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`.
-- [Backend API Specification](docs/API.md) � RESTful API endpoints, request/response DTOs, authentication, and HTTP status codes.
-- [User Interface Specification](docs/UI.md) � Next.js 16 App Router UI routes, component hierarchy, client hooks, and responsive UX.
-- [Security Specification](docs/SECURITY.md) � Multi-tenant data isolation, RBAC matrix, EVM signer protection, and Keccak-256 data integrity.
-- [Development Plan & Progress](docs/DEVELOPMENT_PLAN.md) � Phased milestone tracking (Phases 1-20) and Definition of Done.
-- [Wallet & Role Mapping](docs/WALLET_ROLES.md) � Current Sepolia wallet addresses, on-chain role assignments, and wallet management guide.
+- [Product Requirements Document (PRD)](docs/PRD.md) � Product vision, actor personas, functional/non-functional requirements, and lifecycle state machine (Mermaid stateDiagram).
+- [System Architecture](docs/ARCHITECTURE.md) � Monorepo design, dual-layer storage (PostgreSQL + EVM), Mermaid system flow, indexer, auth sequences, and custody transfer workflow.
+- [Database Specification](docs/DATABASE.md) � Complete Prisma schema, relational models, enums, indexes, and isolation policies.
+- [Blockchain Specification](docs/BLOCKCHAIN.md) � `SupplyChainRegistry.sol` ABI, method specs, events, and gas benchmarks. Sepolia: `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`.
+- [Backend API Specification](docs/API.md) � RESTful API endpoints, request/response DTOs, authentication, and HTTP status codes.
+- [User Interface Specification](docs/UI.md) � Next.js 16 App Router UI routes, component hierarchy, client hooks, and responsive UX.
+- [Security Specification](docs/SECURITY.md) � Multi-tenant data isolation, RBAC matrix, EVM signer protection, and Keccak-256 data integrity.
+- [Development Plan & Progress](docs/DEVELOPMENT_PLAN.md) � Phased milestone tracking (Phases 1-20) and Definition of Done.
+- [Wallet & Role Mapping](docs/WALLET_ROLES.md) � Current Sepolia wallet addresses, on-chain role assignments, and wallet management guide.
 ---
 
 ## 🏗 Monorepo Architecture
@@ -193,8 +193,8 @@ The platform implements a 12-stage multi-actor supply chain flow validated by th
 
 | Stage | Actor | Action | On-Chain Event | Product State |
 |---|---|---|---|---|
-| 1 | Manufacturer | Login & create product | � | � |
-| 2 | Manufacturer | `POST /api/products` | � | _(pending)_ |
+| 1 | Manufacturer | Login & create product | � | � |
+| 2 | Manufacturer | `POST /api/products` | � | _(pending)_ |
 | 3 | Manufacturer | `POST /api/products/:id/register-blockchain` | `ProductRegistered` | `REGISTERED` |
 | 4 | Manufacturer / Auditor | `POST /api/products/:id/quality-check` (PASS) | `QualityChecked` | `QUALITY_CHECKED` |
 | 5 | Manufacturer | `POST /api/shipments` (to Distributor) | `ShipmentCreated` | `READY_TO_SHIP` |

@@ -1,4 +1,4 @@
-# System Architecture Specification
+﻿# System Architecture Specification
 
 > **Last Updated**: September 26, 2026
 

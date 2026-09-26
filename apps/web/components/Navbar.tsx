@@ -186,11 +186,13 @@ export function Navbar() {
           <div className="flex items-center gap-6 shrink-0">
             <Link href="/" className="flex items-center gap-2.5 group">
               {/* Icon Logo */}
-              <img
-                src="/icon_logo.png"
-                alt="B-MOST"
-                className="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-200"
-              />
+              <div className="contents">
+                <img
+                  src="/icon_logo.png"
+                  alt="B-MOST"
+                  className="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-200"
+                />
+              </div>
 
               {/* Brand */}
               <div className="flex flex-col">

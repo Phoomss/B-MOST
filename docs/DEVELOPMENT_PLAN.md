@@ -1,4 +1,4 @@
-# Development Plan & Progress Tracking
+﻿# Development Plan & Progress Tracking
 
 > **Last Updated**: September 26, 2026
 
