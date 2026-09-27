@@ -1,5 +1,7 @@
 # B-MOST --- Codex Blockchain Migration Instructions
 
+> Historical migration task brief. It describes the target of an earlier change, including a future ABI handoff. For the current implementation and checked-in ABI, see [architecture](docs/ARCHITECTURE.md) and [blockchain](docs/BLOCKCHAIN.md). Do not treat the instructions below as current setup steps.
+
 ## Objective
 
 Migrate the existing **B-MOST (Blockchain Multi-Organization Supply

@@ -1,5 +1,7 @@
 # B-MOST — Blockchain Error UX Refactor
 
+> Historical task brief. Check the current [web interface](docs/UI.md) and `apps/web/lib/blockchain/errors.ts` before treating any proposed work below as outstanding.
+
 ## Goal
 Refactor blockchain error handling across the Next.js frontend so normal users never see raw viem/MetaMask/RPC/contract error dumps.
 
