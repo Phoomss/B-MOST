@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "Product_blockchainChainId_blockchainContractAddress_blockchainP" RENAME TO "Product_blockchainChainId_blockchainContractAddress_blockch_key";

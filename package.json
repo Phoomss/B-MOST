@@ -19,7 +19,6 @@
     "docker:build": "docker compose build",
     "docker:logs": "docker compose logs -f",
     "docker:db": "docker compose up -d postgres",
-    "docker:blockchain": "docker compose up -d blockchain",
     "db:migrate": "pnpm --filter @b-most/api run prisma:migrate",
     "db:generate": "pnpm --filter @b-most/api run prisma:generate",
     "db:seed": "pnpm --filter @b-most/api run prisma:seed",
