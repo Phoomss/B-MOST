@@ -1,31 +1,20 @@
-# B-MOST Presentation — Level 3 Technical Review
+# B-MOST Presentation — Level 3 Final Technical Review
 
 ## Review Status
 
-CHANGES_REQUIRED
+APPROVED
 
-Reviewed [PRESENTATION_FINAL.md](PRESENTATION_FINAL.md) (SHA-256 `0B2F3D9DD183A8DFE959DF6D9879583D5BC2443D1AE83726FED466884E19FBA3`) against current repository HEAD `020588dd2b1484910ef24899fe9147a81a1fad83` on 2026-09-27. The five previously requested corrections have been applied to the main claims. Two related Slide 2 statements still overstate what the current app can do. Keep the presentation at `READY_FOR_CODEX_REVIEW` until these are corrected and reviewed.
+Reviewed [PRESENTATION_FINAL.md](PRESENTATION_FINAL.md) at SHA-256 `0E691FFEE0081F34FC1121797666C0246BB64194540B4CA6CB9936939CCD465B` against current repository HEAD `020588dd2b1484910ef24899fe9147a81a1fad83` on 2026-09-27. The final specification is marked `Status: FINAL` and `Technical Review: APPROVED`. No technical corrections remain for this candidate.
 
-## Required Changes
+## Final issue resolution
 
-1. **Slide 2 speaker notes — Manufacturer presented as able to perform storage.**
+- **Slide 2 storage roles:** The speaker notes now distinguish `storeProduct` permissions (`SUPER_ADMIN`, `DISTRIBUTOR`, `WAREHOUSE`, `RETAILER`) from next-leg `createShipment` permissions (`SUPER_ADMIN`, `MANUFACTURER`, `DISTRIBUTOR`, `WAREHOUSE`). They require the current-owner wallet and a completed Store transaction before a new leg. This matches [blockchain-action.service.ts](../../apps/api/src/blockchain/blockchain-action.service.ts) and [SupplyChainRegistry.sol](../../packages/contracts/contracts/SupplyChainRegistry.sol).
+- **Five-minute demo at 2:40–3:15:** The demo now shows the Distributor organization as current owner and the Store button as available. It calls storage an optional later transaction and says a next shipment requires `storeProduct` to be signed, mined, and confirmed, moving the product from `RECEIVED` to `STORED`. This matches the [product detail UI](../../apps/web/app/products/%5Bid%5D/page.tsx), [state machine](../../apps/api/src/blockchain/product-state-machine.service.ts), and contract.
 
-   **Current claim:** The speaker notes group “Manufacturer, Distributor, Warehouse หรือ Super Admin” as permitted users who can take a received product into storage (`STORED`) and then create the next shipment.
+## Regression check
 
-   **Why incorrect:** The two actions have different app role lists. `STORE_PRODUCT` permits `SUPER_ADMIN`, `DISTRIBUTOR`, `WAREHOUSE`, and `RETAILER`; it does **not** permit `MANUFACTURER`. `CREATE_SHIPMENT` permits `SUPER_ADMIN`, `MANUFACTURER`, `DISTRIBUTOR`, and `WAREHOUSE`; it excludes `RETAILER`. The same role list cannot describe both actions.
+The latest candidate changes only the Slide 2 speaker notes and the 2:40–3:15 demo row beyond the previously reviewed candidate. Earlier corrections remain intact: Slide 1 limits the data-silo/dispute claim; Slide 2 qualifies next-leg roles; Slide 3 distinguishes Prepare writes, receipt-verified Confirm, and partial indexer synchronization; Slide 4 treats QR as lookup and discloses selected-field hash limits plus the public status-label mapping defect; the demo does not promise MetaMask's exact prompt wording.
 
-   **Repository evidence:** [blockchain-action.service.ts](../../apps/api/src/blockchain/blockchain-action.service.ts) checks `CREATE_SHIPMENT` at the action branch around line 394 and `STORE_PRODUCT` around line 523. [SupplyChainRegistry.sol](../../packages/contracts/contracts/SupplyChainRegistry.sol) requires `RECEIVED` for `storeProduct` and `STORED` for the next `createShipment` leg.
+The stated stack majors match [web package](../../apps/web/package.json), [API package](../../apps/api/package.json), [Docker Compose](../../docker-compose.yml), and [Hardhat configuration](../../packages/contracts/hardhat.config.ts). Sepolia chain ID `11155111` and configured contract address `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a` match the browser and API code. PostgreSQL UUIDs remain separate from contract numeric product/shipment IDs in [Prisma schema](../../apps/api/prisma/schema.prisma). The public verification limits remain consistent with [products.service.ts](../../apps/api/src/products/products.service.ts). `node packages/contracts/scripts/sync-abi.cjs --check` passed.
 
-   **Exact correction:** Split the Slide 2 speaker sentence by action: “หลังรับสินค้า ผู้ใช้ที่มีบทบาท Distributor, Warehouse, Retailer หรือ Super Admin และกระเป๋าตรงกับเจ้าของปัจจุบัน สามารถลงนาม `storeProduct` เพื่อเปลี่ยนเป็น `STORED` ได้ หลังธุรกรรมนี้สำเร็จ ผู้ใช้บทบาท Manufacturer, Distributor, Warehouse หรือ Super Admin ที่ผ่านการตรวจสิทธิ์และกระเป๋าเจ้าของจึงสามารถสร้าง Shipment ถัดไปไปยังกระเป๋าผู้รับอื่นได้ โดย Retailer ไม่สามารถสร้าง Shipment ผ่านแอปปัจจุบัน.” Keep the shorter combined script's Distributor/Warehouse example, which is supported.
-
-2. **Slide 2 associated five-minute demo, 2:40–3:15 — next leg described as immediately ready after clicking Store.**
-
-   **Current claim:** The narration says the Distributor can click “Store” and is then ready to create the next Shipment “ได้ทันที,” while the expected verification in this step only shows the Store button ready. The plan does not perform or confirm a Store transaction in this step.
-
-   **Why incorrect:** After receipt the product is `RECEIVED`. `createShipment` is allowed only from `QUALITY_CHECKED` or `STORED`; reaching `STORED` requires a separate user-signed `storeProduct` transaction and successful chain/SQL confirmation. Merely having or clicking the Store button does not establish that the next shipment can be created.
-
-   **Repository evidence:** [SupplyChainRegistry.sol](../../packages/contracts/contracts/SupplyChainRegistry.sol) `storeProduct` and `createShipment` state checks; [product-state-machine.service.ts](../../apps/api/src/blockchain/product-state-machine.service.ts) action-state table; [product detail UI](../../apps/web/app/products/%5Bid%5D/page.tsx) shows Store only at `RECEIVED`, shows Ship at `STORED`, and runs Store through `executeUserSignedAction`.
-
-   **Exact correction:** In the 2:40–3:15 demo row, say that the Distributor organization is shown as owner and the Store action is available. Add: “A next shipment becomes available only after a separate `storeProduct` transaction is mined and confirmed, changing the product to `STORED`.” Keep storage as an optional post-demo step unless the plan allocates time to sign and confirm it.
-
-No application or slide content was changed in this Level 3 review. The prior five-issue review is archived at [CODEX_REVIEW_LEVEL3_FIVE_20260927.md](CODEX_REVIEW_LEVEL3_FIVE_20260927.md).
+This approval is for the exact Markdown presentation specification above. No rendered deck, screenshots, or live Sepolia/MetaMask rehearsal were supplied or attested by this source review. The previous two-issue review is preserved in [CODEX_REVIEW_LEVEL3_TWO_20260927.md](CODEX_REVIEW_LEVEL3_TWO_20260927.md).
