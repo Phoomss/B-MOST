@@ -44,6 +44,7 @@ async function main() {
       address: '88 Industrial Park Road, Bangkok, Thailand',
       contactEmail: 'contact@apextech.com',
       phone: '+66 2 123 4567',
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -56,6 +57,7 @@ async function main() {
       address: '102 Logistics Boulevard, Samut Prakan, Thailand',
       contactEmail: 'ops@globalexpress.com',
       phone: '+66 2 765 4321',
+      walletAddress: '0x3f073b4f50D2B2486B632DFB4c7005FC449cED14',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -68,6 +70,7 @@ async function main() {
       address: '45 Warehouse District, Chonburi, Thailand',
       contactEmail: 'support@safehub.com',
       phone: '+66 38 123 999',
+      walletAddress: '0x3f073b4f50D2B2486B632DFB4c7005FC449cED14',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -80,6 +83,7 @@ async function main() {
       address: '999 Sukhumvit Road, Bangkok, Thailand',
       contactEmail: 'store@primeretail.com',
       phone: '+66 2 999 8888',
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -92,6 +96,7 @@ async function main() {
       address: '1 Financial Tower, Sathorn, Bangkok, Thailand',
       contactEmail: 'audit@chainaudit.com',
       phone: '+66 2 555 1212',
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: OrganizationStatus.ACTIVE,
     },
   });
@@ -105,6 +110,7 @@ async function main() {
       firstName: 'Admin',
       lastName: 'Platform',
       role: UserRole.SUPER_ADMIN,
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: UserStatus.ACTIVE,
     },
   });
@@ -117,6 +123,7 @@ async function main() {
       lastName: 'Manager',
       role: UserRole.ORG_ADMIN,
       organizationId: manufacturerOrg.id,
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: UserStatus.ACTIVE,
     },
   });
@@ -129,6 +136,7 @@ async function main() {
       lastName: 'Maker',
       role: UserRole.MANUFACTURER,
       organizationId: manufacturerOrg.id,
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: UserStatus.ACTIVE,
     },
   });
@@ -141,6 +149,7 @@ async function main() {
       lastName: 'Logistics',
       role: UserRole.DISTRIBUTOR,
       organizationId: distributorOrg.id,
+      walletAddress: '0x3f073b4f50D2B2486B632DFB4c7005FC449cED14',
       status: UserStatus.ACTIVE,
     },
   });
@@ -153,6 +162,7 @@ async function main() {
       lastName: 'Storage',
       role: UserRole.WAREHOUSE,
       organizationId: warehouseOrg.id,
+      walletAddress: '0x3f073b4f50D2B2486B632DFB4c7005FC449cED14',
       status: UserStatus.ACTIVE,
     },
   });
@@ -165,6 +175,7 @@ async function main() {
       lastName: 'Merchant',
       role: UserRole.RETAILER,
       organizationId: retailerOrg.id,
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: UserStatus.ACTIVE,
     },
   });
@@ -177,6 +188,7 @@ async function main() {
       lastName: 'Inspector',
       role: UserRole.AUDITOR,
       organizationId: auditorOrg.id,
+      walletAddress: '0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998',
       status: UserStatus.ACTIVE,
     },
   });

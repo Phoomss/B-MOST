@@ -1,4 +1,4 @@
-﻿# B-MOST --- Codex Blockchain Migration Instructions
+# B-MOST --- Codex Blockchain Migration Instructions
 
 ## Objective
 
@@ -44,12 +44,14 @@ Contract: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 
 Account 1:
 - SUPER_ADMIN
+- ORG_ADMIN
 - MANUFACTURER
+- RETAILER
+- AUDITOR
 
 Account 2:
 - DISTRIBUTOR
 - WAREHOUSE
-- RETAILER
 ```
 
 Multiple application users must be allowed to share one blockchain
@@ -227,11 +229,13 @@ Conceptual mapping:
 
 ``` text
 Admin User        -> Account 1
+Org Admin User    -> Account 1
 Manufacturer User -> Account 1
+Retailer User     -> Account 1
+Auditor User      -> Account 1
 
 Distributor User  -> Account 2
 Warehouse User    -> Account 2
-Retailer User     -> Account 2
 ```
 
 Do not use:
@@ -381,14 +385,13 @@ Fix any location that incorrectly sends PostgreSQL IDs as contract IDs.
 
 ## 11. Contract roles
 
-Account 1 is Admin + Manufacturer.
+Account 1 is Admin + Org Admin + Manufacturer + Retailer + Auditor.
 
 Account 2 needs:
 
 ``` text
 DISTRIBUTOR_ROLE
 WAREHOUSE_ROLE
-RETAILER_ROLE
 ```
 
 Prepare support for `grantRole`, `revokeRole`, and `hasRole` where
@@ -405,32 +408,35 @@ If blocked by ABI, leave a TODO/manual step.
 
 ## 12. Two-wallet constraint
 
-Do not require separate wallets for Distributor, Warehouse, and
-Retailer.
+Account 1: Admin, Org Admin, Manufacturer, Retailer, Auditor
+Account 2: Distributor, Warehouse
 
-Because they share Account 2, do not attempt artificial blockchain
-ownership transfers:
+Because Distributor and Warehouse share Account 2, do not attempt on-chain
+transfers directly between them (`require(receiver != msg.sender)` invariant):
 
 ``` text
 Account 2 Distributor
 -> Account 2 Warehouse
--> Account 2 Retailer
 ```
 
-when the contract disallows self-receiver/self-transfer.
-
-Use this blockchain demo flow:
+Use this alternating Account 1 ↔ Account 2 blockchain flow:
 
 ``` text
-Account 1 — Admin / Manufacturer
+Account 1 — Manufacturer / Auditor
   Register Product
   -> Quality Check
-  -> Create Shipment(receiver = Account 2)
+  -> Create Shipment (receiver = Account 2 Distributor or Warehouse)
   -> Ship
   -> Mark In Transit
 
-Account 2 — Distributor / Warehouse / Retailer
-  Receive
+Account 2 — Distributor / Warehouse
+  Receive (Ownership transferred to Account 2)
+  -> Store
+  -> Create Shipment (receiver = Account 1 Retailer)
+  -> Ship
+
+Account 1 — Retailer
+  Receive (Ownership transferred to Account 1)
   -> Store
   -> Mark Sold
 ```
@@ -666,11 +672,11 @@ Smart Contract
 └── unchanged
 
 MetaMask
-├── Account 1 = Admin + Manufacturer
-└── Account 2 = Distributor + Warehouse + Retailer
+├── Account 1 = Admin + Org Admin + Manufacturer + Retailer + Auditor
+└── Account 2 = Distributor + Warehouse
 
 Contract Roles
-└── Account 2 needs Distributor + Warehouse + Retailer roles
+└── Account 2 needs Distributor + Warehouse roles (Account 1 holds Default Admin and all base roles)
 
 Backend .env
 ├── Sepolia RPC

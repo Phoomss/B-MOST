@@ -170,18 +170,19 @@ The production `pnpm docker:up` command continues to use `docker-compose.yml`.
 
 Password for all pre-seeded demo accounts is: `password123`
 
-| Role / บทบาท | Email | Organization / องค์กร | Access / สิทธิ์การเข้าถึง |
-|---|---|---|---|
-| **Super Admin** | `superadmin@bmost.io` | Global Platform Admin | Full system administration, audit logs, node status |
-| **Manufacturer** | `manufacturer@bmost.io` | Apex Tech Manufacturing | Register products, anchor to blockchain, initiate QC |
-| **Auditor** | `auditor@bmost.io` | Quality Assurance Bureau | Perform QC inspections, compliance audits |
-| **Distributor** | `distributor@bmost.io` | Global Express Distribution | Create shipments, dispatch manifests, transfer custody |
-| **Warehouse** | `warehouse@bmost.io` | SafeHub Logistics & Storage | Receive shipments, store products, inventory transfers |
-| **Retailer** | `retailer@bmost.io` | Siam Retail & Department Store | Receive inventory, execute consumer retail sales (`SOLD`) |
+| Role / บทบาท | Email | Organization / องค์กร | MetaMask Account | Access / สิทธิ์การเข้าถึง |
+|---|---|---|:---:|---|
+| **Super Admin** | `superadmin@bmost.io` | Global Platform Admin | **Account 1** | Full system administration, audit logs, wallet management at `/admin/wallets` |
+| **Org Admin** | `orgadmin@bmost.io` | Apex Tech Manufacturing | **Account 1** | Manage organization users and internal configurations |
+| **Manufacturer** | `manufacturer@bmost.io` | Apex Tech Manufacturing | **Account 1** | Register products, anchor to blockchain, initiate outbound shipments |
+| **Auditor** | `auditor@bmost.io` | ChainAudit Global | **Account 1** | Perform QC inspections, compliance audits, issue recalls |
+| **Distributor** | `distributor@bmost.io` | Global Express Distribution | **Account 2** | Receive shipments, store inventory, dispatch wholesale shipments |
+| **Warehouse** | `warehouse@bmost.io` | SafeHub Logistics & Storage | **Account 2** | Receive shipments, manage warehouse staging, dispatch inventory |
+| **Retailer** | `retailer@bmost.io` | Prime Retail Store | **Account 1** | Receive shipments, store retail inventory, execute consumer sales (`SOLD`) |
 
 *One-click quick login buttons for all these roles are available directly on the `/login` page.*
 
-For the current public wallet addresses, application roles, and Sepolia contract roles, see [Wallet and Role Mapping](docs/WALLET_ROLES.md). Super Admin can update user and organization public addresses at `/admin/wallets`.
+For the complete public wallet addresses, application roles, Sepolia contract roles, and custody transfer flows, see [Wallet and Role Mapping](docs/WALLET_ROLES.md). Super Admin can update user and organization public addresses at `/admin/wallets`.
 
 ---
 

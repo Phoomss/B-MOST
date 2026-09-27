@@ -243,7 +243,7 @@ export default function LoginPage() {
             <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
               บัญชีทดสอบระบบ (คลิกเพื่อกรอกอัตโนมัติ)
             </span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
               <button
                 type="button"
                 onClick={() =>
@@ -255,6 +255,20 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   superadmin@bmost.io
                 </div>
+                <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleQuickLogin("orgadmin@bmost.io", "password123")
+                }
+                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+              >
+                <div className="font-semibold">ผู้ดูแลองค์กร (Org Admin)</div>
+                <div className="text-[10px] text-slate-400 truncate">
+                  orgadmin@bmost.io
+                </div>
+                <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
               </button>
               <button
                 type="button"
@@ -267,6 +281,7 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   manufacturer@bmost.io
                 </div>
+                <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
               </button>
               <button
                 type="button"
@@ -279,6 +294,7 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   auditor@bmost.io
                 </div>
+                <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
               </button>
               <button
                 type="button"
@@ -291,6 +307,7 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   distributor@bmost.io
                 </div>
+                <div className="text-[9px] text-emerald-600 font-mono mt-0.5">Account 2</div>
               </button>
               <button
                 type="button"
@@ -303,6 +320,7 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   warehouse@bmost.io
                 </div>
+                <div className="text-[9px] text-emerald-600 font-mono mt-0.5">Account 2</div>
               </button>
               <button
                 type="button"
@@ -315,6 +333,7 @@ export default function LoginPage() {
                 <div className="text-[10px] text-slate-400 truncate">
                   retailer@bmost.io
                 </div>
+                <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
               </button>
             </div>
           </div>

@@ -238,52 +238,59 @@ flowchart LR
 
 ---
 
-## 8. End-to-End Sequence: Custody Transfer
+## 8. End-to-End Sequence: Custody Transfer (Account 2 → Account 1)
 
 ```mermaid
 sequenceDiagram
-    participant Dist as Distributor (Sender)
+    participant Dist as Distributor / Warehouse (Sender - Account 2)
     participant API as NestJS API
-    participant EVM as Hardhat / Sepolia EVM
-    participant WH as Warehouse (Receiver)
+    participant EVM as Sepolia EVM / Smart Contract
+    participant Ret as Retailer (Receiver - Account 1)
 
-    Dist->>API: POST /api/shipments/:id/ship
+    Dist->>API: POST /api/shipments/:id/ship (or sign via MetaMask)
     API->>API: Validate ownership (currentOwnerId == Dist.orgId)
     API->>EVM: shipProduct(productId, shipmentId)
     EVM-->>API: Emit ProductShipped + txReceipt
     API->>API: Update Product → SHIPPED, Shipment → SHIPPED
     API-->>Dist: 200 OK { txHash, blockNumber }
 
-    Note over Dist,WH: Physical goods in transit...
+    Note over Dist,Ret: Physical goods in transit...
 
-    WH->>API: POST /api/shipments/:id/receive
+    Ret->>API: POST /api/shipments/:id/receive (or sign via MetaMask)
     API->>API: Verify caller is declared receiver
     API->>EVM: receiveProduct(productId, shipmentId)
     EVM-->>API: Emit ProductReceived + OwnershipTransferred
-    API->>API: Product → RECEIVED, Owner → Warehouse, Shipment → DELIVERED
-    API-->>WH: 200 OK { txHash, blockNumber }
+    API->>API: Product → RECEIVED, Owner → Retailer, Shipment → DELIVERED
+    API-->>Ret: 200 OK { txHash, blockNumber }
 ```
 
 ---
 
 ## 9. Complete Supply Chain Workflow
 
+> **หมายเหตุการใช้งาน 2 Accounts (Account 1 ↔ Account 2):**  
+> สัญญาอัจฉริยะกำหนด `require(receiver != msg.sender)` ดังนั้นในสภาพแวดล้อม 2 Accounts:
+> - **Account 1**: Super Admin, Org Admin, Manufacturer, Retailer, Auditor
+> - **Account 2**: Distributor, Warehouse  
+> การส่งต่อสินค้าจึงสลับระหว่าง **Account 1 (ผู้ผลิต) ──► Account 2 (ผู้จัดจำหน่าย/คลัง) ──► Account 1 (ผู้ค้าปลีก)**
+
 ```mermaid
 flowchart TD
-    A["🏭 Manufacturer Login"] --> B["Create Product\n(Keccak-256 hash generated)"]
-    B --> C["Register on Blockchain\nPOST /api/products/:id/register-blockchain"]
-    C --> D["Quality Inspection\nPOST /api/products/:id/quality-check"]
-    D --> |"PASS → QUALITY_CHECKED"| E["Create Shipment to Distributor\nPOST /api/shipments"]
+    A["🏭 Manufacturer Login\n(Account 1)"] --> B["Create Product\n(Keccak-256 hash generated)"]
+    B --> C["Register on Blockchain\nPOST /api/products/:id/register-blockchain\n(Account 1)"]
+    C --> D["Quality Inspection\nPOST /api/products/:id/quality-check\n(Auditor / Mfg - Account 1)"]
+    D --> |"PASS → QUALITY_CHECKED"| E["Create Shipment to Distributor/Warehouse\nPOST /api/shipments\n(Sender: Account 1 → Receiver: Account 2)"]
     D --> |"FAIL → RECALLED"| Z["🚨 RECALLED (Terminal)"]
-    E --> F["Dispatch Shipment\nPOST /api/shipments/:id/ship → SHIPPED"]
-    F --> G["Distributor Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED\nOwnership → Distributor"]
-    G --> H["Distributor Creates Shipment to Warehouse\nPOST /api/shipments → READY_TO_SHIP"]
-    H --> I["Warehouse Confirms Receipt & Stores\nPOST /api/shipments/:id/receive → STORED"]
-    I --> J["Warehouse Creates Shipment to Retailer\nPOST /api/shipments → READY_TO_SHIP"]
-    J --> K["Retailer Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED"]
-    K --> L["Retailer Sells to Consumer\nPOST /api/products/:id/sell → SOLD ✅"]
-    L --> M["Consumer Scans QR Code\n/verify/{productCode}"]
-    M --> N["Cryptographic Verification\nKeccak-256 hash match → VERIFIED 🛡️"]
+    E --> F["Dispatch Shipment\nPOST /api/shipments/:id/ship → SHIPPED\n(Account 1)"]
+    F --> G["Distributor Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED\nOwnership Transferred to Account 2"]
+    G --> H["Store in Facility\nPOST /api/products/:id/store → STORED\n(Account 2)"]
+    H --> I["Create Shipment to Retailer\nPOST /api/shipments → READY_TO_SHIP\n(Sender: Account 2 → Receiver: Account 1)"]
+    I --> J["Dispatch Shipment\nPOST /api/shipments/:id/ship → SHIPPED\n(Account 2)"]
+    J --> K["Retailer Confirms Receipt\nPOST /api/shipments/:id/receive → RECEIVED\nOwnership Transferred to Account 1"]
+    K --> L["Retailer Stores in Shop\nPOST /api/products/:id/store → STORED\n(Account 1)"]
+    L --> M["Retailer Sells to Consumer\nPOST /api/products/:id/sell → SOLD ✅\n(Account 1)"]
+    M --> N["Consumer Scans QR Code\n/verify/{productCode}"]
+    N --> O["Cryptographic Verification\nKeccak-256 hash match → VERIFIED 🛡️"]
 ```
 
 ---

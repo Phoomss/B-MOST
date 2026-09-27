@@ -1,41 +1,107 @@
-﻿# Wallet และ Role ที่ใช้งานจริง
+# Wallet และ Role ที่ใช้งานจริง (Real Wallet & Role Mapping)
 
-ตรวจสอบเมื่อ 26 กันยายน 2026 จากฐานข้อมูลที่รันอยู่และสัญญา `SupplyChainRegistry` บน Ethereum Sepolia (Chain ID `11155111`) ที่ `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a` ข้อมูลนี้เป็น snapshot; หาก Super Admin เปลี่ยน wallet หรือ grant/revoke role ต้องตรวจใหม่
+ตรวจสอบสถานะล่าสุดจากฐานข้อมูลระบบ B-MOST และสัญญา `SupplyChainRegistry` บนเครือข่าย Ethereum Sepolia (Chain ID `11155111`) ที่ Contract Address `0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`
 
-> ชื่อ **Account 1** และ **Account 2** ใน MetaMask เป็นชื่อเฉพาะในเครื่องผู้ใช้ ระบบไม่เก็บชื่อเหล่านี้ จึงต้องเปิด MetaMask แล้วเทียบ **public address** กับตารางก่อนระบุว่าเป็น Account ใด
+> **ข้อควรจำ:** ชื่อ **Account 1** และ **Account 2** เป็นชื่อเฉพาะที่แสดงในส่วนขยาย MetaMask ของแต่ละเครื่อง ระบบบล็อกเชนและฐานข้อมูลจะไม่เก็บชื่อเหล่านี้ ดังนั้นให้เปิด MetaMask และเทียบ **Public Address** กับตารางด้านล่างเสมอ
 
-| Public address | บัญชี/role ในแอปที่ผูกอยู่ | องค์กรที่ผูก wallet เดียวกัน | Role บนสัญญา Sepolia |
-| --- | --- | --- | --- |
-| `0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998` | `superadmin@bmost.io` → `SUPER_ADMIN`; `manufacturer@bmost.io` → `MANUFACTURER` | `ORG-MFG-001` Apex Tech Manufacturing | `DEFAULT_ADMIN_ROLE`, `MANUFACTURER_ROLE`, `DISTRIBUTOR_ROLE`, `WAREHOUSE_ROLE`, `RETAILER_ROLE`, `LOGISTICS_ROLE`, `AUDITOR_ROLE` |
-| `0x3f073b4f50D2B2486B632DFB4c7005FC449cED14` | `distributor@bmost.io` → `DISTRIBUTOR`; `warehouse@bmost.io` → `WAREHOUSE`; `retailer@bmost.io` → `RETAILER`; `auditor@bmost.io` → `AUDITOR` | `ORG-DST-001`, `ORG-WRH-001`, `ORG-RTL-001`, `ORG-AUD-001` | **ไม่มี role ใด** ในรายการข้างต้น |
+---
 
-`orgadmin@bmost.io` มี role `ORG_ADMIN` ในแอป แต่ยังไม่มี `walletAddress` ในฐานข้อมูล
+## 1. ตารางจับคู่สิทธิ์และ Wallet (Current Mapping Matrix)
 
-## วิธีตรวจว่า Account 1/2 คือ address ใด
+ระบบกำหนดให้ใช้สถาปัตยกรรม 2-Account สำหรับการทดสอบครบวงจร (End-to-End Testnet Simulation) ดังนี้:
 
-1. เปิด MetaMask เลือก **Account 1** แล้วคัดลอก public address เทียบกับตาราง จากนั้นทำซ้ำกับ **Account 2** อย่าใช้ชื่อหรือหมายเลขลำดับบัญชีเป็นหลักฐานแทน address
-2. เข้าระบบเว็บด้วยบัญชีที่ต้องการใช้งาน แล้วเลือก address เดียวกันใน MetaMask
-3. หาก wallet ของผู้ใช้หรือองค์กรยังว่าง ให้ Super Admin เปิด `/admin/wallets` เพื่อบันทึก public address ของผู้ใช้และองค์กรให้ตรงกัน
-4. หลังตั้งค่าแล้ว ตรวจ role บนสัญญาอีกครั้งด้วย `GET /api/blockchain/roles/{wallet}` ใน API Docs (ต้องล็อกอินเป็น Super Admin)
+| บัญชี MetaMask | Public Address | บัญชีผู้ใช้ในระบบ (Email & Role) | องค์กรที่สังกัด | Role บนสัญญา Sepolia |
+| :--- | :--- | :--- | :--- | :--- |
+| **Account 1** | `0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998` | 1. `superadmin@bmost.io` → `SUPER_ADMIN`<br>2. `orgadmin@bmost.io` → `ORG_ADMIN`<br>3. `manufacturer@bmost.io` → `MANUFACTURER`<br>4. `retailer@bmost.io` → `RETAILER`<br>5. `auditor@bmost.io` → `AUDITOR` | • `ORG-MFG-001` (Apex Tech Manufacturing)<br>• `ORG-RTL-001` (Prime Retail Store)<br>• `ORG-AUD-001` (ChainAudit Global) | `DEFAULT_ADMIN_ROLE`<br>`MANUFACTURER_ROLE`<br>`DISTRIBUTOR_ROLE`<br>`WAREHOUSE_ROLE`<br>`RETAILER_ROLE`<br>`LOGISTICS_ROLE`<br>`AUDITOR_ROLE` |
+| **Account 2** | `0x3f073b4f50D2B2486B632DFB4c7005FC449cED14` | 1. `distributor@bmost.io` → `DISTRIBUTOR`<br>2. `warehouse@bmost.io` → `WAREHOUSE` | • `ORG-DST-001` (Global Express Distribution)<br>• `ORG-WRH-001` (SafeHub Logistics & Storage) | ปัจจุบันสัญญายังไม่มี Role เฉพาะเจาะจง (รายการรับสินค้า, จัดเก็บ, และสร้างใบส่งต่อของเจ้าของสินค้าใช้สิทธิ์ผู้ถือครอง `currentOwner`) |
 
-Role ในแอปเป็นสิทธิ์ของบัญชีล็อกอิน ส่วน role บนสัญญาผูกกับ **public address** และเปลี่ยนแยกจากกัน การกำหนด wallet ในหน้า `/admin/wallets` ไม่ได้ grant role บนสัญญา ตัวอย่างเช่นการลงทะเบียนสินค้าต้องมี `MANUFACTURER` ในแอป และ `MANUFACTURER_ROLE` บน Sepolia ด้วย
+> **รหัสผ่านเริ่มต้นสำหรับทุกบัญชี:** `password123`
 
-Address ที่สองมี role ในแอปหลายแบบ แต่ปัจจุบันไม่มี role บนสัญญา จึงต้องให้ wallet ที่ถือ `DEFAULT_ADMIN_ROLE` grant role ที่จำเป็นก่อนทำรายการที่สัญญากำหนดให้ใช้ role นั้น
+---
 
-## แผนใช้ MetaMask 2 accounts สำหรับทดสอบการส่งต่อสินค้า
+## 2. ลำดับขั้นตอนการทำงานในระบบ (System Flow & Custody Chain)
 
-ตารางด้านบนเป็น **snapshot ของค่าที่เคยตรวจพบ** ไม่ใช่หลักฐานว่าได้เปลี่ยน wallet ในระบบแล้ว แผนด้านล่างเป็นค่าที่ต้องตั้งเมื่อมี MetaMask เพียงสอง public addresses:
+### กฎข้อบังคับบน Smart Contract (On-Chain Invariant)
+ในสัญญาอัจฉริยะ `SupplyChainRegistry.sol` ฟังก์ชัน `createShipment` มีเงื่อนไขตรวจสอบความถูกต้อง:
+```solidity
+require(receiver != address(0) && receiver != msg.sender, "INVALID_RECIPIENT");
+```
+**ผลกระทบสำคัญจากการใช้ 2 Accounts:**
+- ผู้ส่ง (Sender) และ ผู้รับ (Receiver) จะต้องมี **Public Address คนละ address กัน** เสมอ
+- เนื่องจาก **Distributor** และ **Warehouse** ผูกอยู่กับ **Account 2** เหมือนกัน จึงไม่สามารถสร้าง On-chain Shipment ส่งหากันโดยตรงระหว่าง Distributor และ Warehouse ได้ (เนื่องจาก `receiver == msg.sender`)
+- ในทำนองเดียวกัน **Manufacturer** และ **Retailer** ผูกอยู่กับ **Account 1** เหมือนกัน จึงไม่สามารถส่งหากันโดยตรงระหว่าง Manufacturer และ Retailer ได้
+- ดังนั้น เส้นทางการส่งต่อสินค้าบนบล็อกเชนจะสลับกันระหว่าง **Account 1 ↔ Account 2**
 
-| Public address | บัญชีผู้ใช้และองค์กรที่ควรผูก |
-| --- | --- |
-| Account 1 — ตรวจ public address ใน MetaMask; ใน snapshot คือ `0x0FcD93659FA339bB05A2A12Ed7000dFD714E0998` | `superadmin@bmost.io`, `manufacturer@bmost.io` / `ORG-MFG-001`, `warehouse@bmost.io` / `ORG-WRH-001`, `auditor@bmost.io` / `ORG-AUD-001` |
-| Account 2 — ตรวจ public address ใน MetaMask; ใน snapshot คือ `0x3f073b4f50D2B2486B632DFB4c7005FC449cED14` | `distributor@bmost.io` / `ORG-DST-001`, `retailer@bmost.io` / `ORG-RTL-001` |
+---
 
-เส้นทางตัวอย่างคือ **Manufacturer (Account 1) → Distributor (Account 2) → Warehouse (Account 1) → Retailer (Account 2)** แต่ละช่วงต้องมี wallet ผู้ส่งและผู้รับคนละ address เพราะ `createShipment` บนสัญญาไม่รับ `receiver == msg.sender` แม้ชื่อองค์กรจะต่างกัน
+### เส้นทางการส่งมอบสินค้ามาตรฐาน (Standard Shipment Paths)
 
-1. ให้ Super Admin เปิด `/admin/wallets` แล้วตั้ง public address ของบัญชีผู้ใช้ตามตาราง พร้อมซิงก์ `walletAddress` ขององค์กรนั้นให้ตรงกัน โดยเฉพาะ `warehouse@bmost.io` และ `ORG-WRH-001` ต้องย้ายจาก Account 2 ไป Account 1 ส่วน `auditor@bmost.io` และ `ORG-AUD-001` ต้องตรวจว่าผูก Account 1 แล้วจริง
-2. **สำหรับสินค้าที่ Distributor เป็นเจ้าของบน Sepolia อยู่แล้ว ให้คง wallet ของ Distributor เดิมไว้** การเปลี่ยน wallet ในฐานข้อมูลไม่ได้โอนกรรมสิทธิ์บนสัญญา หากเปลี่ยน wallet ขององค์กรที่ถือสินค้าอยู่ ต้องโอนกรรมสิทธิ์บนสัญญาและซิงก์ข้อมูลให้ตรงก่อนทำรายการต่อ
-3. หลัง Distributor ยืนยันรับสินค้า สถานะจะเป็น `RECEIVED`; เปิดหน้าสินค้าแล้วกด **จัดเก็บสินค้า** ให้เป็น `STORED` ก่อนสร้างใบจัดส่งไป Warehouse เมื่อ Warehouse รับสินค้า ให้จัดเก็บก่อนสร้างใบจัดส่งไป Retailer เช่นกัน
-4. ทุกครั้งที่ทำรายการ ให้เลือก MetaMask address ตรงกับบัญชีผู้ใช้และองค์กรที่ล็อกอิน และใช้เครือข่าย Sepolia ตรวจ role บนสัญญาด้วย `GET /api/blockchain/roles/{wallet}` เมื่อต้องใช้ role เฉพาะ การรับสินค้า จัดเก็บ และจัดส่งต่อของเจ้าของสินค้าตามเส้นทางนี้ตรวจสิทธิ์จาก wallet ผู้ถือครองบนสัญญา
+#### เส้นทางหลัก A: ผ่านผู้จัดจำหน่าย (Manufacturer → Distributor → Retailer)
+```text
+[Account 1] Manufacturer (Apex Tech)
+   │  1. registerProduct() → REGISTERED
+   │  2. recordQualityCheck() โดย Auditor/Mfg [Account 1] → QUALITY_CHECKED
+   │  3. createShipment() (ผู้รับ = Global Express [Account 2]) → READY_TO_SHIP
+   │  4. shipProduct() → SHIPPED
+   ▼
+[Account 2] Distributor (Global Express)
+   │  5. receiveProduct() → RECEIVED (โอนกรรมสิทธิ์ On-chain มายัง Account 2)
+   │  6. storeProduct() เข้าคลังพักสินค้า → STORED
+   │  7. createShipment() (ผู้รับ = Prime Retail [Account 1]) → READY_TO_SHIP
+   │  8. shipProduct() → SHIPPED
+   ▼
+[Account 1] Retailer (Prime Retail)
+   │  9. receiveProduct() → RECEIVED (โอนกรรมสิทธิ์ On-chain กลับมายัง Account 1)
+   │ 10. storeProduct() เข้าสต็อกหน้าร้าน → STORED
+   │ 11. markAsSold() บันทึกการขายแก่ผู้บริโภค → SOLD ✅
+   ▼
+[Public] ผู้บริโภคสแกน QR Code ตรวจสอบย้อนกลับที่ /verify หรือ /traceability
+```
 
-แผนสอง accounts นี้ใช้สาธิตการส่งต่อได้ แต่ wallet ถูกใช้ซ้ำข้ามองค์กร จึงไม่พิสูจน์ความเป็นอิสระของแต่ละองค์กร และ Auditor ใช้ wallet ร่วมกับ Manufacturer/Super Admin หากใช้งานจริงควรใช้ public address แยกสำหรับแต่ละองค์กรและผู้ตรวจอิสระ
+#### เส้นทางหลัก B: ผ่านคลังสินค้าส่วนกลาง (Manufacturer → Warehouse → Retailer)
+```text
+[Account 1] Manufacturer (Apex Tech)
+   │  1. registerProduct() & recordQualityCheck()
+   │  2. createShipment() (ผู้รับ = SafeHub Logistics & Storage [Account 2])
+   │  3. shipProduct()
+   ▼
+[Account 2] Warehouse (SafeHub Storage)
+   │  4. receiveProduct() → RECEIVED (โอนกรรมสิทธิ์ On-chain มายัง Account 2)
+   │  5. storeProduct() เข้าคลังสินค้าส่วนกลาง → STORED
+   │  6. createShipment() (ผู้รับ = Prime Retail [Account 1])
+   │  7. shipProduct()
+   ▼
+[Account 1] Retailer (Prime Retail)
+   │  8. receiveProduct() → RECEIVED (โอนกรรมสิทธิ์ On-chain กลับมายัง Account 1)
+   │  9. storeProduct() → STORED
+   │ 10. markAsSold() → SOLD ✅
+```
+
+---
+
+## 3. คู่มือการสลับ Account ใน MetaMask ระหว่างทดสอบ
+
+| ลำดับขั้นตอน | บัญชีผู้ใช้ที่ล็อกอิน | สิทธิ์ (Role) | บัญชี MetaMask ที่ต้องเลือก | กิจกรรมที่ทำ |
+| :---: | :--- | :--- | :---: | :--- |
+| **1** | `superadmin@bmost.io` | `SUPER_ADMIN` | **Account 1** | ตรวจสอบแดชบอร์ด จัดการ wallet ที่ `/admin/wallets` |
+| **2** | `orgadmin@bmost.io` | `ORG_ADMIN` | **Account 1** | จัดการข้อมูลสมาชิกและสินค้าภายใน Apex Tech |
+| **3** | `manufacturer@bmost.io` | `MANUFACTURER` | **Account 1** | ลงทะเบียนสินค้าใหม่ (`registerProduct`) |
+| **4** | `auditor@bmost.io` | `AUDITOR` | **Account 1** | ตรวจสอบคุณภาพสินค้า (`recordQualityCheck`) |
+| **5** | `manufacturer@bmost.io` | `MANUFACTURER` | **Account 1** | เปิดใบจัดส่ง (`createShipment`) ไปยัง Distributor หรือ Warehouse |
+| **6** | `distributor@bmost.io` หรือ `warehouse@bmost.io` | `DISTRIBUTOR` / `WAREHOUSE` | **Account 2** ⚠️ *(สลับ MetaMask เป็น Account 2)* | ยืนยันรับสินค้า (`receiveProduct`) และกดจัดเก็บ (`storeProduct`) |
+| **7** | `distributor@bmost.io` หรือ `warehouse@bmost.io` | `DISTRIBUTOR` / `WAREHOUSE` | **Account 2** | เปิดใบจัดส่ง (`createShipment`) ต่อไปยัง Retailer |
+| **8** | `retailer@bmost.io` | `RETAILER` | **Account 1** ⚠️ *(สลับ MetaMask กลับเป็น Account 1)* | ยืนยันรับสินค้า (`receiveProduct`) และกดจัดเก็บ (`storeProduct`) |
+| **9** | `retailer@bmost.io` | `RETAILER` | **Account 1** | บันทึกการขายสินค้าหน้าร้าน (`markAsSold`) |
+| **10**| สาธารณะ (ไม่ต้องล็อกอิน) | `PUBLIC` | ไม่ต้องใช้ Wallet | ตรวจสอบประวัติสินค้าและ Anchor Hash ที่ `/traceability` หรือ `/verify` |
+
+---
+
+## 4. การจัดการ Wallet ผ่านหน้าแอดมิน (`/admin/wallets`)
+
+หากต้องการตรวจสอบหรือปรับเปลี่ยน Wallet ของผู้ใช้หรือองค์กร:
+1. เข้าสู่ระบบด้วย `superadmin@bmost.io` / `password123`
+2. เลือกบัญชี MetaMask เป็น **Account 1**
+3. ไปที่เมนู **ผู้ดูแลระบบ &rarr; จัดการ Wallet** (`http://localhost:3000/admin/wallets`)
+4. เลือกรหัสผู้ใช้ที่ต้องการ ป้อน Public Address และเลือก ☑ **อัปเดตกระเป๋าเงินขององค์กรที่สังกัดด้วย** เพื่อให้สอดคล้องกัน
+5. กด **บันทึกข้อมูล**
+6. ตรวจสอบ Role บน Smart Contract ได้ผ่าน Swagger API: `GET /api/blockchain/roles/{wallet}`
