@@ -1,4 +1,7 @@
-﻿# System Architecture Specification
+<div align="center">
+  <img src="assets/brand_logo.png" alt="B-MOST Logo" width="380" />
+
+# System Architecture Specification
 
 > **Last Updated**: September 26, 2026
 

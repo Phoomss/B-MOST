@@ -1,36 +1,55 @@
-﻿This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <img src="public/brand_logo.png" alt="B-MOST Logo" width="380" />
 
-## Getting Started
+  # @b-most/web
+  ### B-MOST Supply Chain Traceability Frontend Application
+  **เว็บแอปพลิเคชันระบบติดตามและตรวจสอบห่วงโซ่อุปทานด้วยเทคโนโลยีบล็อกเชน**
 
-First, run the development server:
+  <p align="center">
+    <img src="https://img.shields.io/badge/Next.js-16.3-black?logo=next.js" alt="Next.js 16" />
+    <img src="https://img.shields.io/badge/React-19-blue?logo=react" alt="React 19" />
+    <img src="https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss" alt="Tailwind CSS v4" />
+    <img src="https://img.shields.io/badge/EVM%20Client-Viem-yellow" alt="Viem" />
+  </p>
+</div>
 
+---
+
+## 📖 Overview
+
+The **@b-most/web** package is the Next.js 16 App Router frontend for the B-MOST platform. It provides role-based interfaces for Manufacturers, Distributors, Warehouses, Retailers, Auditors, Super Admins, and Consumers.
+
+### Key Capabilities
+- **Role-Based Workflows**: Custom dashboard and task views per participant role.
+- **EVM Blockchain Interactivity**: Direct MetaMask / browser wallet integration via `viem` to write tamper-proof supply chain milestones on Ethereum Sepolia.
+- **Consumer Verification**: Instant QR code scanning & verification at `/verify/[code]` without requiring login.
+- **Full Traceability Graph**: Interactive custody timeline and quality inspection history.
+
+---
+
+## 🚀 Getting Started
+
+### Local Development
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# From workspace root
+pnpm --filter @b-most/web dev
+
+# Direct in apps/web
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Application will run at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Environment Configuration
+Ensure `.env.local` or environment variables contain:
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+NEXT_PUBLIC_CHAIN_ID=11155111
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+NEXT_PUBLIC_BLOCKCHAIN_ABI_READY=true
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Running Tests
+```bash
+pnpm --filter @b-most/web test
+```

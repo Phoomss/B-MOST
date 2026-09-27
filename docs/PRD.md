@@ -1,4 +1,7 @@
-﻿# Product Requirements Document (PRD)
+<div align="center">
+  <img src="assets/brand_logo.png" alt="B-MOST Logo" width="380" />
+
+# Product Requirements Document (PRD)
 
 > **Last Updated**: September 26, 2026
 

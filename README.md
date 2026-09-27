@@ -1,8 +1,25 @@
-﻿# B-MOST (Blockchain Multi-Organization Supply Chain Traceability)
+<div align="center">
+  <img src="assets/brand_logo.png" alt="B-MOST Logo" width="460" />
 
-> **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
->
-> A production-grade web-based multi-organization supply-chain traceability platform using Ethereum Virtual Machine (EVM) Smart Contracts and PostgreSQL to record critical supply-chain events in a transparent, tamper-resistant, verifiable, and auditable manner.
+  # B-MOST
+  ### Blockchain Multi-Organization Supply Chain Traceability Platform
+  **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
+
+  <p align="center">
+    <a href="https://sepolia.etherscan.io/address/0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a" target="_blank">
+      <img src="https://img.shields.io/badge/Blockchain-Ethereum%20Sepolia-3c3c3d?logo=ethereum" alt="Sepolia Testnet" />
+    </a>
+    <img src="https://img.shields.io/badge/Smart%20Contract-Solidity%200.8.24-363636?logo=solidity" alt="Solidity 0.8.24" />
+    <img src="https://img.shields.io/badge/Next.js-16.3-black?logo=next.js" alt="Next.js 16" />
+    <img src="https://img.shields.io/badge/NestJS-11.0-e0234e?logo=nestjs" alt="NestJS 11" />
+    <img src="https://img.shields.io/badge/Database-PostgreSQL%2016-336791?logo=postgresql" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/Data%20Integrity-Keccak--256-success" alt="Keccak-256" />
+  </p>
+
+  <p align="center">
+    <em>A production-grade, web-based multi-organization supply-chain provenance platform using EVM Smart Contracts and PostgreSQL to guarantee transparent, tamper-resistant, verifiable, and auditable physical goods tracking.</em>
+  </p>
+</div>
 
 ---
 
@@ -37,6 +54,16 @@ B-MOST/
 ├── pnpm-workspace.yaml       # Monorepo workspace configuration
 └── tsconfig.base.json        # Shared TypeScript base configuration
 ```
+---
+
+## 🛡️ Brand Identity & System Ownership (อัตลักษณ์และความน่าเชื่อถือ)
+
+B-MOST เป็นแพลตฟอร์มระดับองค์กรสำหรับการตรวจสอบย้อนกลับห่วงโซ่อุปทาน สัญลักษณ์และเครื่องหมายทางการได้รับการออกแบบเพื่อสื่อถึงความโปร่งใส ความน่าเชื่อถือ และความเป็นเจ้าของระบบอย่างแท้จริง:
+
+| อัตลักษณ์ (Identity) | ตัวอย่าง (Preview) | บทบาทและการใช้งาน (Purpose & Usage) |
+| :--- | :---: | :--- |
+| **Brand Banner Logo** | <img src="assets/brand_logo.png" alt="B-MOST Brand Logo" width="260" /> | **โลโก้หลักของระบบ**: ใช้แสดงบนหน้าพอร์ทัลเข้าสู่ระบบ (Login Portal), เอกสารรายงานการตรวจสอบสาธารณะ (Verification Certificate) และหัวเอกสารของระบบ |
+| **Official Hexagon Icon** | <img src="assets/icon_logo.png" alt="B-MOST Icon Seal" width="80" /> | **ตราสัญลักษณ์ระบบ (System Seal)**: สื่อถึงบล็อกข้อมูล 3 มิติที่เชื่อมโยงกันด้วยโครงข่ายโหนดกระจายศูนย์ (Decentralized Multi-Node Consensus) ปรากฏบนแถบนำทาง (Navbar), ไอคอนแอปพลิเคชัน และตราประทับบล็อกเชน EVM |
 
 ---
 
