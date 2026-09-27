@@ -10,7 +10,7 @@ export interface ProductQrResult {
  */
 export async function generateProductQr(
   productCode: string,
-  frontendBaseUrl: string = 'http://localhost:3000',
+  frontendBaseUrl: string = process.env.WEB_URL ?? 'http://localhost:3000',
 ): Promise<ProductQrResult> {
   const verificationUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/verify/${encodeURIComponent(productCode)}`;
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
@@ -34,7 +34,7 @@ export async function generateProductQr(
  */
 export async function generateProductQrBuffer(
   productCode: string,
-  frontendBaseUrl: string = 'http://localhost:3000',
+  frontendBaseUrl: string = process.env.WEB_URL ?? 'http://localhost:3000',
 ): Promise<Buffer> {
   const verificationUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/verify/${encodeURIComponent(productCode)}`;
   return QRCode.toBuffer(verificationUrl, {
