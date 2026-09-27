@@ -14,7 +14,7 @@ The browser sends the contract transaction through viem and MetaMask. The API pr
 
 Public: contract address, ABI, wallet addresses, chain ID, transaction hashes. Secret: private keys, seed phrases, JWT secret, database passwords, private RPC URLs or credentials. `NEXT_PUBLIC_*` values are exposed in the web bundle, so never put a secret there. Use local ignored `.env` files or secret storage; the committed `.env.example` is a template only. Replace its example JWT secret and database password before running beyond local development.
 
-The root `.env.example` contains two `DATABASE_URL` examples, one local and one Supabase placeholder. Keep only the intended connection in an actual `.env`, and set `DIRECT_URL` when running Prisma migrations. Compose supplies its own container database URL and can use its default development credentials; configure stronger values for a shared environment.
+The root `.env.example` contains local `DATABASE_URL` and `DIRECT_URL` examples. Replace both for a hosted database. Compose supplies its own container database URL and can use its default development credentials; configure stronger values for a shared environment.
 
 ## Limits to account for
 

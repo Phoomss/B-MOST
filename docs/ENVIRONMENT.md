@@ -14,7 +14,7 @@ The root [`.env.example`](../.env.example) is the committed template. The API lo
 | `BLOCKCHAIN_RPC_URL` | API, Compose, Hardhat config | Sepolia RPC for the app; Hardhat uses it for its Sepolia network setting |
 | `BLOCKCHAIN_ABI_READY` | API | Must be `true` for contract reads/actions |
 | `SEED_DATABASE`, `AUTO_SEED` | API container entrypoint | Opt-in seed on startup |
-| `NEXT_PUBLIC_WEB_URL`, `WEB_URL` | API product service | Base URL for generated verification links; fallback is localhost:3000 |
+| `WEB_URL` | API product service | Base URL for generated verification links; fallback is localhost:3000 |
 
 The API's Sepolia contract address and chain ID are fixed in `blockchain.config.ts`; `CONTRACT_ADDRESS` and `BLOCKCHAIN_CHAIN_ID` appear in the template/Compose but do not override those fixed app values. Avoid treating them as a way to switch networks.
 
@@ -35,13 +35,17 @@ These values are public. The browser uses the MetaMask provider for signing; do 
 
 ```env
 BLOCKCHAIN_RPC_URL=<your-sepolia-rpc-url>
+CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+BLOCKCHAIN_CHAIN_ID=11155111
+BLOCKCHAIN_ABI_READY=true
 JWT_SECRET=<new-random-secret>
 DATABASE_URL=postgresql://<user>:<password>@localhost:5433/<database>?schema=public
 DIRECT_URL=postgresql://<user>:<password>@localhost:5433/<database>?schema=public
+WEB_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:4000/api
 NEXT_PUBLIC_CHAIN_ID=11155111
 NEXT_PUBLIC_CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
 NEXT_PUBLIC_BLOCKCHAIN_ABI_READY=true
 ```
 
-For Compose, the API `DATABASE_URL` is built from the PostgreSQL service values; set `BLOCKCHAIN_RPC_URL` in the root `.env` before starting. The `.env.example` currently has two `DATABASE_URL` assignments: select one in your working `.env` and remove the other.
+For Compose, the API `DATABASE_URL` is built from the PostgreSQL service values; set `BLOCKCHAIN_RPC_URL` in the root `.env` before starting. The root `.env.example` contains one local `DATABASE_URL` and one matching `DIRECT_URL`. Replace both when using hosted PostgreSQL. Render and Vercel variable lists are in `deploy/render.env.example` and `deploy/vercel.env.example`.
