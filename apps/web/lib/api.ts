@@ -885,7 +885,7 @@ export const api = {
         transactionHash: string;
         chainId: number;
         blockNumber: number;
-        pendingAbi: boolean;
+        events: string[];
       }>('blockchain/verify-transaction', {
         method: 'POST',
         body: JSON.stringify({ transactionHash }),

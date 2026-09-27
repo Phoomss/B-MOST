@@ -166,29 +166,13 @@ backend secrets through `NEXT_PUBLIC_*`.
 
 ## 4. ABI
 
-I will add the actual ABI manually.
-
-Inspect existing ABI handling first. If no suitable module exists,
-create only a minimal placeholder:
-
-``` ts
-// TODO: Add actual SupplyChainRegistry ABI
-export const supplyChainRegistryAbi = [] as const;
-```
-
-Do not fake ABI entries.
-
-For code blocked by the missing ABI, use:
-
-``` text
-TODO: Waiting for SupplyChainRegistry ABI
-```
-
-Continue implementing work that does not require the ABI.
-
-Prefer a shared ABI source only if the current repository structure
-naturally supports it. Do not restructure the project significantly just
-for ABI sharing.
+The canonical ABI is `packages/contracts/abi/SupplyChainRegistry.json`,
+generated from the Hardhat artifact for `contracts/SupplyChainRegistry.sol`.
+Both applications import it through `@b-most/contracts/abi`. After a Solidity
+change, compile the contract, run `pnpm --filter @b-most/contracts abi:sync`,
+and run `abi:check` before committing. Production requires
+`BLOCKCHAIN_ABI_READY=true` for the API and
+`NEXT_PUBLIC_BLOCKCHAIN_ABI_READY=true` for the web build.
 
 ------------------------------------------------------------------------
 

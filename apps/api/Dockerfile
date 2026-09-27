@@ -15,6 +15,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/contracts/package.json ./packages/contracts/
 RUN pnpm install --frozen-lockfile
 COPY apps/api ./apps/api
+COPY packages/contracts/abi ./packages/contracts/abi
 RUN pnpm --filter @b-most/api run prisma:generate
 COPY apps/api/docker-entrypoint.sh /usr/local/bin/bmost-api-entrypoint
 RUN sed -i 's/\r$//' /usr/local/bin/bmost-api-entrypoint && chmod +x /usr/local/bin/bmost-api-entrypoint
@@ -39,6 +40,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy api application source code
 COPY apps/api ./apps/api
+COPY packages/contracts/abi ./packages/contracts/abi
 
 # Generate Prisma client and compile TypeScript
 WORKDIR /app/apps/api
@@ -60,6 +62,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules /app/node_modules
 COPY --from=builder --chown=nestjs:nodejs /app/package.json /app/package.json
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/packages/contracts/package.json /app/packages/contracts/package.json
+COPY --from=builder --chown=nestjs:nodejs /app/packages/contracts/abi /app/packages/contracts/abi
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./package.json
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/prisma ./prisma

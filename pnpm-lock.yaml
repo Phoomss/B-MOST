@@ -14,6 +14,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@b-most/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.2.5(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -153,6 +156,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@b-most/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       next:
         specifier: 16.3.5
         version: 16.3.5(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

@@ -56,9 +56,20 @@ export class BlockchainVerificationService {
     if (receipt.status !== 1) {
       throw new BadRequestException('ธุรกรรมบน Blockchain ล้มเหลว');
     }
-    // TODO: Waiting for SupplyChainRegistry ABI. Decode the expected event,
-    // derive on-chain IDs from the receipt, then atomically sync PostgreSQL.
-    // Never accept IDs or success flags supplied by the browser.
+    const iface = this.blockchain.getReadOnlyContract().interface;
+    const events = receipt.logs
+      .filter((log) => log.address.toLowerCase() === contract.toLowerCase())
+      .flatMap((log) => {
+        try {
+          const event = iface.parseLog(log);
+          return event ? [event.name] : [];
+        } catch {
+          return [];
+        }
+      });
+    if (events.length === 0) {
+      throw new BadRequestException('Transaction receipt has no SupplyChainRegistry events');
+    }
     return {
       verified: true,
       synced: false,
@@ -68,7 +79,7 @@ export class BlockchainVerificationService {
       chainId: 11155111,
       blockNumber: receipt.blockNumber,
       status: 'CONFIRMED',
-      pendingAbi: true,
+      events,
     };
   }
 }

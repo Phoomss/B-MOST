@@ -1,14 +1,12 @@
-// Read-only check for the supplied ABI and the configured Sepolia deployment.
-const fs = require('node:fs');
-const path = require('node:path');
+// Read-only check for the compiled ABI and the configured Sepolia deployment.
 const { Interface, JsonRpcProvider } = require('ethers');
+const artifact = require('../../../packages/contracts/artifacts/contracts/SupplyChainRegistry.sol/SupplyChainRegistry.json');
 
 const address = '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a';
-const source = fs.readFileSync(
-  path.join(__dirname, '../src/blockchain/constants/sepolia-abi.constant.ts'),
-  'utf8',
-);
-const abi = JSON.parse(source.slice(source.indexOf('['), source.lastIndexOf(']') + 1));
+const abi = require('@b-most/contracts/abi');
+if (JSON.stringify(abi) !== JSON.stringify(artifact.abi)) {
+  throw new Error('Committed ABI differs from the compiled Solidity contract');
+}
 const iface = new Interface(abi);
 
 async function main() {
@@ -18,16 +16,24 @@ async function main() {
     const [network, code] = await Promise.all([provider.getNetwork(), provider.getCode(address)]);
     if (network.chainId !== 11155111n) throw new Error(`Unexpected chain ID ${network.chainId}`);
     if (code === '0x') throw new Error(`No contract code at ${address}`);
+    if (code.toLowerCase() !== artifact.deployedBytecode.toLowerCase()) {
+      throw new Error(`Deployed runtime bytecode differs from compiled SupplyChainRegistry at ${address}`);
+    }
     console.log(`Sepolia contract: ${address}; runtime bytes: ${(code.length - 2) / 2}`);
     const names = [
-      'getTotalProducts', 'getTotalShipments', 'getProductByCode',
       'registerProduct', 'recordQualityCheck', 'createShipment',
-      'shipProduct', 'markInTransit', 'receiveProduct', 'storeProduct', 'markAsSold',
+      'shipProduct', 'markInTransit', 'receiveProduct', 'storeProduct',
+      'transferOwnership', 'markAsSold', 'recallProduct', 'getProduct',
+      'getProductByCode', 'getShipment', 'getShipmentByCode',
+      'getQualityChecks', 'getProductHistory', 'grantRole', 'hasRole',
     ];
     for (const name of names) {
       const fragment = iface.getFunction(name);
       if (!fragment) throw new Error(`ABI missing ${name}`);
-      console.log(`${name}: ${fragment.selector}; selector in runtime: ${code.toLowerCase().includes(fragment.selector.slice(2).toLowerCase())}`);
+      if (!code.toLowerCase().includes(fragment.selector.slice(2).toLowerCase())) {
+        throw new Error(`Runtime bytecode is missing ${name} selector`);
+      }
+      console.log(`${name}: ${fragment.selector}`);
     }
     for (const name of [
       'ProductRegistered', 'QualityChecked', 'ShipmentCreated',

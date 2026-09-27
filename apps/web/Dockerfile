@@ -14,6 +14,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/contracts/package.json ./packages/contracts/
 RUN pnpm install --frozen-lockfile
 COPY apps/web ./apps/web
+COPY packages/contracts/abi ./packages/contracts/abi
 WORKDIR /app/apps/web
 CMD ["pnpm", "exec", "next", "dev", "-H", "0.0.0.0", "-p", "3000"]
 
@@ -34,6 +35,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy web application source code
 COPY apps/web ./apps/web
+COPY packages/contracts/abi ./packages/contracts/abi
 
 # Set build-time environment variables for Next.js bundle
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api

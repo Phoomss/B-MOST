@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ethers } from 'ethers';
-import { supplyChainRegistryAbi } from './constants/sepolia-abi.constant';
+import supplyChainRegistryAbi from '@b-most/contracts/abi';
 import { CONTRACT_ROLES } from './constants/events.constant';
 
 export interface BlockchainStatus {
@@ -148,28 +148,16 @@ export class BlockchainService implements OnModuleDestroy {
   ): ethers.Contract {
     // Never attach a signer to the backend contract.
     void signerOrProvider;
-    if (
-      process.env.BLOCKCHAIN_ABI_READY !== 'true' ||
-      (supplyChainRegistryAbi as readonly unknown[]).length === 0
-    ) {
-      throw new ServiceUnavailableException(
-        'TODO: Waiting for SupplyChainRegistry ABI',
-      );
-    }
-    return new ethers.Contract(
-      this.contractAddress,
-      supplyChainRegistryAbi,
-      this.provider,
-    );
+    return this.getReadOnlyContract();
   }
 
   getReadOnlyContract(): ethers.Contract {
     if (
       process.env.BLOCKCHAIN_ABI_READY !== 'true' ||
-      (supplyChainRegistryAbi as readonly unknown[]).length === 0
+      supplyChainRegistryAbi.length === 0
     ) {
       throw new ServiceUnavailableException(
-        'TODO: Waiting for SupplyChainRegistry ABI',
+        'SupplyChainRegistry ABI is unavailable or BLOCKCHAIN_ABI_READY is not true',
       );
     }
     return new ethers.Contract(

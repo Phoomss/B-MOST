@@ -47,8 +47,7 @@ export class BlockchainIndexerService implements OnModuleInit, OnModuleDestroy {
         `Blockchain event listener active on contract: ${status.contractAddress} (Chain ID: ${status.chainId})`,
       );
 
-      // Historical Sepolia sync requires an explicit deployment block and the real ABI.
-      // TODO: Waiting for SupplyChainRegistry ABI.
+      // Historical Sepolia sync requires an explicit deployment block.
 
       return true;
     } catch (err: any) {

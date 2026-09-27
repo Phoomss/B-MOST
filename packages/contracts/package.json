@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "description": "Smart contracts for B-MOST supply chain traceability platform",
+  "exports": {
+    "./abi": "./abi/SupplyChainRegistry.json"
+  },
   "scripts": {
     "compile": "hardhat compile",
+    "abi:sync": "node scripts/sync-abi.cjs",
+    "abi:check": "node scripts/sync-abi.cjs --check",
     "test": "hardhat test",
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",

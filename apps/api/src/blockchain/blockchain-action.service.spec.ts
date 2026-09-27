@@ -10,7 +10,7 @@ import { BlockchainService } from './blockchain.service';
 import { ProductStateMachineService } from './product-state-machine.service';
 import { BlockchainActionService } from './blockchain-action.service';
 import { UserSignedAction } from './dto/blockchain-action.dto';
-import { supplyChainRegistryAbi } from './constants/sepolia-abi.constant';
+import supplyChainRegistryAbi from '@b-most/contracts/abi';
 
 describe('BlockchainActionService', () => {
   const address = '0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a';
@@ -53,7 +53,7 @@ describe('BlockchainActionService', () => {
   };
   const prisma = {
     product: { findFirst: jest.fn(), findUnique: jest.fn() },
-    shipment: { findUnique: jest.fn() },
+    shipment: { findFirst: jest.fn(), findUnique: jest.fn() },
     blockchainActionIntent: { findUnique: jest.fn(), findFirst: jest.fn() },
     $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
       callback(tx),
@@ -69,6 +69,7 @@ describe('BlockchainActionService', () => {
     })),
     getProvider: jest.fn(() => provider),
     getProduct: jest.fn(),
+    getShipment: jest.fn(),
   };
   const stateMachine = {
     checkStateMismatch: jest.fn(),
@@ -190,8 +191,63 @@ describe('BlockchainActionService', () => {
         { action: UserSignedAction.STORE_PRODUCT, entityId: product.id },
         { ...user, role: UserRole.DISTRIBUTOR },
       ),
-    ).resolves.toMatchObject({ functionName: 'storeProduct' });
+    ).resolves.toMatchObject({ functionName: 'storeProduct', args: ['3'] });
     expect(provider.call).toHaveBeenCalled();
+  });
+
+  it('uses blockchain product and shipment IDs for shipment transactions', async () => {
+    const chainProduct = {
+      ...product,
+      status: ProductStatus.READY_TO_SHIP,
+      blockchainProductId: '37',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+    };
+    prisma.shipment.findFirst.mockResolvedValueOnce({
+      id: 'shipment-db-uuid',
+      shipmentCode: 'SHP-001',
+      product: chainProduct,
+      blockchainShipmentId: '84',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+      sender: { walletAddress: wallet },
+      receiver: { walletAddress: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC' },
+      carrier: null,
+    });
+    blockchain.getProduct.mockResolvedValueOnce({
+      productCode: product.productCode,
+      productHash,
+      status: 2,
+      currentOwner: wallet,
+    });
+    blockchain.getShipment.mockResolvedValueOnce({
+      productId: 37n,
+      shipmentCode: 'SHP-001',
+      status: 0,
+    });
+    tx.blockchainActionIntent.create.mockResolvedValueOnce({
+      id: 'intent-1',
+      entityType: 'Shipment',
+      entityId: 'shipment-db-uuid',
+      expiresAt: new Date(),
+    });
+
+    await expect(service.prepare({
+      action: UserSignedAction.SHIP_PRODUCT,
+      entityId: 'shipment-db-uuid',
+    }, user)).resolves.toMatchObject({
+      functionName: 'shipProduct',
+      args: ['37', '84'],
+      productDbId: product.id,
+      shipmentDbId: 'shipment-db-uuid',
+    });
+    expect(blockchain.getProduct).toHaveBeenCalledWith(37n);
+    expect(blockchain.getShipment).toHaveBeenCalledWith(84n);
+    expect(provider.call).toHaveBeenCalledWith({
+      to: address,
+      from: wallet,
+      data: iface.encodeFunctionData('shipProduct', [37n, 84n]),
+    });
   });
 
   it('reports when the database owner has not become the blockchain owner', async () => {

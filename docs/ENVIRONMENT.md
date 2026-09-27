@@ -18,6 +18,8 @@ The root [`.env.example`](../.env.example) is the committed template. The API lo
 
 The API's Sepolia contract address and chain ID are fixed in `blockchain.config.ts`; `CONTRACT_ADDRESS` and `BLOCKCHAIN_CHAIN_ID` appear in the template/Compose but do not override those fixed app values. Avoid treating them as a way to switch networks.
 
+The backend and web app both load `@b-most/contracts/abi` from `packages/contracts/abi/SupplyChainRegistry.json`. After changing the Solidity contract, compile it and run `pnpm --filter @b-most/contracts abi:sync`; `abi:check` compares the committed ABI with the Hardhat artifact. For the current deployment, keep the backend `CONTRACT_ADDRESS=0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a`, `BLOCKCHAIN_CHAIN_ID=11155111`, and `BLOCKCHAIN_ABI_READY=true`. Set `NEXT_PUBLIC_*` variables in the web build environment, not as a substitute for backend variables.
+
 ## Frontend
 
 | Variable | Meaning |

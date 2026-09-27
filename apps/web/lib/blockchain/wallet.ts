@@ -10,7 +10,7 @@ import {
   type Hash,
 } from 'viem';
 import { sepolia } from 'viem/chains';
-import { supplyChainRegistryAbi } from './abi';
+import supplyChainRegistryAbi from '@b-most/contracts/abi';
 import { api } from '../api';
 
 export const SEPOLIA_CHAIN_ID = 11155111;
@@ -73,9 +73,9 @@ export async function writeSupplyChainAction(params: {
   assertExpectedWallet(connectedAccounts[0] ?? null, account);
   if (
     process.env.NEXT_PUBLIC_BLOCKCHAIN_ABI_READY !== 'true' ||
-    (supplyChainRegistryAbi as readonly unknown[]).length === 0
+    supplyChainRegistryAbi.length === 0
   ) {
-    throw new Error('TODO: Waiting for SupplyChainRegistry ABI');
+    throw new Error('SupplyChainRegistry ABI is unavailable or NEXT_PUBLIC_BLOCKCHAIN_ABI_READY is not true');
   }
   const abi = supplyChainRegistryAbi as Abi;
   const fragment = abi.find((item) => item.type === 'function' && item.name === params.functionName);
