@@ -1,7 +1,6 @@
 <div align="center">
   <img src="assets/brand_logo.png" alt="B-MOST Logo" width="460" />
 
-  # B-MOST
   ### Blockchain Multi-Organization Supply Chain Traceability Platform
   **ระบบติดตามและตรวจสอบห่วงโซ่อุปทานหลายองค์กรด้วยเทคโนโลยีบล็อกเชน**
 

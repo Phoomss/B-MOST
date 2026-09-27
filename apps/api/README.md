@@ -1,7 +1,6 @@
 <div align="center">
   <img src="../../assets/brand_logo.png" alt="B-MOST Logo" width="380" />
 
-  # @b-most/api
   ### B-MOST Backend REST API & Blockchain Sync Engine
   **ระบบบริการหลังบ้านและเชื่อมโยงบล็อกเชน (NestJS 11 + Prisma ORM)**
 
