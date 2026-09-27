@@ -562,6 +562,7 @@ export const api = {
     list: (params?: {
       search?: string;
       status?: string;
+      blockchainState?: 'PENDING' | 'ON_CHAIN';
       category?: string;
       page?: number;
       limit?: number;
@@ -569,6 +570,7 @@ export const api = {
       const query = new URLSearchParams();
       if (params?.search) query.set('search', params.search);
       if (params?.status) query.set('status', params.status);
+      if (params?.blockchainState) query.set('blockchainState', params.blockchainState);
       if (params?.category) query.set('category', params.category);
       if (params?.page) query.set('page', String(params.page));
       if (params?.limit) query.set('limit', String(params.limit));

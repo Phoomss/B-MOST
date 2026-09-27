@@ -399,6 +399,25 @@ describe('ProductsService', () => {
         }),
       );
     });
+
+    it.each([
+      ['PENDING', null],
+      ['ON_CHAIN', { not: null }],
+    ] as const)(
+      'filters %s products by blockchain registration',
+      async (blockchainState, blockchainProductId) => {
+        await service.findAll({ blockchainState }, mockManufacturerUser);
+
+        expect(prisma.product.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ blockchainProductId }),
+          }),
+        );
+        expect(prisma.product.count).toHaveBeenCalledWith({
+          where: expect.objectContaining({ blockchainProductId }),
+        });
+      },
+    );
   });
 
   describe('findOne', () => {

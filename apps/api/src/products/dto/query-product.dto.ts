@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsString,
   IsEnum,
+  IsIn,
   IsUUID,
   IsInt,
   Min,
@@ -26,6 +27,14 @@ export class QueryProductDto {
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
+
+  @ApiPropertyOptional({
+    description: 'Filter products by blockchain registration',
+    enum: ['PENDING', 'ON_CHAIN'],
+  })
+  @IsOptional()
+  @IsIn(['PENDING', 'ON_CHAIN'])
+  blockchainState?: 'PENDING' | 'ON_CHAIN';
 
   @ApiPropertyOptional({
     description: 'Filter by category name',

@@ -327,6 +327,12 @@ export class ProductsService {
       where.status = query.status;
     }
 
+    if (query.blockchainState === 'PENDING') {
+      where.blockchainProductId = null;
+    } else if (query.blockchainState === 'ON_CHAIN') {
+      where.blockchainProductId = { not: null };
+    }
+
     if (query.category) {
       where.category = { contains: query.category, mode: 'insensitive' };
     }
