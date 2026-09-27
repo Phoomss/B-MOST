@@ -249,6 +249,7 @@ export class BlockchainActionService {
       'DISTRIBUTOR_ROLE',
       'WAREHOUSE_ROLE',
       'RETAILER_ROLE',
+      'AUDITOR_ROLE',
     ] as const;
     const entries = await Promise.all(
       roles.map(async (role) => {
@@ -368,10 +369,24 @@ export class BlockchainActionService {
         ]);
         if (
           user.role !== UserRole.SUPER_ADMIN &&
+          user.role !== UserRole.AUDITOR &&
           user.organizationId !== product.manufacturerId &&
           user.organizationId !== product.currentOwnerId
         ) {
           throw new ForbiddenException('องค์กรนี้ตรวจคุณภาพสินค้านี้ไม่ได้');
+        }
+        if (
+          user.role === UserRole.AUDITOR &&
+          user.organizationId !== product.manufacturerId &&
+          user.organizationId !== product.currentOwnerId
+        ) {
+          const contract = this.blockchain.getReadOnlyContract();
+          const auditorRole: string = await contract.AUDITOR_ROLE();
+          if (!(await contract.hasRole(auditorRole, wallet))) {
+            throw new ForbiddenException(
+              'wallet ผู้ตรวจสอบไม่มี AUDITOR_ROLE บนสัญญา Sepolia กรุณาให้ Super Admin เพิ่มสิทธิ์ให้ wallet นี้',
+            );
+          }
         }
         if (typeof dto.passed !== 'boolean')
           throw new BadRequestException('กรุณาระบุผลการตรวจคุณภาพ');

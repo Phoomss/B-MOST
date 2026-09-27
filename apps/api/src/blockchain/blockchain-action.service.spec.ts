@@ -170,6 +170,62 @@ describe('BlockchainActionService', () => {
     expect(blockchain.getProduct).not.toHaveBeenCalled();
   });
 
+  it('allows an independent auditor with AUDITOR_ROLE to prepare a quality check', async () => {
+    prisma.product.findFirst.mockResolvedValueOnce({
+      ...product,
+      blockchainProductId: '3',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+    });
+    blockchain.getProduct.mockResolvedValueOnce({
+      productCode: product.productCode,
+      productHash,
+      status: 0,
+    });
+    const contract = {
+      interface: iface,
+      AUDITOR_ROLE: jest.fn().mockResolvedValue('0xauditor'),
+      hasRole: jest.fn().mockResolvedValue(true),
+    };
+    blockchain.getReadOnlyContract.mockReturnValueOnce(contract);
+
+    await expect(
+      service.prepare(
+        { action: UserSignedAction.QUALITY_CHECK, entityId: product.id, passed: true },
+        { ...user, role: UserRole.AUDITOR, organizationId: 'org-auditor' },
+      ),
+    ).resolves.toMatchObject({ functionName: 'recordQualityCheck' });
+    expect(contract.hasRole).toHaveBeenCalledWith('0xauditor', wallet);
+    expect(provider.call).toHaveBeenCalled();
+  });
+
+  it('explains when an independent auditor wallet lacks AUDITOR_ROLE', async () => {
+    prisma.product.findFirst.mockResolvedValueOnce({
+      ...product,
+      blockchainProductId: '3',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+    });
+    blockchain.getProduct.mockResolvedValueOnce({
+      productCode: product.productCode,
+      productHash,
+      status: 0,
+    });
+    blockchain.getReadOnlyContract.mockReturnValueOnce({
+      interface: iface,
+      AUDITOR_ROLE: jest.fn().mockResolvedValue('0xauditor'),
+      hasRole: jest.fn().mockResolvedValue(false),
+    });
+
+    await expect(
+      service.prepare(
+        { action: UserSignedAction.QUALITY_CHECK, entityId: product.id, passed: true },
+        { ...user, role: UserRole.AUDITOR, organizationId: 'org-auditor' },
+      ),
+    ).rejects.toThrow('AUDITOR_ROLE');
+    expect(provider.call).not.toHaveBeenCalled();
+  });
+
   it('rejects a wallet that differs from the manufacturer wallet', async () => {
     await expect(
       service.prepare(
