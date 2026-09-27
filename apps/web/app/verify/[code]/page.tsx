@@ -39,10 +39,9 @@ export default function PublicVerifyPage({
         if (!ignore) {
           setData(res);
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'การตรวจสอบสินค้าล้มเหลว';
-          setError(msg);
+          setError('การตรวจสอบสินค้าล้มเหลว กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {

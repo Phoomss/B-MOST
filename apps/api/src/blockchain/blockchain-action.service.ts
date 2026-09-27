@@ -118,9 +118,16 @@ export class BlockchainActionService {
       blockchainShipmentId?: string | null;
     },
     id: string | null | undefined,
+    entityType: 'product' | 'shipment',
   ) {
+    if (!id) {
+      throw new ConflictException(
+        entityType === 'product'
+          ? 'PRODUCT_NOT_REGISTERED: สินค้ายังไม่ได้บันทึกบน Blockchain กรุณาบันทึกสินค้าก่อนตรวจคุณภาพ'
+          : 'SHIPMENT_NOT_REGISTERED: การจัดส่งยังไม่ได้บันทึกบน Blockchain',
+      );
+    }
     if (
-      !id ||
       entity.blockchainChainId !== 11155111 ||
       entity.blockchainContractAddress?.toLowerCase() !==
         this.blockchain.getContractAddress().toLowerCase()
@@ -158,7 +165,7 @@ export class BlockchainActionService {
     product: Awaited<ReturnType<BlockchainActionService['product']>>,
     action: UserSignedAction,
   ) {
-    this.assertReference(product, product.blockchainProductId);
+    this.assertReference(product, product.blockchainProductId, 'product');
     const live = await this.blockchain.getProduct(
       BigInt(product.blockchainProductId!),
     );
@@ -195,7 +202,7 @@ export class BlockchainActionService {
   private async onChainShipment(
     shipment: Awaited<ReturnType<BlockchainActionService['shipment']>>,
   ) {
-    this.assertReference(shipment, shipment.blockchainShipmentId);
+    this.assertReference(shipment, shipment.blockchainShipmentId, 'shipment');
     const live = await this.blockchain.getShipment(
       BigInt(shipment.blockchainShipmentId!),
     );
@@ -444,7 +451,11 @@ export class BlockchainActionService {
           destination: dto.destination.trim(),
         };
       } else if (shipment) {
-        this.assertReference(shipment, shipment.blockchainShipmentId);
+        this.assertReference(
+          shipment,
+          shipment.blockchainShipmentId,
+          'shipment',
+        );
         const liveShipment = await this.onChainShipment(shipment);
         const expectedShipmentStatus =
           dto.action === UserSignedAction.SHIP_PRODUCT

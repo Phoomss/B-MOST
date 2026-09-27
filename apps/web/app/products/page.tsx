@@ -43,9 +43,8 @@ export default function ProductsPage() {
       setProducts(res.data || []);
       setTotalPages(res.meta?.totalPages || 1);
       setTotalCount(res.meta?.total || 0);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลสินค้าได้';
-      setError(msg);
+    } catch {
+      setError('ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
     }
@@ -66,10 +65,9 @@ export default function ProductsPage() {
           setTotalPages(res.meta?.totalPages || 1);
           setTotalCount(res.meta?.total || 0);
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลสินค้าได้';
-          setError(msg);
+          setError('ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {

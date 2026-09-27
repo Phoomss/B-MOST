@@ -53,9 +53,8 @@ export default function DashboardPage() {
       if (statsData) setStats(statsData);
       if (chartsData) setCharts(chartsData);
       setActivities(activityData || []);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลภาพรวมระบบได้';
-      setError(msg);
+    } catch {
+      setError('ไม่สามารถโหลดข้อมูลภาพรวมระบบได้ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
       setRefreshing(false);

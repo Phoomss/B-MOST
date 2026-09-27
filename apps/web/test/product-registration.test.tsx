@@ -58,7 +58,7 @@ describe('Product Registration Page', () => {
   });
 
   it('submits form with correct payload including registerOnBlockchain flag and redirects to product detail', async () => {
-    vi.mocked(executeUserSignedAction).mockResolvedValueOnce({ verified: true, synced: true } as any);
+    vi.mocked(executeUserSignedAction).mockResolvedValueOnce({ verified: true, synced: true } as Awaited<ReturnType<typeof executeUserSignedAction>>);
     vi.mocked(api.products.create).mockResolvedValueOnce({
       id: 'prod-new-uuid',
       productCode: 'PRD-TEST-001',
@@ -123,9 +123,26 @@ describe('Product Registration Page', () => {
     fireEvent.click(screen.getByRole('button', { name: /register product/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('Registration Error')).toBeInTheDocument();
-      expect(screen.getByText('Product code already exists')).toBeInTheDocument();
+      expect(screen.getByText('สร้างสินค้าไม่สำเร็จ')).toBeInTheDocument();
+      expect(screen.getByText('เกิดข้อผิดพลาดในการลงทะเบียนสินค้า กรุณาลองใหม่อีกครั้ง')).toBeInTheDocument();
     });
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('keeps the created product and shows a neutral message when signing is rejected', async () => {
+    vi.mocked(api.products.create).mockResolvedValueOnce({ id: 'saved-id' } as Awaited<ReturnType<typeof api.products.create>>);
+    vi.mocked(executeUserSignedAction).mockRejectedValueOnce(new Error('User rejected the request. Request Arguments: chain: Sepolia (id: 11155111) data: 0xed0abd15 Contract Call: registerProduct(string productCode, bytes32 productHash) Docs: https://viem.sh/docs/contract/writeContract Details: MetaMask Tx Signature: User denied transaction signature. Version: viem@2.56.8'));
+    render(<CreateProductPage />);
+    fireEvent.change(screen.getByPlaceholderText('e.g. PRD-2026-0001'), { target: { value: 'PRD-1' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. SN-8921473'), { target: { value: 'SN-1' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. Industrial IoT Sensor Probe'), { target: { value: 'Sensor' } });
+    fireEvent.click(screen.getByLabelText(/register immediately onto smart contract/i));
+    fireEvent.click(screen.getByRole('button', { name: /register product/i }));
+    expect(await screen.findByRole('status')).toHaveTextContent('สร้างสินค้าแล้ว');
+    expect(screen.getByRole('status')).toHaveTextContent('คุณยกเลิกการยืนยันธุรกรรมใน MetaMask');
+    expect(screen.getByRole('link', { name: 'ไปหน้าสินค้า' })).toHaveAttribute('href', '/products/saved-id');
+    expect(screen.queryByText(/Request Arguments|Contract Call|viem@|0xed0abd15/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /register product/i })).not.toBeInTheDocument();
     expect(mockPush).not.toHaveBeenCalled();
   });
 });

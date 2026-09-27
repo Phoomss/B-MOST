@@ -124,7 +124,7 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Update product metadata',
     description:
-      'Updates non-immutable product metadata (name, description, category). Core tracking identifiers and blockchain states cannot be altered.',
+      'Before blockchain registration, the manufacturer can edit product code, serial number, name, category, and description. Hash-affecting fields cannot change after registration.',
   })
   @ApiParam({ name: 'id', description: 'Product UUID' })
   @ApiResponse({ status: 200, description: 'Product updated successfully' })
@@ -152,7 +152,10 @@ export class ProductsController {
       'Prepare with POST /api/blockchain/actions/prepare, sign in MetaMask, then confirm with POST /api/blockchain/actions/confirm.',
   })
   @ApiParam({ name: 'id', description: 'Product UUID' })
-  @ApiResponse({ status: 410, description: 'Use wallet-signed blockchain actions' })
+  @ApiResponse({
+    status: 410,
+    description: 'Use wallet-signed blockchain actions',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({
     status: 403,
@@ -184,7 +187,10 @@ export class ProductsController {
       'Prepare recordQualityCheck with POST /api/blockchain/actions/prepare, sign in MetaMask, then confirm the receipt.',
   })
   @ApiParam({ name: 'id', description: 'Product UUID or unique productCode' })
-  @ApiResponse({ status: 410, description: 'Use wallet-signed blockchain actions' })
+  @ApiResponse({
+    status: 410,
+    description: 'Use wallet-signed blockchain actions',
+  })
   @ApiResponse({
     status: 400,
     description: 'Invalid result or recalled product',

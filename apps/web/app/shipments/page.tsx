@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { executeUserSignedAction } from '../../lib/blockchain/wallet';
+import { getBlockchainErrorMessage, isBlockchainRejection } from '../../lib/blockchain/errors';
 import {
   api,
   ProductItem,
@@ -45,6 +46,7 @@ function ShipmentsPageContent() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [blockchainCancelled, setBlockchainCancelled] = useState(false);
   const [successMessage, setSuccessMessage] = useState<{
     title: string;
     details: string;
@@ -76,10 +78,9 @@ function ShipmentsPageContent() {
             setShowCreateModal(true);
           }
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลการจัดส่งได้';
-          setErrorMessage(msg);
+          setErrorMessage('ไม่สามารถโหลดข้อมูลการจัดส่งได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {
@@ -143,6 +144,8 @@ function ShipmentsPageContent() {
     try {
       setSubmitting(true);
       setErrorMessage(null);
+      setBlockchainCancelled(false);
+      setSuccessMessage(null);
 
       const res = await executeUserSignedAction({
         action: 'createShipment',
@@ -172,8 +175,8 @@ function ShipmentsPageContent() {
       const shpRes = await api.shipments.list({ limit: 50 });
       setShipments(shpRes.data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างใบจัดส่งสินค้า';
-      setErrorMessage(msg);
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setErrorMessage(getBlockchainErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +186,8 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
+      setBlockchainCancelled(false);
+      setSuccessMessage(null);
       const res = await executeUserSignedAction({ action: 'shipProduct', entityId: shipmentId });
 
       setSuccessMessage({
@@ -194,8 +199,8 @@ function ShipmentsPageContent() {
       const shpRes = await api.shipments.list({ limit: 50 });
       setShipments(shpRes.data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการจัดส่งสินค้า';
-      setErrorMessage(msg);
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setErrorMessage(getBlockchainErrorMessage(err));
     } finally {
       setActionInProgressId(null);
     }
@@ -205,6 +210,8 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
+      setBlockchainCancelled(false);
+      setSuccessMessage(null);
       const res = await executeUserSignedAction({ action: 'receiveProduct', entityId: shipmentId });
 
       setSuccessMessage({
@@ -216,8 +223,8 @@ function ShipmentsPageContent() {
       const shpRes = await api.shipments.list({ limit: 50 });
       setShipments(shpRes.data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการรับสินค้า';
-      setErrorMessage(msg);
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setErrorMessage(getBlockchainErrorMessage(err));
     } finally {
       setActionInProgressId(null);
     }
@@ -227,11 +234,18 @@ function ShipmentsPageContent() {
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
+      setBlockchainCancelled(false);
+      setSuccessMessage(null);
       await executeUserSignedAction({ action: 'markInTransit', entityId: shipmentId });
+      setSuccessMessage({
+        title: 'อัปเดตสถานะระหว่างขนส่งสำเร็จ',
+        details: 'บันทึกสถานะบน Sepolia เรียบร้อยแล้ว',
+      });
       const shpRes = await api.shipments.list({ limit: 50 });
       setShipments(shpRes.data || []);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'ไม่สามารถเปลี่ยนสถานะเป็นระหว่างขนส่งได้');
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setErrorMessage(getBlockchainErrorMessage(err));
     } finally {
       setActionInProgressId(null);
     }
@@ -299,11 +313,11 @@ function ShipmentsPageContent() {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between shadow-2xs">
+          <div role={blockchainCancelled ? 'status' : 'alert'} className={`p-4 rounded-xl border text-sm flex items-start justify-between shadow-2xs ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
             <div className="flex items-start gap-2.5">
               <AlertTriangleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold">เกิดข้อผิดพลาดในการดำเนินการ</div>
+                <div className="font-bold">{blockchainCancelled ? 'ยกเลิกการทำรายการ' : 'เกิดข้อผิดพลาดในการดำเนินการ'}</div>
                 <div className="text-xs mt-0.5">{errorMessage}</div>
               </div>
             </div>

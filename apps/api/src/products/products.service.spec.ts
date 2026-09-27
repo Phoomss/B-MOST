@@ -452,7 +452,10 @@ describe('ProductsService', () => {
       expect(result.name).toEqual('Updated Name');
       expect(prisma.product.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'prod-uuid-1' },
+          where: expect.objectContaining({
+            id: 'prod-uuid-1',
+            blockchainProductId: null,
+          }),
           data: expect.objectContaining({ name: 'Updated Name' }),
         }),
       );
@@ -468,6 +471,60 @@ describe('ProductsService', () => {
           mockDistributorUser,
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('updates draft identifiers and recalculates the product hash', async () => {
+      prisma.product.findUnique.mockResolvedValue(sampleProduct);
+      prisma.product.update.mockResolvedValue(sampleProduct);
+
+      await service.update(
+        'prod-uuid-1',
+        {
+          productCode: 'prd-2026-0002',
+          serialNumber: 'SN-002',
+          name: 'Revised Sensor',
+        },
+        mockManufacturerUser,
+      );
+
+      expect(prisma.product.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            productCode: 'PRD-2026-0002',
+            serialNumber: 'SN-002',
+            name: 'Revised Sensor',
+            productHash: expect.stringMatching(/^0x[0-9a-f]{64}$/),
+          }),
+        }),
+      );
+    });
+
+    it('rejects changes to hashed fields after blockchain registration', async () => {
+      prisma.product.findUnique.mockResolvedValue({
+        ...sampleProduct,
+        blockchainProductId: '1',
+      });
+
+      await expect(
+        service.update(
+          'prod-uuid-1',
+          { productCode: 'PRD-2026-0002' },
+          mockManufacturerUser,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(prisma.product.update).not.toHaveBeenCalled();
+    });
+
+    it('does not let an auditor edit draft identifiers', async () => {
+      prisma.product.findUnique.mockResolvedValue(sampleProduct);
+      await expect(
+        service.update(
+          'prod-uuid-1',
+          { productCode: 'PRD-2026-0002' },
+          { ...mockAuditorUser, organizationId: mockManufacturerOrg.id },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.product.update).not.toHaveBeenCalled();
     });
   });
 
@@ -536,7 +593,10 @@ describe('ProductsService', () => {
       const result = await service.remove('prod-uuid-1', mockManufacturerUser);
       expect(result.success).toBe(true);
       expect(prisma.product.delete).toHaveBeenCalledWith({
-        where: { id: 'prod-uuid-1' },
+        where: expect.objectContaining({
+          id: 'prod-uuid-1',
+          blockchainProductId: null,
+        }),
       });
     });
 

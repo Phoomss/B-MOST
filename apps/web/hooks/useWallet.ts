@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getAddress, type Address } from 'viem';
 import { connectWallet, getInjectedProvider, SEPOLIA_CHAIN_ID, switchToSepolia } from '../lib/blockchain/wallet';
+import { getBlockchainErrorMessage } from '../lib/blockchain/errors';
 
 export function useWallet() {
   const [account, setAccount] = useState<Address | null>(null);
@@ -35,7 +36,7 @@ export function useWallet() {
       const value = await getInjectedProvider()?.request({ method: 'eth_chainId' });
       setChainId(Number(value));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'เชื่อมต่อ MetaMask ไม่สำเร็จ');
+      setError(getBlockchainErrorMessage(err));
     }
   }, []);
 
@@ -45,7 +46,7 @@ export function useWallet() {
       await switchToSepolia();
       setChainId(SEPOLIA_CHAIN_ID);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'เปลี่ยนเป็น Sepolia ไม่สำเร็จ');
+      setError(getBlockchainErrorMessage(err));
     }
   }, []);
 

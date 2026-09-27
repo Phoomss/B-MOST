@@ -71,12 +71,8 @@ function TraceabilityContent() {
 
       const res = await api.traceability.get(clean);
       setData(res);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'ไม่สามารถดึงข้อมูลประวัติการตรวจสอบย้อนกลับสำหรับรหัสนี้ได้';
-      setError(msg);
+    } catch {
+      setError('ไม่สามารถดึงข้อมูลประวัติการตรวจสอบย้อนกลับสำหรับรหัสนี้ได้ กรุณาลองใหม่อีกครั้ง');
       setData(null);
     } finally {
       setLoading(false);

@@ -590,11 +590,12 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: { name?: string; description?: string; category?: string }) =>
+    update: (id: string, data: { productCode?: string; serialNumber?: string; name?: string; description?: string; category?: string }) =>
       request<ProductItem>(`products/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
+    remove: (id: string) => request<{ success: boolean; message: string }>(`products/${id}`, { method: 'DELETE' }),
     registerOnBlockchain: (id: string) =>
       request<ProductItem>(`products/${id}/register-blockchain`, {
         method: 'POST',

@@ -521,21 +521,95 @@ export class ProductsService {
       }
     }
 
-    const updateData: any = {};
+    const draft = !product.blockchainProductId && !product.blockchainTxHash;
+    const changesHashedData =
+      updateDto.productCode !== undefined ||
+      updateDto.serialNumber !== undefined ||
+      updateDto.name !== undefined ||
+      updateDto.category !== undefined;
+    if (
+      draft &&
+      changesHashedData &&
+      !isSuperAdmin &&
+      (currentUser.organizationId !== product.manufacturerId ||
+        ![UserRole.ORG_ADMIN, UserRole.MANUFACTURER].includes(currentUser.role))
+    ) {
+      throw new ForbiddenException(
+        'เฉพาะผู้ผลิตหรือผู้ดูแลระบบเท่านั้นที่แก้ไขข้อมูลสินค้าก่อนลง Blockchain ได้',
+      );
+    }
+    if (!draft && changesHashedData) {
+      throw new ConflictException(
+        'ข้อมูลที่ยืนยันบน Blockchain แล้วไม่สามารถแก้ไขได้',
+      );
+    }
+    if (
+      (updateDto.productCode !== undefined &&
+        updateDto.productCode.trim().length < 3) ||
+      (updateDto.serialNumber !== undefined &&
+        updateDto.serialNumber.trim().length < 3) ||
+      (updateDto.name !== undefined && updateDto.name.trim().length < 2)
+    ) {
+      throw new BadRequestException('กรุณากรอกข้อมูลสินค้าให้ครบถ้วน');
+    }
+
+    const updateData: Prisma.ProductUpdateInput = {};
+    if (updateDto.productCode !== undefined)
+      updateData.productCode = updateDto.productCode.trim().toUpperCase();
+    if (updateDto.serialNumber !== undefined)
+      updateData.serialNumber = updateDto.serialNumber.trim();
     if (updateDto.name !== undefined) updateData.name = updateDto.name.trim();
     if (updateDto.description !== undefined)
       updateData.description = updateDto.description.trim();
     if (updateDto.category !== undefined)
       updateData.category = updateDto.category.trim();
+    if (changesHashedData) {
+      updateData.productHash = generateProductHash({
+        productCode:
+          (updateData.productCode as string | undefined) ?? product.productCode,
+        serialNumber:
+          (updateData.serialNumber as string | undefined) ??
+          product.serialNumber,
+        manufacturerId: product.manufacturerId,
+        name: (updateData.name as string | undefined) ?? product.name,
+        category:
+          (updateData.category as string | undefined) ??
+          product.category ??
+          undefined,
+      });
+    }
 
-    const updated = await this.prisma.product.update({
-      where: { id },
-      data: updateData,
-      include: {
-        manufacturer: true,
-        currentOwner: true,
-      },
-    });
+    let updated;
+    try {
+      updated = await this.prisma.product.update({
+        where: draft
+          ? { id, blockchainProductId: null, blockchainTxHash: null }
+          : { id },
+        data: updateData,
+        include: {
+          manufacturer: true,
+          currentOwner: true,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          'รหัสสินค้าหรือหมายเลขซีเรียลนี้ถูกใช้งานแล้ว',
+        );
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new ConflictException(
+          'สถานะสินค้าถูกเปลี่ยนแล้ว กรุณาโหลดหน้าใหม่',
+        );
+      }
+      throw error;
+    }
 
     // Audit log
     await this.prisma.auditLog
@@ -849,7 +923,7 @@ export class ProductsService {
 
         // Log state comparison (DB vs Blockchain)
         this.stateMachine.checkStateMismatch(
-          product.status as string,
+          product.status,
           onChainStatusNum,
           product.productCode,
           product.id,
@@ -1118,9 +1192,21 @@ export class ProductsService {
       );
     }
 
-    await this.prisma.product.delete({
-      where: { id },
-    });
+    try {
+      await this.prisma.product.delete({
+        where: { id, blockchainProductId: null, blockchainTxHash: null },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new ConflictException(
+          'สถานะสินค้าถูกเปลี่ยนแล้ว กรุณาโหลดหน้าใหม่',
+        );
+      }
+      throw error;
+    }
 
     // Audit log
     await this.prisma.auditLog

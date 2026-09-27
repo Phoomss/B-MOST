@@ -136,6 +136,40 @@ describe('BlockchainActionService', () => {
     expect(blockchain.getProduct).not.toHaveBeenCalled();
   });
 
+  it('explains that quality control requires blockchain registration when the product has no on-chain ID', async () => {
+    await expect(
+      service.prepare(
+        {
+          action: UserSignedAction.QUALITY_CHECK,
+          entityId: product.id,
+          passed: true,
+        },
+        user,
+      ),
+    ).rejects.toThrow('PRODUCT_NOT_REGISTERED');
+    expect(blockchain.getProduct).not.toHaveBeenCalled();
+  });
+
+  it('keeps rejecting an ID associated with another contract', async () => {
+    prisma.product.findFirst.mockResolvedValueOnce({
+      ...product,
+      blockchainProductId: '3',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: '0x0000000000000000000000000000000000000001',
+    });
+    await expect(
+      service.prepare(
+        {
+          action: UserSignedAction.QUALITY_CHECK,
+          entityId: product.id,
+          passed: true,
+        },
+        user,
+      ),
+    ).rejects.toThrow('BLOCKCHAIN_NETWORK_MISMATCH');
+    expect(blockchain.getProduct).not.toHaveBeenCalled();
+  });
+
   it('rejects a wallet that differs from the manufacturer wallet', async () => {
     await expect(
       service.prepare(

@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { Navbar } from '../../../components/Navbar';
+import { DraftProductActions } from '../../../components/DraftProductActions';
 import {
   api,
   ProductItem,
@@ -13,6 +14,7 @@ import {
   THAI_PRODUCT_STATUS,
 } from '../../../lib/thai-locale';
 import { executeUserSignedAction } from '../../../lib/blockchain/wallet';
+import { getBlockchainErrorMessage, isBlockchainRejection } from '../../../lib/blockchain/errors';
 import {
   LinkIcon,
   ShieldCheckIcon,
@@ -35,6 +37,7 @@ export default function ProductDetailPage({
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blockchainCancelled, setBlockchainCancelled] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [storing, setStoring] = useState(false);
   const [selling, setSelling] = useState(false);
@@ -56,10 +59,9 @@ export default function ProductDetailPage({
             setQrDataUrl(qrRes.qrCodeDataUrl);
           }
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลสินค้าได้';
-          setError(msg);
+          setError('ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {
@@ -79,6 +81,7 @@ export default function ProductDetailPage({
       setRegistering(true);
       setRegisterSuccess(null);
       setError(null);
+      setBlockchainCancelled(false);
       const res = await executeUserSignedAction(
         { action: 'registerProduct', entityId: product.id },
         setRegisterSuccess,
@@ -88,8 +91,9 @@ export default function ProductDetailPage({
       const hist = await api.products.getHistory(product.id).catch(() => null);
       setHistory(hist);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการลงทะเบียนบนบล็อกเชน';
-      setError(msg);
+      setRegisterSuccess(null);
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setError(getBlockchainErrorMessage(err));
     } finally {
       setRegistering(false);
     }
@@ -100,10 +104,14 @@ export default function ProductDetailPage({
     try {
       setStoring(true);
       setError(null);
+      setRegisterSuccess(null);
+      setBlockchainCancelled(false);
       await executeUserSignedAction({ action: 'storeProduct', entityId: product.id });
       setProduct(await api.products.get(product.id));
+      setRegisterSuccess('บันทึกการจัดเก็บสินค้าบน Sepolia สำเร็จ');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถจัดเก็บสินค้าได้');
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setError(getBlockchainErrorMessage(err));
     } finally {
       setStoring(false);
     }
@@ -114,11 +122,14 @@ export default function ProductDetailPage({
     try {
       setSelling(true);
       setError(null);
+      setRegisterSuccess(null);
+      setBlockchainCancelled(false);
       const result = await executeUserSignedAction({ action: 'markAsSold', entityId: product.id });
       setProduct(await api.products.get(product.id));
       setRegisterSuccess(`ขายสินค้าบน Sepolia สำเร็จ: ${result.transactionHash}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ไม่สามารถบันทึกการขายได้');
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setError(getBlockchainErrorMessage(err));
     } finally {
       setSelling(false);
     }
@@ -214,7 +225,7 @@ export default function ProductDetailPage({
               </span>
             )}
 
-            {product.status === 'REGISTERED' && (
+            {product.status === 'REGISTERED' && product.blockchainProductId && (
               <Link
                 href={`/quality?productId=${encodeURIComponent(product.id)}`}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition"
@@ -265,11 +276,19 @@ export default function ProductDetailPage({
           </div>
         </div>
 
+        {error && (
+          <div role={blockchainCancelled ? 'status' : 'alert'} className={`rounded-xl border p-4 text-sm ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
+            <strong>{blockchainCancelled ? 'ยกเลิกการทำรายการ' : 'เกิดข้อผิดพลาดในการทำรายการ'}</strong>
+            <p>{error}</p>
+          </div>
+        )}
         {registerSuccess && (
           <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm">
             {registerSuccess}
           </div>
         )}
+
+        <DraftProductActions product={product} onUpdated={(updated) => { setProduct(updated); setRegisterSuccess('แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว'); }} />
 
         {/* 3-Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

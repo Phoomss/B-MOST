@@ -192,10 +192,9 @@ function AuditPageContent() {
           setTotalCount(res.meta?.total || 0);
           setTotalPages(res.meta?.totalPages || 1);
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดประวัติการตรวจสอบได้';
-          setErrorMessage(msg);
+          setErrorMessage('ไม่สามารถโหลดประวัติการตรวจสอบได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {

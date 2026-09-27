@@ -88,15 +88,6 @@ export async function writeSupplyChainAction(params: {
     if (type === 'bool') return value === true || value === 'true';
     return value;
   });
-  if (process.env.NODE_ENV !== 'production') {
-    console.info('[Sepolia write]', {
-      chainId,
-      contractAddress: SEPOLIA_CONTRACT_ADDRESS,
-      connectedWallet: connectedAccounts[0],
-      expectedUserWallet: params.expectedWallet,
-      functionName: params.functionName,
-    });
-  }
   const hash = await client.writeContract({
     account,
     address: SEPOLIA_CONTRACT_ADDRESS,
@@ -122,21 +113,12 @@ export async function executeUserSignedAction(
     throw new Error('คำขอธุรกรรมหมดอายุ กรุณาลองใหม่');
   }
   onProgress?.('กรุณายืนยันธุรกรรมใน MetaMask');
-  let hash: Hash;
-  try {
-    ({ hash } = await writeSupplyChainAction({
-      account,
-      expectedWallet: prepared.expectedWallet,
-      functionName: prepared.functionName,
-      args: prepared.args,
-    }));
-  } catch (error) {
-    const code = (error as { code?: number | string })?.code;
-    if (code === 4001 || code === 'ACTION_REJECTED') {
-      throw new Error('ผู้ใช้ยกเลิกธุรกรรมใน MetaMask');
-    }
-    throw error;
-  }
+  const { hash } = await writeSupplyChainAction({
+    account,
+    expectedWallet: prepared.expectedWallet,
+    functionName: prepared.functionName,
+    args: prepared.args,
+  });
   onProgress?.('กำลังตรวจสอบธุรกรรมและซิงก์ข้อมูล...');
   const confirmed = await api.blockchain.confirmAction(prepared.intentId, hash);
   if (!confirmed.verified || !confirmed.synced) {

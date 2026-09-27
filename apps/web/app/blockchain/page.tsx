@@ -1,4 +1,5 @@
 'use client';
+import { getBlockchainErrorMessage } from '../../lib/blockchain/errors';
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -264,7 +265,7 @@ function BlockchainExplorerContent() {
       setTotalCount(res.meta.total);
       setTotalPages(res.meta.totalPages);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลธุรกรรมบนบล็อกเชนได้';
+      const msg = getBlockchainErrorMessage(err);
       setError(msg);
     } finally {
       setLoading(false);
@@ -331,7 +332,7 @@ function BlockchainExplorerContent() {
       const details = await api.blockchain.getTransaction(txHash);
       setSelectedTx(details);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+      const msg = getBlockchainErrorMessage(err);
       alert(`ไม่สามารถดึงรายละเอียดธุรกรรม: ${msg}`);
     }
   };
@@ -344,7 +345,7 @@ function BlockchainExplorerContent() {
       const block = await api.blockchain.getBlock(blockNum);
       setSelectedBlockData(block);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'ไม่พบบล็อก';
+      const msg = getBlockchainErrorMessage(err);
       setBlockError(msg);
       setSelectedBlockData(null);
     } finally {
@@ -365,7 +366,7 @@ function BlockchainExplorerContent() {
       fetchStatusAndStats();
       fetchTransactions();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+      const msg = getBlockchainErrorMessage(err);
       setSyncFeedback({
         type: 'error',
         message: msg || 'การประสานเหตุการณ์ล้มเหลว (ต้องมีสิทธิ์ SUPER_ADMIN)',

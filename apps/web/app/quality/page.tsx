@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
 import { api, ProductItem, QualityCheckItem } from '../../lib/api';
 import { executeUserSignedAction } from '../../lib/blockchain/wallet';
+import { getBlockchainErrorMessage, isBlockchainRejection } from '../../lib/blockchain/errors';
 import { getQcBadge, THAI_PRODUCT_STATUS } from '../../lib/thai-locale';
 import {
   CheckIcon,
@@ -29,6 +30,7 @@ function QualityPageContent() {
   // Execution states
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [blockchainCancelled, setBlockchainCancelled] = useState(false);
   const [successData, setSuccessData] = useState<{
     message: string;
     txHash: string;
@@ -40,6 +42,8 @@ function QualityPageContent() {
   const [qcList, setQcList] = useState<QualityCheckItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(true);
   const [filterResult, setFilterResult] = useState<string>('ALL');
+  const selectedProduct = products.find((product) => product.id === selectedProductId);
+  const needsBlockchainRegistration = Boolean(selectedProduct && !selectedProduct.blockchainProductId);
 
   useEffect(() => {
     let ignore = false;
@@ -58,10 +62,9 @@ function QualityPageContent() {
             setSelectedProductId(preselectedProductId);
           }
         }
-      } catch (err: unknown) {
+      } catch {
         if (!ignore) {
-          const msg = err instanceof Error ? err.message : 'ไม่สามารถโหลดข้อมูลการตรวจสอบได้';
-          setErrorMessage(msg);
+          setErrorMessage('ไม่สามารถโหลดข้อมูลการตรวจสอบได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {
@@ -83,10 +86,12 @@ function QualityPageContent() {
       setErrorMessage('กรุณาเลือกสินค้าที่ต้องการตรวจสอบ');
       return;
     }
+    if (needsBlockchainRegistration) return;
 
     try {
       setSubmitting(true);
       setErrorMessage(null);
+      setBlockchainCancelled(false);
       setSuccessData(null);
 
       const res = await executeUserSignedAction({
@@ -108,8 +113,8 @@ function QualityPageContent() {
       const qcRes = await api.qualityChecks.list({ limit: 30 });
       setQcList(qcRes.data || []);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการบันทึกผลการตรวจสอบ';
-      setErrorMessage(msg);
+      setBlockchainCancelled(isBlockchainRejection(err));
+      setErrorMessage(getBlockchainErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -168,11 +173,11 @@ function QualityPageContent() {
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start justify-between shadow-2xs">
+          <div role={blockchainCancelled ? 'status' : 'alert'} className={`p-4 rounded-xl border text-sm flex items-start justify-between shadow-2xs ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
             <div className="flex items-start gap-2">
               <AlertTriangleIcon className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold">เกิดข้อผิดพลาด</div>
+                <div className="font-bold">{blockchainCancelled ? 'ยกเลิกการทำรายการ' : 'เกิดข้อผิดพลาด'}</div>
                 <div className="text-xs mt-0.5">{errorMessage}</div>
               </div>
             </div>
@@ -213,6 +218,15 @@ function QualityPageContent() {
                     </option>
                   ))}
                 </select>
+                {needsBlockchainRegistration && (
+                  <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+                    <p className="font-semibold">สินค้านี้ยังไม่ได้บันทึกบน Blockchain</p>
+                    <p className="mt-1 leading-relaxed">กรุณาบันทึกสินค้าบน Sepolia ก่อน แล้วกลับมาตรวจคุณภาพ</p>
+                    <Link href={`/products/${selectedProductId}`} className="mt-2 inline-flex font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900">
+                      ไปหน้าสินค้า
+                    </Link>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -279,7 +293,7 @@ function QualityPageContent() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || needsBlockchainRegistration}
                 className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold text-xs shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {submitting ? (

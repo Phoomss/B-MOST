@@ -1,7 +1,36 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MaxLength, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateProductDto {
+  @ApiPropertyOptional({
+    description: 'Draft product code, editable before blockchain registration',
+    minLength: 3,
+    maxLength: 50,
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(50)
+  @Matches(/^[A-Za-z0-9_-]+$/)
+  productCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Draft serial number, editable before blockchain registration',
+    minLength: 3,
+    maxLength: 100,
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(100)
+  serialNumber?: string;
+
   @ApiPropertyOptional({
     description: 'Updated product commercial name',
     example: 'Industrial IoT Temperature & Humidity Sensor V2',
