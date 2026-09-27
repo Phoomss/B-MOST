@@ -1170,13 +1170,13 @@ export class ShipmentsService {
             },
           },
           sender: {
-            select: { id: true, name: true, code: true, type: true },
+            select: { id: true, name: true, code: true, type: true, walletAddress: true },
           },
           receiver: {
-            select: { id: true, name: true, code: true, type: true },
+            select: { id: true, name: true, code: true, type: true, walletAddress: true },
           },
           carrier: {
-            select: { id: true, name: true, code: true, type: true },
+            select: { id: true, name: true, code: true, type: true, walletAddress: true },
           },
         },
       }),

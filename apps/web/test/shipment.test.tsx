@@ -2,6 +2,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ShipmentsPage from '../app/shipments/page';
 import { api } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
+
+vi.mock('../hooks/useAuth', () => ({ useAuth: vi.fn() }));
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -20,7 +23,7 @@ vi.mock('../lib/api', () => ({
       list: vi.fn(),
     },
     organizations: {
-      list: vi.fn(),
+      shippingPartners: vi.fn(),
     },
     shipments: {
       list: vi.fn(),
@@ -52,12 +55,14 @@ describe('ShipmentsPage Component', () => {
         name: 'Acme Manufacturer',
         code: 'ACME',
         type: 'MANUFACTURER',
+        walletAddress: '0x1111111111111111111111111111111111111111',
       },
       receiver: {
         id: 'org-dist',
         name: 'Central Distributor',
         code: 'CDIST',
         type: 'DISTRIBUTOR',
+        walletAddress: '0x2222222222222222222222222222222222222222',
       },
       carrier: {
         id: 'org-carr',
@@ -70,8 +75,14 @@ describe('ShipmentsPage Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'user-mfg', email: 'mfg@example.com', role: 'MANUFACTURER', organizationId: 'org-mfg', walletAddress: '0x1111111111111111111111111111111111111111' },
+      loading: false,
+      isAuthenticated: true,
+      logout: vi.fn(),
+    });
     vi.mocked(api.products.list).mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
-    vi.mocked(api.organizations.list).mockResolvedValue([]);
+    vi.mocked(api.organizations.shippingPartners).mockResolvedValue([]);
     vi.mocked(api.shipments.list).mockResolvedValue({
       data: mockShipments as any,
       meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
@@ -88,6 +99,21 @@ describe('ShipmentsPage Component', () => {
       expect(screen.getByText('Central Distributor')).toBeInTheDocument();
       expect(screen.getAllByText('PENDING').length).toBeGreaterThan(0);
     });
+  });
+
+  it('shows dispatch to the sender and waiting status to the receiver', async () => {
+    const view = render(<ShipmentsPage />);
+    expect(await screen.findByRole('button', { name: 'จัดส่งสินค้า' })).toBeInTheDocument();
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'user-dist', email: 'dist@example.com', role: 'DISTRIBUTOR', organizationId: 'org-dist', walletAddress: '0x2222222222222222222222222222222222222222' },
+      loading: false,
+      isAuthenticated: true,
+      logout: vi.fn(),
+    });
+    view.rerender(<ShipmentsPage />);
+    expect(screen.queryByRole('button', { name: 'จัดส่งสินค้า' })).not.toBeInTheDocument();
+    expect(screen.getByText('รอ Acme Manufacturer จัดส่ง')).toBeInTheDocument();
   });
 
   it('allows filtering shipments by status tab', async () => {
@@ -120,7 +146,7 @@ describe('ShipmentsPage Component', () => {
       ],
       meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
     });
-    vi.mocked(api.organizations.list).mockResolvedValueOnce([
+    vi.mocked(api.organizations.shippingPartners).mockResolvedValueOnce([
       {
         id: 'org-dist-2',
         name: 'Allied Distributor',

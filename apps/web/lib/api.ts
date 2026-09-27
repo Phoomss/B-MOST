@@ -84,18 +84,21 @@ export interface ShipmentItem {
     name: string;
     code: string;
     type: string;
+    walletAddress?: string | null;
   };
   receiver?: {
     id: string;
     name: string;
     code: string;
     type: string;
+    walletAddress?: string | null;
   };
   carrier?: {
     id: string;
     name: string;
     code: string;
     type: string;
+    walletAddress?: string | null;
   } | null;
 }
 
@@ -501,6 +504,13 @@ export function setStoredUser(user: any) {
   }
 }
 
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
@@ -534,9 +544,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
         )}`;
       }
     }
-    const errorData = (await response.json().catch(() => ({}))) as { message?: string };
-    throw new Error(
-      errorData.message || `API request failed with status ${response.status}`,
+    const errorData = (await response.json().catch(() => ({}))) as { message?: string | string[] };
+    const message = Array.isArray(errorData.message)
+      ? errorData.message.join('; ')
+      : errorData.message;
+    throw new ApiRequestError(
+      message || `API request failed with status ${response.status}`,
+      response.status,
     );
   }
 

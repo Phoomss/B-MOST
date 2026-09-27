@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '../../components/Navbar';
+import { useAuth } from '../../hooks/useAuth';
 import { executeUserSignedAction } from '../../lib/blockchain/wallet';
 import { getBlockchainErrorMessage, isBlockchainRejection } from '../../lib/blockchain/errors';
 import {
@@ -27,6 +28,7 @@ import {
 } from '../../components/Icons';
 
 function ShipmentsPageContent() {
+  const { user } = useAuth({ requireAuth: true });
   const searchParams = useSearchParams();
   const preselectedProductId = searchParams.get('productId') || '';
 
@@ -199,12 +201,16 @@ function ShipmentsPageContent() {
   };
 
   const handleShip = async (shipmentId: string) => {
+    let progress = 'กำลังเตรียมธุรกรรม';
     try {
       setActionInProgressId(shipmentId);
       setErrorMessage(null);
       setBlockchainCancelled(false);
       setSuccessMessage(null);
-      const res = await executeUserSignedAction({ action: 'shipProduct', entityId: shipmentId });
+      const res = await executeUserSignedAction(
+        { action: 'shipProduct', entityId: shipmentId },
+        (message) => { progress = message; },
+      );
 
       setSuccessMessage({
         title: 'จัดส่งสินค้าเรียบร้อยแล้ว (Dispatched)',
@@ -216,7 +222,7 @@ function ShipmentsPageContent() {
       setShipments(shpRes.data || []);
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
-      setErrorMessage(getBlockchainErrorMessage(err));
+      setErrorMessage(`${getBlockchainErrorMessage(err)} (ขั้นตอน: ${progress})`);
     } finally {
       setActionInProgressId(null);
     }
@@ -619,6 +625,18 @@ function ShipmentsPageContent() {
                   {filteredShipments.map((shp) => {
                     const badge = getShipmentStatusBadge(shp.status);
                     const isActing = actionInProgressId === shp.id;
+                    const wallet = user?.walletAddress?.toLowerCase();
+                    const canShip = Boolean(
+                      wallet &&
+                      ['SUPER_ADMIN', 'MANUFACTURER', 'DISTRIBUTOR', 'WAREHOUSE'].includes(user?.role || '') &&
+                      (shp.sender?.walletAddress?.toLowerCase() === wallet ||
+                        shp.carrier?.walletAddress?.toLowerCase() === wallet),
+                    );
+                    const canReceive = Boolean(
+                      wallet &&
+                      ['SUPER_ADMIN', 'DISTRIBUTOR', 'WAREHOUSE', 'RETAILER'].includes(user?.role || '') &&
+                      shp.receiver?.walletAddress?.toLowerCase() === wallet,
+                    );
 
                     return (
                       <tr key={shp.id} className="hover:bg-slate-50/80 transition">
@@ -660,7 +678,7 @@ function ShipmentsPageContent() {
                           )}
                         </td>
                         <td className="px-4 py-3.5 text-right space-x-1.5">
-                          {shp.status === 'PENDING' && (
+                          {shp.status === 'PENDING' && canShip && (
                             <button
                               onClick={() => shp.id && handleShip(shp.id)}
                               disabled={isActing}
@@ -669,7 +687,12 @@ function ShipmentsPageContent() {
                               {isActing ? 'กำลังจัดส่ง...' : 'จัดส่งสินค้า'}
                             </button>
                           )}
-                          {shp.status === 'SHIPPED' && (
+                          {shp.status === 'PENDING' && !canShip && canReceive && (
+                            <span className="text-amber-700 text-[11px]">
+                              รอ {shp.sender?.name || 'ผู้ส่ง'} จัดส่ง
+                            </span>
+                          )}
+                          {shp.status === 'SHIPPED' && canShip && (
                             <button
                               onClick={() => shp.id && handleInTransit(shp.id)}
                               disabled={isActing}
@@ -678,7 +701,7 @@ function ShipmentsPageContent() {
                               ระหว่างขนส่ง
                             </button>
                           )}
-                          {(shp.status === 'SHIPPED' || shp.status === 'IN_TRANSIT') && (
+                          {(shp.status === 'SHIPPED' || shp.status === 'IN_TRANSIT') && canReceive && (
                             <button
                               onClick={() => setConfirmReceiveShipment(shp)}
                               disabled={isActing}

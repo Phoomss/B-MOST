@@ -1,4 +1,4 @@
-type ErrorInfo = { name?: unknown; code?: unknown; message?: unknown; shortMessage?: unknown; details?: unknown; cause?: unknown };
+type ErrorInfo = { name?: unknown; code?: unknown; status?: unknown; message?: unknown; shortMessage?: unknown; details?: unknown; cause?: unknown };
 
 const MESSAGES = {
   rejected: 'คุณยกเลิกการยืนยันธุรกรรมใน MetaMask',
@@ -59,5 +59,18 @@ export function getBlockchainErrorMessage(error: unknown): string {
   if (matches(error, /InsufficientFunds|insufficient funds|exceeds.*balance/i)) return MESSAGES.funds;
   if (fields(error).some((item) => item.code === 4902 || item.code === '4902') || matches(error, /ChainMismatch|WrongChain|wrong (network|chain)|chain.*(mismatch|does not match)|กรุณาเปลี่ยนเครือข่าย MetaMask เป็น Sepolia/i)) return MESSAGES.chain;
   if (fields(error).some((item) => item.code === 4900 || item.code === '4900') || matches(error, /ProviderNotFound|ConnectorNotConnected|wallet disconnected|not connected|no accounts|ไม่พบ MetaMask|กรุณาเลือกบัญชีใน MetaMask/i)) return MESSAGES.disconnected;
+  const apiError = fields(error).find((item) => item.name === 'ApiRequestError');
+  if (
+    apiError &&
+    typeof apiError.status === 'number' &&
+    apiError.status >= 400 &&
+    apiError.status < 500 &&
+    typeof apiError.message === 'string' &&
+    apiError.message.trim().length > 0 &&
+    apiError.message.length <= 500 &&
+    !/calldata|stack trace|viem docs|private key/i.test(apiError.message)
+  ) {
+    return apiError.message;
+  }
   return MESSAGES.unknown;
 }

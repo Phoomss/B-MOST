@@ -40,6 +40,7 @@ export default function ProductDetailPage({
   const [blockchainCancelled, setBlockchainCancelled] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [storing, setStoring] = useState(false);
+  const [storeProgress, setStoreProgress] = useState<string | null>(null);
   const [selling, setSelling] = useState(false);
   const [registerSuccess, setRegisterSuccess] = useState<string | null>(null);
 
@@ -101,19 +102,33 @@ export default function ProductDetailPage({
 
   const handleStore = async () => {
     if (!product) return;
+    let lastStep = 'กำลังตรวจสอบสถานะสินค้าและเตรียมธุรกรรม';
     try {
       setStoring(true);
+      setStoreProgress(lastStep);
       setError(null);
       setRegisterSuccess(null);
       setBlockchainCancelled(false);
-      await executeUserSignedAction({ action: 'storeProduct', entityId: product.id });
-      setProduct(await api.products.get(product.id));
-      setRegisterSuccess('บันทึกการจัดเก็บสินค้าบน Sepolia สำเร็จ');
+      const result = await executeUserSignedAction(
+        { action: 'storeProduct', entityId: product.id },
+        (step) => {
+          lastStep = step;
+          setStoreProgress(step);
+        },
+      );
+      setRegisterSuccess(`บันทึกการจัดเก็บสินค้าบน Sepolia สำเร็จ: ${result.transactionHash}`);
+      const refreshed = await api.products.get(product.id).catch(() => null);
+      if (refreshed) {
+        setProduct(refreshed);
+      } else {
+        setRegisterSuccess(`ธุรกรรม ${result.transactionHash} สำเร็จแล้ว แต่โหลดข้อมูลสินค้าใหม่ไม่ได้ กรุณารีเฟรชหน้านี้`);
+      }
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
-      setError(getBlockchainErrorMessage(err));
+      setError(`${lastStep}: ${getBlockchainErrorMessage(err)}`);
     } finally {
       setStoring(false);
+      setStoreProgress(null);
     }
   };
 
@@ -280,6 +295,11 @@ export default function ProductDetailPage({
           <div role={blockchainCancelled ? 'status' : 'alert'} className={`rounded-xl border p-4 text-sm ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
             <strong>{blockchainCancelled ? 'ยกเลิกการทำรายการ' : 'เกิดข้อผิดพลาดในการทำรายการ'}</strong>
             <p>{error}</p>
+          </div>
+        )}
+        {storing && storeProgress && (
+          <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+            {storeProgress}
           </div>
         )}
         {registerSuccess && (

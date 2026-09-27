@@ -30,4 +30,17 @@ describe('blockchain error messages', () => {
     expect(isBlockchainRejection(error)).toBe(true);
     expect(getBlockchainErrorMessage(error)).toBe('คุณยกเลิกการยืนยันธุรกรรมใน MetaMask');
   });
+
+  it('shows actionable API validation errors while hiding internal server errors', () => {
+    expect(getBlockchainErrorMessage({
+      name: 'ApiRequestError',
+      status: 403,
+      message: 'wallet ไม่ใช่ผู้ส่งหรือผู้ขนส่ง',
+    })).toBe('wallet ไม่ใช่ผู้ส่งหรือผู้ขนส่ง');
+    expect(getBlockchainErrorMessage({
+      name: 'ApiRequestError',
+      status: 500,
+      message: 'database connection details',
+    })).toBe('ไม่สามารถทำรายการบน Blockchain ได้ กรุณาลองใหม่อีกครั้ง');
+  });
 });

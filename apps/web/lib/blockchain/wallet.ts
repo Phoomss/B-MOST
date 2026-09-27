@@ -119,7 +119,7 @@ export async function executeUserSignedAction(
     functionName: prepared.functionName,
     args: prepared.args,
   });
-  onProgress?.('กำลังตรวจสอบธุรกรรมและซิงก์ข้อมูล...');
+  onProgress?.(`กำลังตรวจสอบธุรกรรมและซิงก์ข้อมูล (Tx: ${hash})...`);
   const confirmed = await api.blockchain.confirmAction(prepared.intentId, hash);
   if (!confirmed.verified || !confirmed.synced) {
     throw new Error(`ธุรกรรม ${hash} ยืนยันแล้ว แต่ยังซิงก์ข้อมูลไม่สำเร็จ`);
