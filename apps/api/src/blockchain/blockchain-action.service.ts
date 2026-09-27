@@ -404,6 +404,11 @@ export class BlockchainActionService {
           ownerWallet,
           wallet,
         );
+        if (!this.sameAddress(live.currentOwner, wallet)) {
+          throw new ConflictException(
+            'wallet ผู้ส่งไม่ตรงกับเจ้าของสินค้าบน Blockchain กรุณาตรวจสอบการรับสินค้าและการซิงก์สถานะ',
+          );
+        }
         if (
           !dto.receiverOrganizationId ||
           !dto.origin?.trim() ||
@@ -521,7 +526,12 @@ export class BlockchainActionService {
         this.assertRole(
           user,
           dto.action === UserSignedAction.STORE_PRODUCT
-            ? [UserRole.SUPER_ADMIN, UserRole.WAREHOUSE]
+            ? [
+                UserRole.SUPER_ADMIN,
+                UserRole.DISTRIBUTOR,
+                UserRole.WAREHOUSE,
+                UserRole.RETAILER,
+              ]
             : [UserRole.SUPER_ADMIN, UserRole.RETAILER],
         );
         // Distributor, Warehouse and Retailer may share Account 2; app role remains JWT based.

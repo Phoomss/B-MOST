@@ -170,6 +170,60 @@ describe('BlockchainActionService', () => {
     expect(blockchain.getProduct).not.toHaveBeenCalled();
   });
 
+  it('allows the distributor owner to store a received product before forwarding it', async () => {
+    prisma.product.findFirst.mockResolvedValueOnce({
+      ...product,
+      status: ProductStatus.RECEIVED,
+      blockchainProductId: '3',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+    });
+    blockchain.getProduct.mockResolvedValueOnce({
+      productCode: product.productCode,
+      productHash,
+      status: 5,
+      currentOwner: wallet,
+    });
+
+    await expect(
+      service.prepare(
+        { action: UserSignedAction.STORE_PRODUCT, entityId: product.id },
+        { ...user, role: UserRole.DISTRIBUTOR },
+      ),
+    ).resolves.toMatchObject({ functionName: 'storeProduct' });
+    expect(provider.call).toHaveBeenCalled();
+  });
+
+  it('reports when the database owner has not become the blockchain owner', async () => {
+    prisma.product.findFirst.mockResolvedValueOnce({
+      ...product,
+      status: ProductStatus.STORED,
+      blockchainProductId: '3',
+      blockchainChainId: 11155111,
+      blockchainContractAddress: address,
+    });
+    blockchain.getProduct.mockResolvedValueOnce({
+      productCode: product.productCode,
+      productHash,
+      status: 6,
+      currentOwner: '0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC',
+    });
+
+    await expect(
+      service.prepare(
+        {
+          action: UserSignedAction.CREATE_SHIPMENT,
+          entityId: product.id,
+          receiverOrganizationId: 'org-2',
+          origin: 'Bangkok',
+          destination: 'Chonburi',
+        },
+        { ...user, role: UserRole.DISTRIBUTOR },
+      ),
+    ).rejects.toThrow('เจ้าของสินค้าบน Blockchain');
+    expect(provider.call).not.toHaveBeenCalled();
+  });
+
   it('allows an independent auditor with AUDITOR_ROLE to prepare a quality check', async () => {
     prisma.product.findFirst.mockResolvedValueOnce({
       ...product,

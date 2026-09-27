@@ -168,6 +168,31 @@ describe('OrganizationsService', () => {
     });
   });
 
+  it('lists active shipment partners with valid public wallet addresses', async () => {
+    mockPrisma.organization.findMany.mockResolvedValue([
+      { id: 'partner-1', name: 'Distributor', code: 'DIST', type: OrganizationType.DISTRIBUTOR, walletAddress: '0x1111111111111111111111111111111111111111' },
+      { id: 'partner-2', name: 'Invalid wallet', code: 'BAD', type: OrganizationType.WAREHOUSE, walletAddress: 'invalid' },
+    ]);
+
+    await expect(service.findShippingPartners()).resolves.toEqual([
+      { id: 'partner-1', name: 'Distributor', code: 'DIST', type: OrganizationType.DISTRIBUTOR, walletAddress: '0x1111111111111111111111111111111111111111' },
+    ]);
+    expect(mockPrisma.organization.findMany).toHaveBeenCalledWith({
+      where: {
+        status: OrganizationStatus.ACTIVE,
+        walletAddress: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        type: true,
+        walletAddress: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+  });
+
   describe('findOne', () => {
     it('should return organization if user belongs to it', async () => {
       mockPrisma.organization.findUnique.mockResolvedValue(mockOrg);

@@ -24,6 +24,8 @@
 
 > **หมายเหตุ:** Wallet ในตารางนี้เป็นตัวอย่างข้อมูลทดสอบเดิม ไม่ใช่ค่าในฐานข้อมูลหรือ role บนสัญญา Sepolia ปัจจุบัน สำหรับ Account 1/2 ให้เทียบ public address และดูสถานะที่ตรวจจริงใน [Wallet และ Role ที่ใช้งานจริง](WALLET_ROLES.md)
 
+หากทดสอบการส่งต่อด้วย MetaMask เพียงสอง accounts ให้ใช้ [แผนแบ่ง wallet สอง accounts](WALLET_ROLES.md#แผนใช้-metamask-2-accounts-สำหรับทดสอบการส่งต่อสินค้า) แทน address ตัวอย่างในตารางด้านล่าง โดยกำหนด Manufacturer/Warehouse ที่ Account 1 และ Distributor/Retailer ที่ Account 2
+
 | รหัสองค์กร (Code) | ชื่อองค์กร (Organization Name) | ประเภท (Type) | กระเป๋าบล็อกเชน (Wallet Address) | บทบาทในระบบ |
 | :--- | :--- | :--- | :--- | :--- |
 | **`ORG-MFG-001`** | **Apex Tech Manufacturing** | `MANUFACTURER` | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` | โรงงานผู้ผลิตต้นทาง, ลงทะเบียนสินค้า, บันทึกลง Smart Contract |

@@ -742,6 +742,7 @@ export const api = {
       request<{ data: OrganizationItem[] } | OrganizationItem[]>('organizations').then((res) =>
         Array.isArray(res) ? res : res.data || [],
       ),
+    shippingPartners: () => request<OrganizationItem[]>('organizations/shipping-partners'),
     get: (id: string) => request<OrganizationItem>(`organizations/${id}`),
   },
   qualityChecks: {

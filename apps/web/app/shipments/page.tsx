@@ -35,6 +35,7 @@ function ShipmentsPageContent() {
   const [confirmReceiveShipment, setConfirmReceiveShipment] = useState<ShipmentItem | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationItem[]>([]);
+  const [organizationLoadError, setOrganizationLoadError] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string>(preselectedProductId);
   const [receiverOrgId, setReceiverOrgId] = useState<string>('');
   const [carrierOrgId, setCarrierOrgId] = useState<string>('');
@@ -63,9 +64,17 @@ function ShipmentsPageContent() {
 
     async function loadData() {
       try {
+        setOrganizationLoadError(null);
         const [prodRes, orgsRes, shpRes] = await Promise.all([
           api.products.list({ limit: 50 }).catch(() => ({ data: [] })),
-          api.organizations.list().catch(() => []),
+          api.organizations.shippingPartners().catch((cause: unknown) => {
+            if (!ignore) {
+              setOrganizationLoadError(
+                cause instanceof Error ? cause.message : 'โหลดรายชื่อองค์กรผู้รับสินค้าไม่สำเร็จ',
+              );
+            }
+            return [];
+          }),
           api.shipments.list({ limit: 50 }).catch(() => ({ data: [] })),
         ]);
 
@@ -97,6 +106,8 @@ function ShipmentsPageContent() {
   }, [preselectedProductId, selectedProductId]);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
+  const receivedProduct = products.find((product) => product.status === 'RECEIVED');
+  const ownerWallet = selectedProduct?.currentOwner?.walletAddress || selectedProduct?.manufacturer?.walletAddress;
 
   const handleProductChange = (productId: string) => {
     setSelectedProductId(productId);
@@ -134,6 +145,11 @@ function ShipmentsPageContent() {
       setErrorMessage(
         'องค์กรผู้รับสินค้าไม่สามารถเป็นองค์กรเดียวกับเจ้าของสินค้าปัจจุบันได้ กรุณาเลือกองค์กรปลายทางอื่น เช่น Global Express Distribution (Distributor) หรือ SafeHub Storage (Warehouse)',
       );
+      return;
+    }
+    const receiver = organizations.find((organization) => organization.id === receiverOrgId);
+    if (ownerWallet && receiver?.walletAddress?.toLowerCase() === ownerWallet.toLowerCase()) {
+      setErrorMessage('องค์กรผู้รับใช้ wallet เดียวกับเจ้าของสินค้าปัจจุบัน กรุณากำหนด wallet คนละ address ก่อนจัดส่ง');
       return;
     }
     if (!origin.trim() || !destination.trim()) {
@@ -373,6 +389,15 @@ function ShipmentsPageContent() {
                       </option>
                     ))}
                   </select>
+                  {receivedProduct && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      สินค้าที่เพิ่งรับยังจัดส่งต่อไม่ได้ ต้อง{' '}
+                      <Link href={`/products/${receivedProduct.id}`} className="font-semibold underline underline-offset-2">
+                        เปิดหน้าสินค้าแล้วกดจัดเก็บ
+                      </Link>{' '}
+                      ก่อน
+                    </p>
+                  )}
                 </div>
 
                 {/* Current Owner Info Card */}
@@ -409,19 +434,37 @@ function ShipmentsPageContent() {
                         selectedProduct &&
                         (org.id === selectedProduct.currentOwnerId ||
                           org.id === selectedProduct.manufacturerId);
+                      const sharesOwnerWallet = Boolean(
+                        ownerWallet && org.walletAddress?.toLowerCase() === ownerWallet.toLowerCase(),
+                      );
+                      const unavailable = Boolean(isCurrentOwner || sharesOwnerWallet);
                       return (
                         <option
                           key={org.id}
                           value={org.id}
-                          disabled={isCurrentOwner}
-                          className={isCurrentOwner ? 'text-slate-400 bg-slate-50' : ''}
+                          disabled={unavailable}
+                          className={unavailable ? 'text-slate-400 bg-slate-50' : ''}
                         >
                           {org.name} [{org.code}] — {org.type}
-                          {isCurrentOwner ? ' (เจ้าของปัจจุบัน - ไม่สามารถเลือกได้)' : ''}
+                          {isCurrentOwner
+                            ? ' (เจ้าของปัจจุบัน - ไม่สามารถเลือกได้)'
+                            : sharesOwnerWallet
+                              ? ' (ใช้ wallet เดียวกับผู้ส่ง - ไม่สามารถเลือกได้)'
+                              : ''}
                         </option>
                       );
                     })}
                   </select>
+                  {organizationLoadError && (
+                    <p role="alert" className="mt-1 text-xs text-red-600">
+                      โหลดรายชื่อองค์กรผู้รับสินค้าไม่สำเร็จ: {organizationLoadError}
+                    </p>
+                  )}
+                  {!organizationLoadError && organizations.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      ยังไม่มีองค์กรที่เปิดใช้งานและกำหนด wallet สำหรับรับสินค้า
+                    </p>
+                  )}
                   <p className="text-[11px] text-slate-500 mt-1">
                     เลือกคู่ค้าปลายทาง เช่น ผู้แทนจำหน่าย (Distributor) หรือ คลังสินค้า (Warehouse)
                   </p>

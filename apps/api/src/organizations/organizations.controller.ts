@@ -81,6 +81,15 @@ export class OrganizationsController {
     return this.organizationsService.findAll(query, user);
   }
 
+  @Get('shipping-partners')
+  @ApiOperation({
+    summary: 'List active organizations with a wallet for shipment selection',
+  })
+  @ApiResponse({ status: 200, description: 'Shipping partners returned' })
+  async findShippingPartners() {
+    return this.organizationsService.findShippingPartners();
+  }
+
   @Get(':id')
   @UseGuards(OrganizationIsolationGuard)
   @ApiOperation({

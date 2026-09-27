@@ -10,10 +10,32 @@ import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { UpdateOrganizationStatusDto } from './dto/update-organization-status.dto';
 import { QueryOrganizationDto } from './dto/query-organization.dto';
 import { OrganizationStatus, UserRole } from '@prisma/client';
+import { ethers } from 'ethers';
 
 @Injectable()
 export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async findShippingPartners() {
+    const organizations = await this.prisma.organization.findMany({
+      where: {
+        status: OrganizationStatus.ACTIVE,
+        walletAddress: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        type: true,
+        walletAddress: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    return organizations.filter((organization) =>
+      ethers.isAddress(organization.walletAddress || ''),
+    );
+  }
 
   async create(createDto: CreateOrganizationDto, currentUser: any) {
     const formattedCode = createDto.code.toUpperCase();
