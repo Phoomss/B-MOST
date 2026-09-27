@@ -23,32 +23,7 @@ services:
       - bmost-network
 
   # ----------------------------------------------------
-  # 2. Hardhat Local EVM Blockchain Node
-  # ----------------------------------------------------
-  blockchain:
-    profiles: ["local-chain"]
-    build:
-      context: .
-      dockerfile: packages/contracts/Dockerfile
-    container_name: bmost-blockchain
-    restart: unless-stopped
-    ports:
-      - "8545:8545"
-    environment:
-      BLOCKCHAIN_RPC_URL: http://127.0.0.1:8545
-    healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "node -e 'const http=require(\"http\");const req=http.request({host:\"127.0.0.1\",port:8545,method:\"POST\",headers:{\"Content-Type\":\"application/json\"}},(res)=>process.exit(res.statusCode===200?0:1));req.on(\"error\",()=>process.exit(1));req.write(JSON.stringify({jsonrpc:\"2.0\",method:\"eth_blockNumber\",params:[],id:1}));req.end();' || exit 1"
-      interval: 10s
-      timeout: 5s
-      start_period: 15s
-      retries: 5
-    networks:
-      - bmost-network
-
-  # ----------------------------------------------------
-  # 3. NestJS Backend REST API
+  # 2. NestJS Backend REST API
   # ----------------------------------------------------
   api:
     build:
@@ -84,7 +59,7 @@ services:
       - bmost-network
 
   # ----------------------------------------------------
-  # 4. Next.js Web Frontend Application
+  # 3. Next.js Web Frontend Application
   # ----------------------------------------------------
   web:
     build:

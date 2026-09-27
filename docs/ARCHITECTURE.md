@@ -91,7 +91,7 @@ B-MOST/
 │       └── hardhat.config.ts         # EVM compiler & network settings
 │
 ├── docs/                             # Comprehensive system documentation
-├── docker-compose.yml                # Full production stack (4 containers)
+├── docker-compose.yml                # Full production stack (3 containers)
 ├── docker-compose.dev.yml            # Development stack with source sync
 ├── pnpm-workspace.yaml               # Monorepo workspace configuration
 └── tsconfig.base.json                # Shared TypeScript compiler options

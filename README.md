@@ -82,9 +82,9 @@ cp apps/web/.env.example apps/web/.env
 ```
 
 ### 3. Launch Full Stack with Docker (Recommended)
-You can launch the entire ecosystem (PostgreSQL, Hardhat Blockchain Node, NestJS API with migrations & seed, and Next.js Web UI) with a single command:
+You can launch PostgreSQL, the NestJS API, and the Next.js Web UI with a single command. The API connects to the configured Sepolia RPC URL:
 ```bash
-# Build and start all 4 containers in the background
+# Build and start all 3 containers in the background
 pnpm docker:up
 
 # View aggregated logs
@@ -96,7 +96,6 @@ pnpm docker:down
 Once healthy, navigate directly to:
 - **Web Application**: `http://localhost:3000`
 - **Backend API & Swagger**: `http://localhost:4000/api/docs`
-- **Blockchain Node (RPC)**: `http://localhost:8545`
 
 ---
 
@@ -108,9 +107,6 @@ If you prefer running services directly via Node/pnpm on your host machine:
 ```bash
 # Start PostgreSQL container on port 5433
 pnpm docker:db
-
-# Optionally start Hardhat blockchain container on port 8545
-pnpm docker:blockchain
 ```
 
 #### Step 4.2: Install Host Dependencies & Apply Schema
@@ -120,9 +116,12 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-#### Step 4.3: Deploy Smart Contract (if running local node)
+#### Step 4.3: Test Smart Contract Locally (optional)
+
+The local Hardhat node is for contract development and tests. The API and Web UI use Sepolia.
+
 ```bash
-# In terminal 1: start Hardhat node (if not using docker)
+# In terminal 1: start Hardhat node
 pnpm blockchain:node
 
 # In terminal 2: deploy contract to localhost
@@ -161,7 +160,7 @@ The production `pnpm docker:up` command continues to use `docker-compose.yml`.
 | **Frontend Web UI** | `3000` | `http://localhost:3000` | Next.js 16 Web Application & Verification |
 | **Backend API** | `4000` | `http://localhost:4000/api` | NestJS 11 REST API |
 | **API Docs (Swagger)** | `4000` | `http://localhost:4000/api/docs` | OpenAPI 3.0 Interactive Documentation |
-| **Hardhat Blockchain Node** | `8545` | `http://localhost:8545` | EVM JSON-RPC Local Node (Chain ID: 31337) |
+| **Optional local Hardhat node** | `8545` | `http://localhost:8545` | Host-run development node (Chain ID: 31337) |
 | **PostgreSQL Database** | `5433` | `localhost:5433` | Relational application database (Docker) |
 
 ---
@@ -202,12 +201,11 @@ For the complete public wallet addresses, application roles, Sepolia contract ro
 | `pnpm blockchain:node` | Run local Hardhat EVM blockchain node on port 8545 |
 | `pnpm blockchain:deploy` | Compile and deploy `SupplyChainRegistry.sol` smart contract |
 | `pnpm blockchain:test` | Run Hardhat smart contract test suite with 100% method coverage |
-| `pnpm docker:up` | Launch full ecosystem in Docker (Postgres, Blockchain, API, Web) |
+| `pnpm docker:up` | Launch PostgreSQL, API, and Web in Docker |
 | `pnpm docker:down` | Stop and teardown all Docker containers |
 | `pnpm docker:build` | Build or rebuild all Docker container images |
 | `pnpm docker:logs` | Follow real-time aggregated logs across all Docker containers |
 | `pnpm docker:db` | Start only the PostgreSQL database container (port 5433) |
-| `pnpm docker:blockchain` | Start only the Hardhat blockchain node container (port 8545) |
 | `pnpm db:migrate` | Run Prisma database migrations |
 | `pnpm db:seed` | Seed initial organizations, users, and baseline products |
 | `pnpm db:studio` | Launch Prisma Studio web GUI on port 5555 |
