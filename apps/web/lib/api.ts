@@ -1,0 +1,930 @@
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+export interface BlockchainProductData {
+  onChain?: boolean;
+  productId?: number;
+  productCode?: string;
+  productHash?: string;
+  manufacturer?: string;
+  currentOwner?: string;
+  status?: number;
+  registeredAt?: number;
+  hashMatches?: boolean;
+  error?: string;
+}
+
+export interface QualityCheckItem {
+  id?: string;
+  productId?: string;
+  organizationId?: string;
+  result: string;
+  inspectorName?: string;
+  notes?: string;
+  blockchainTxHash?: string;
+  createdAt: string;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+    status: string;
+    blockchainProductId?: string;
+    blockchainTxHash?: string;
+  };
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  };
+}
+
+export interface OrganizationItem {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  walletAddress?: string;
+  status: string;
+}
+
+export interface UserWalletItem {
+  id: string;
+  email: string;
+  role: string;
+  organizationId: string | null;
+  walletAddress: string | null;
+  status: string;
+}
+
+export interface ShipmentItem {
+  id?: string;
+  shipmentCode: string;
+  productId?: string;
+  senderOrganizationId?: string;
+  receiverOrganizationId?: string;
+  carrierOrganizationId?: string | null;
+  origin?: string;
+  destination?: string;
+  status: string;
+  blockchainShipmentId?: string | null;
+  blockchainTxHash?: string | null;
+  shippedAt?: string | null;
+  receivedAt?: string | null;
+  createdAt: string;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+    status: string;
+    blockchainProductId?: string;
+  };
+  sender?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    walletAddress?: string | null;
+  };
+  receiver?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    walletAddress?: string | null;
+  };
+  carrier?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    walletAddress?: string | null;
+  } | null;
+}
+
+export interface BlockchainTxItem {
+  id?: string;
+  txHash: string;
+  blockNumber?: string | number;
+  eventType: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface ProductItem {
+  id: string;
+  productCode: string;
+  serialNumber: string;
+  name: string;
+  description?: string;
+  category?: string;
+  status: string;
+  manufacturerId: string;
+  currentOwnerId: string;
+  blockchainProductId?: string | null;
+  blockchainTxHash?: string | null;
+  productHash?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  manufacturer?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    walletAddress?: string;
+  };
+  currentOwner?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    walletAddress?: string;
+  };
+  qrCode?: string;
+  verificationUrl?: string;
+  blockchainData?: BlockchainProductData;
+  qualityChecks?: QualityCheckItem[];
+  shipments?: ShipmentItem[];
+  blockchainTransactions?: BlockchainTxItem[];
+}
+
+export interface ProductsResponse {
+  data: ProductItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface HistoryEventRecord {
+  eventType: string;
+  actor: string;
+  timestamp: number;
+  details: string;
+}
+
+export interface ProductHistoryResponse {
+  product: Partial<ProductItem>;
+  blockchainHistory: HistoryEventRecord[];
+  blockchainTransactions?: BlockchainTxItem[];
+  qualityChecks?: QualityCheckItem[];
+  shipments?: ShipmentItem[];
+  auditLogs?: Array<{
+    id: string;
+    action: string;
+    createdAt: string;
+    metadata?: Record<string, unknown>;
+  }>;
+}
+
+export interface TimelineEventItem {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actor: string;
+  actorRole?: string;
+  organizationName?: string;
+  timestamp: string | number;
+  blockNumber?: number | string | null;
+  blockchainTxHash?: string | null;
+  metadata?: Record<string, any>;
+  badgeColor?: 'blue' | 'emerald' | 'rose' | 'amber' | 'purple' | 'slate';
+}
+
+export interface OwnershipHistoryItem {
+  organizationId: string;
+  organizationName: string;
+  organizationCode: string;
+  organizationType: string;
+  walletAddress?: string | null;
+  acquiredAt: string;
+  eventDescription: string;
+  txHash?: string | null;
+  isCurrentOwner: boolean;
+}
+
+export interface BlockchainVerificationData {
+  verified: boolean;
+  contractAddress: string;
+  onChainProductId?: number | null;
+  productHash?: string | null;
+  computedHash?: string | null;
+  hashMatch: boolean;
+  blockchainTxHash?: string | null;
+  onChainStatus?: number | null;
+  onChainOwner?: string | null;
+  onChainManufacturer?: string | null;
+  totalOnChainEvents: number;
+  onChainEvents: any[];
+}
+
+export interface TraceabilityDetailResponse {
+  product: ProductItem;
+  currentOwner: OrganizationItem;
+  manufacturer: OrganizationItem;
+  events: TimelineEventItem[];
+  ownershipHistory: OwnershipHistoryItem[];
+  blockchainVerification: BlockchainVerificationData;
+}
+
+export interface PublicTimelineEvent {
+  id: string;
+  eventType: string;
+  title: string;
+  description: string;
+  actor?: string;
+  organizationName?: string;
+  timestamp: string;
+  blockchainTxHash?: string | null;
+  badgeColor?: 'blue' | 'emerald' | 'rose' | 'amber' | 'purple' | 'slate';
+  verified?: boolean;
+}
+
+export interface PublicVerifyResponse {
+  verified: boolean;
+  productCode?: string;
+  message?: string;
+  product?: Partial<ProductItem>;
+  timeline?: PublicTimelineEvent[];
+  blockchain?: {
+    registeredOnChain: boolean;
+    onChainProductId?: number | string;
+    onChainStatus?: number;
+    onChainStatusName?: string;
+    manufacturerAddress?: string;
+    currentOwnerAddress?: string;
+    contractAddress?: string;
+    blockchainTxHash?: string;
+    productHash?: string;
+    computedHash?: string;
+    onChainHash?: string;
+    hashMatch?: boolean;
+    verified?: boolean;
+    error?: string;
+  };
+  qrCode?: string;
+  verificationUrl?: string;
+}
+
+export interface DashboardStatistics {
+  totalProducts: number;
+  inTransit: number;
+  received: number;
+  sold: number;
+  recalled: number;
+  activeShipments: number;
+  blockchainTransactions: number;
+}
+
+export interface ProductStatusMetric {
+  status: string;
+  count: number;
+  label: string;
+  percentage: number;
+}
+
+export interface ShipmentStatusMetric {
+  status: string;
+  count: number;
+  label: string;
+  percentage: number;
+}
+
+export interface OrganizationTypeMetric {
+  type: string;
+  count: number;
+  label: string;
+}
+
+export interface DailyTransactionMetric {
+  date: string;
+  count: number;
+}
+
+export interface RecentTransactionMetric {
+  id: string;
+  txHash: string;
+  eventType?: string | null;
+  status: string;
+  blockNumber?: number | string | null;
+  createdAt: string;
+}
+
+export interface BlockchainActivityMetrics {
+  totalTransactions: number;
+  confirmedTransactions: number;
+  pendingTransactions: number;
+  failedTransactions: number;
+  recentTransactions: RecentTransactionMetric[];
+  dailyTrend: DailyTransactionMetric[];
+}
+
+export interface DashboardCharts {
+  productStatus: ProductStatusMetric[];
+  shipmentActivity: ShipmentStatusMetric[];
+  organizationActivity: OrganizationTypeMetric[];
+  blockchainActivity: BlockchainActivityMetrics;
+}
+
+export interface DashboardRecentActivityItem {
+  id: string;
+  type: 'PRODUCT_CREATED' | 'QUALITY_CHECK' | 'SHIPMENT_UPDATE' | 'BLOCKCHAIN_TX';
+  title: string;
+  description: string;
+  timestamp: string;
+  actor?: string;
+  organizationName?: string;
+  blockchainTxHash?: string | null;
+  badgeColor: 'blue' | 'emerald' | 'amber' | 'purple' | 'rose' | 'slate';
+}
+
+export interface AuditLogItem {
+  id: string;
+  userId?: string | null;
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  } | null;
+  organizationId?: string | null;
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  } | null;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata?: Record<string, any> | null;
+  ipAddress?: string | null;
+  createdAt: string;
+}
+
+export interface AuditFilterOptions {
+  actions: string[];
+  entityTypes: string[];
+  organizations: Array<{
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+  }>;
+}
+
+export interface QueryAuditParams {
+  organizationId?: string;
+  userId?: string;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface BlockchainStatusData {
+  connected: boolean;
+  network?: string;
+  chainId?: number;
+  currentBlock?: number;
+  contractAddress: string;
+  operatorAddress?: string;
+  operatorBalanceEth?: string;
+  listenerActive?: boolean;
+  error?: string;
+}
+
+export interface BlockchainStatsData {
+  total: number;
+  confirmed: number;
+  pending: number;
+  failed: number;
+}
+
+export interface BlockchainBlockData {
+  number: number;
+  hash: string | null;
+  parentHash: string;
+  timestamp: number;
+  miner: string;
+  gasLimit: string;
+  gasUsed: string;
+  baseFeePerGas: string | null;
+  transactionCount: number;
+  transactions: string[];
+}
+
+export interface BlockchainTransactionDetail {
+  id: string;
+  txHash: string;
+  blockNumber: string | null;
+  contractAddress: string;
+  eventType: string;
+  entityType: string;
+  entityId: string;
+  productId: string | null;
+  product?: {
+    id: string;
+    productCode: string;
+    name: string;
+  } | null;
+  walletAddress: string;
+  status: 'PENDING' | 'CONFIRMED' | 'FAILED';
+  createdAt: string;
+  onChainReceipt?: {
+    blockNumber: number;
+    status: number | null;
+    from: string;
+    to: string | null;
+    gasUsed: string;
+    gasPrice?: string | null;
+    nonce?: number | null;
+    inputData?: string | null;
+    logsCount?: number;
+  } | null;
+}
+
+export interface QueryBlockchainParams {
+  eventType?: string;
+  entityType?: string;
+  entityId?: string;
+  productId?: string;
+  walletAddress?: string;
+  status?: string;
+  blockNumber?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('bmost_token');
+}
+
+export function setAuthToken(token: string) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('bmost_token', token);
+    document.cookie = `bmost_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `b_most_auth_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+  }
+}
+
+export function clearAuthToken() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bmost_token');
+    localStorage.removeItem('bmost_user');
+    document.cookie = 'bmost_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+    document.cookie = 'b_most_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+  }
+}
+
+export function getStoredUser(): any | null {
+  if (typeof window === 'undefined') return null;
+  const userJson = localStorage.getItem('bmost_user');
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredUser(user: any) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('bmost_user', JSON.stringify(user));
+  }
+}
+
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const url = `${API_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      !endpoint.includes('auth/login')
+    ) {
+      clearAuthToken();
+      if (
+        !window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/verify')
+      ) {
+        window.location.href = `/login?redirect=${encodeURIComponent(
+          window.location.pathname,
+        )}`;
+      }
+    }
+    const errorData = (await response.json().catch(() => ({}))) as { message?: string | string[] };
+    const message = Array.isArray(errorData.message)
+      ? errorData.message.join('; ')
+      : errorData.message;
+    throw new ApiRequestError(
+      message || `API request failed with status ${response.status}`,
+      response.status,
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export const api = {
+  auth: {
+    login: (credentials: { email: string; password: string }) =>
+      request<{ accessToken: string; user: any }>('auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      }),
+    me: () => request<any>('auth/me'),
+    listUserWallets: () => request<UserWalletItem[]>('auth/users'),
+    setUserWallet: (id: string, walletAddress: string, syncOrganization: boolean) =>
+      request<UserWalletItem>(`auth/users/${id}/wallet`, {
+        method: 'PATCH',
+        body: JSON.stringify({ walletAddress, syncOrganization }),
+      }),
+  },
+  products: {
+    list: (params?: {
+      search?: string;
+      status?: string;
+      blockchainState?: 'PENDING' | 'ON_CHAIN';
+      category?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.search) query.set('search', params.search);
+      if (params?.status) query.set('status', params.status);
+      if (params?.blockchainState) query.set('blockchainState', params.blockchainState);
+      if (params?.category) query.set('category', params.category);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+
+      const qs = query.toString();
+      return request<ProductsResponse>(`products${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<ProductItem>(`products/${id}`),
+    getByCode: (code: string) => request<ProductItem>(`products/code/${encodeURIComponent(code)}`),
+    create: (data: {
+      productCode: string;
+      serialNumber: string;
+      name: string;
+      description?: string;
+      category?: string;
+      registerOnBlockchain?: boolean;
+    }) =>
+      request<ProductItem>('products', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: { productCode?: string; serialNumber?: string; name?: string; description?: string; category?: string }) =>
+      request<ProductItem>(`products/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    remove: (id: string) => request<{ success: boolean; message: string }>(`products/${id}`, { method: 'DELETE' }),
+    registerOnBlockchain: (id: string) =>
+      request<ProductItem>(`products/${id}/register-blockchain`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    getHistory: (id: string) => request<ProductHistoryResponse>(`products/${id}/history`),
+    getQr: (id: string) =>
+      request<{ qrCodeDataUrl: string; verificationUrl: string }>(`products/${id}/qr`),
+    qualityCheck: (
+      id: string,
+      data: {
+        result: 'PASSED' | 'FAILED' | 'PASS' | 'FAIL';
+        inspectorName?: string;
+        notes?: string;
+      },
+    ) =>
+      request<{
+        message: string;
+        qualityCheck: QualityCheckItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/quality-check`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    ship: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/ship`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    receive: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/receive`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    store: (id: string) => request<{ product: ProductItem }>(`products/${id}/store`, {
+      method: 'POST', body: JSON.stringify({}),
+    }),
+    transfer: (id: string, data: { newOwnerOrganizationId: string; notes?: string }) =>
+      request<{
+        message: string;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`products/${id}/transfer`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    getShipments: (id: string) =>
+      request<{
+        data: ShipmentItem[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`products/${id}/shipments`),
+  },
+  shipments: {
+    list: (params?: {
+      productId?: string;
+      senderId?: string;
+      receiverId?: string;
+      carrierId?: string;
+      status?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.senderId) query.set('senderId', params.senderId);
+      if (params?.receiverId) query.set('receiverId', params.receiverId);
+      if (params?.carrierId) query.set('carrierId', params.carrierId);
+      if (params?.status) query.set('status', params.status);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+
+      const qs = query.toString();
+      return request<{
+        data: ShipmentItem[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+      }>(`shipments${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<ShipmentItem>(`shipments/${id}`),
+    create: (data: {
+      productId: string;
+      receiverOrganizationId: string;
+      carrierOrganizationId?: string;
+      origin: string;
+      destination: string;
+      shipmentCode?: string;
+    }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: {
+          txHash: string;
+          blockNumber: number;
+          shipmentId: number;
+          status: string;
+        };
+      }>('shipments', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    ship: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`shipments/${id}/ship`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+    markInTransit: (id: string) => request<{ shipment: ShipmentItem }>(`shipments/${id}/in-transit`, {
+      method: 'POST', body: JSON.stringify({}),
+    }),
+    receive: (id: string, data?: { notes?: string }) =>
+      request<{
+        message: string;
+        shipment: ShipmentItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>(`shipments/${id}/receive`, {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+  },
+  organizations: {
+    list: () =>
+      request<{ data: OrganizationItem[] } | OrganizationItem[]>('organizations').then((res) =>
+        Array.isArray(res) ? res : res.data || [],
+      ),
+    shippingPartners: () => request<OrganizationItem[]>('organizations/shipping-partners'),
+    get: (id: string) => request<OrganizationItem>(`organizations/${id}`),
+  },
+  qualityChecks: {
+    list: (params?: {
+      productId?: string;
+      result?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.result) query.set('result', params.result);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+
+      const qs = query.toString();
+      return request<{
+        data: QualityCheckItem[];
+        meta: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+      }>(`quality-checks${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<QualityCheckItem>(`quality-checks/${id}`),
+    create: (data: {
+      productId: string;
+      result: 'PASSED' | 'FAILED' | 'PASS' | 'FAIL';
+      inspectorName?: string;
+      notes?: string;
+    }) =>
+      request<{
+        message: string;
+        qualityCheck: QualityCheckItem;
+        product: ProductItem;
+        blockchain: { txHash: string; blockNumber: number; status: string };
+      }>('quality-checks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  },
+  public: {
+    verify: (productCode: string) =>
+      request<PublicVerifyResponse>(`public/verify/${encodeURIComponent(productCode)}`),
+  },
+  traceability: {
+    get: (identifier: string) =>
+      request<TraceabilityDetailResponse>(`traceability/${encodeURIComponent(identifier)}`),
+    search: (query?: string) => {
+      const qs = query ? `?search=${encodeURIComponent(query)}` : '';
+      return request<ProductItem[]>(`traceability${qs}`);
+    },
+  },
+  dashboard: {
+    getStatistics: () => request<DashboardStatistics>('dashboard/statistics'),
+    getCharts: () => request<DashboardCharts>('dashboard/charts'),
+    getRecentActivity: () =>
+      request<DashboardRecentActivityItem[]>('dashboard/recent-activity'),
+  },
+  audit: {
+    list: (params?: QueryAuditParams) => {
+      const query = new URLSearchParams();
+      if (params?.organizationId) query.set('organizationId', params.organizationId);
+      if (params?.userId) query.set('userId', params.userId);
+      if (params?.action) query.set('action', params.action);
+      if (params?.entityType) query.set('entityType', params.entityType);
+      if (params?.entityId) query.set('entityId', params.entityId);
+      if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+      if (params?.dateTo) query.set('dateTo', params.dateTo);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString();
+      return request<{
+        data: AuditLogItem[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`audit-logs${qs ? `?${qs}` : ''}`);
+    },
+    get: (id: string) => request<AuditLogItem>(`audit-logs/${id}`),
+    getFilterOptions: () => request<AuditFilterOptions>('audit-logs/filters/options'),
+  },
+  blockchain: {
+    prepareAction: (data: {
+      action: string;
+      entityId: string;
+      passed?: boolean;
+      notes?: string;
+      receiverOrganizationId?: string;
+      carrierOrganizationId?: string;
+      origin?: string;
+      destination?: string;
+      shipmentCode?: string;
+      newOwnerOrganizationId?: string;
+    }) => request<{
+      intentId: string;
+      functionName: string;
+      args: string[];
+      expectedWallet: string;
+      chainId: number;
+      contractAddress: string;
+      productDbId: string;
+      shipmentDbId: string | null;
+      expiresAt: string;
+    }>('blockchain/actions/prepare', { method: 'POST', body: JSON.stringify(data) }),
+    confirmAction: (intentId: string, transactionHash: string) =>
+      request<{
+        verified: boolean;
+        synced: boolean;
+        transactionHash: string;
+        blockNumber: number;
+        chainId: number;
+        product: ProductItem;
+        shipmentDbId: string | null;
+      }>('blockchain/actions/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ intentId, transactionHash }),
+      }),
+    verifyTransaction: (transactionHash: string) =>
+      request<{
+        verified: boolean;
+        synced: boolean;
+        transactionHash: string;
+        chainId: number;
+        blockNumber: number;
+        pendingAbi: boolean;
+      }>('blockchain/verify-transaction', {
+        method: 'POST',
+        body: JSON.stringify({ transactionHash }),
+      }),
+    getStatus: () => request<BlockchainStatusData>('blockchain/status'),
+    getStats: () => request<BlockchainStatsData>('blockchain/stats'),
+    getBlock: (blockNumber: string | number) =>
+      request<BlockchainBlockData>(`blockchain/blocks/${blockNumber}`),
+    getTransactions: (params?: QueryBlockchainParams) => {
+      const query = new URLSearchParams();
+      if (params?.eventType) query.set('eventType', params.eventType);
+      if (params?.entityType) query.set('entityType', params.entityType);
+      if (params?.entityId) query.set('entityId', params.entityId);
+      if (params?.productId) query.set('productId', params.productId);
+      if (params?.walletAddress) query.set('walletAddress', params.walletAddress);
+      if (params?.status) query.set('status', params.status);
+      if (params?.blockNumber) query.set('blockNumber', params.blockNumber);
+      if (params?.search) query.set('search', params.search);
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      const qs = query.toString();
+      return request<{
+        data: BlockchainTransactionDetail[];
+        meta: { total: number; page: number; limit: number; totalPages: number };
+      }>(`blockchain/transactions${qs ? `?${qs}` : ''}`);
+    },
+    getTransaction: (txHash: string) =>
+      request<BlockchainTransactionDetail>(
+        `blockchain/transactions/${encodeURIComponent(txHash)}`,
+      ),
+    syncEvents: (data?: { fromBlock?: number; toBlock?: number }) =>
+      request<{
+        message: string;
+        syncedEvents: number;
+        fromBlock: number;
+        toBlock: number;
+      }>('blockchain/sync', {
+        method: 'POST',
+        body: JSON.stringify(data || {}),
+      }),
+  },
+};

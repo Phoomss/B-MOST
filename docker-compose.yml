@@ -1,4 +1,7 @@
 services:
+  # ----------------------------------------------------
+  # 1. PostgreSQL Relational Database
+  # ----------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: bmost-postgres
@@ -8,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-bmost_db}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,6 +19,110 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 2. Hardhat Local EVM Blockchain Node
+  # ----------------------------------------------------
+  blockchain:
+    profiles: ["local-chain"]
+    build:
+      context: .
+      dockerfile: packages/contracts/Dockerfile
+    container_name: bmost-blockchain
+    restart: unless-stopped
+    ports:
+      - "8545:8545"
+    environment:
+      BLOCKCHAIN_RPC_URL: http://127.0.0.1:8545
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "node -e 'const http=require(\"http\");const req=http.request({host:\"127.0.0.1\",port:8545,method:\"POST\",headers:{\"Content-Type\":\"application/json\"}},(res)=>process.exit(res.statusCode===200?0:1));req.on(\"error\",()=>process.exit(1));req.write(JSON.stringify({jsonrpc:\"2.0\",method:\"eth_blockNumber\",params:[],id:1}));req.end();' || exit 1"
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 3. NestJS Backend REST API
+  # ----------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bmost-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bmost_db}?schema=public
+      DB_HOST: postgres
+      DB_PORT: 5432
+      AUTO_SEED: "false"
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      BLOCKCHAIN_RPC_URL: ${BLOCKCHAIN_RPC_URL:?Set a Sepolia RPC URL}
+      CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+      BLOCKCHAIN_CHAIN_ID: 11155111
+      BLOCKCHAIN_ABI_READY: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/api || exit 1"]
+      interval: 10s
+      timeout: 5s
+      start_period: 25s
+      retries: 5
+    networks:
+      - bmost-network
+
+  # ----------------------------------------------------
+  # 4. Next.js Web Frontend Application
+  # ----------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+        NEXT_PUBLIC_CHAIN_ID: 11155111
+        NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+        NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "true"
+    container_name: bmost-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api}
+      NEXT_PUBLIC_CHAIN_ID: 11155111
+      NEXT_PUBLIC_CONTRACT_ADDRESS: 0x74fd4f89b8ab7a3100b3291b7aeb43448f13c43a
+      NEXT_PUBLIC_BLOCKCHAIN_ABI_READY: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/login || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - bmost-network
 
 volumes:
   postgres_data:
+    name: bmost_postgres_data
+
+networks:
+  bmost-network:
+    name: bmost_network
+    driver: bridge

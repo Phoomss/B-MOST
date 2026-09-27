@@ -9,10 +9,25 @@
     "dev:web": "pnpm --filter @b-most/web run dev",
     "build": "pnpm --filter @b-most/api run build && pnpm --filter @b-most/web run build",
     "lint": "pnpm -r run lint",
+    "typecheck": "pnpm --filter @b-most/web exec tsc --noEmit && pnpm --filter @b-most/api exec tsc --noEmit -p tsconfig.build.json",
     "test": "pnpm -r run test",
+    "test:e2e": "pnpm --filter @b-most/api run test:e2e",
+    "test:integration": "pnpm --filter @b-most/api run test:integration",
     "docker:up": "docker compose up -d",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:build": "docker compose build",
+    "docker:logs": "docker compose logs -f",
+    "docker:db": "docker compose up -d postgres",
+    "docker:blockchain": "docker compose up -d blockchain",
+    "db:migrate": "pnpm --filter @b-most/api run prisma:migrate",
+    "db:generate": "pnpm --filter @b-most/api run prisma:generate",
+    "db:seed": "pnpm --filter @b-most/api run prisma:seed",
+    "db:studio": "pnpm --filter @b-most/api run prisma:studio",
+    "blockchain:node": "pnpm --filter @b-most/contracts run node",
+    "blockchain:compile": "pnpm --filter @b-most/contracts run compile",
+    "blockchain:test": "pnpm --filter @b-most/contracts run test",
+    "blockchain:deploy": "pnpm --filter @b-most/contracts run deploy:local"
   },
   "devDependencies": {
     "typescript": "^5.8.2"
@@ -21,6 +36,8 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
+      "keccak",
+      "secp256k1",
       "unrs-resolver"
     ]
   }
