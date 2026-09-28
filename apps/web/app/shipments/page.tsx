@@ -15,7 +15,6 @@ import {
 } from '../../lib/api';
 import {
   getShipmentStatusBadge,
-  THAI_SHIPMENT_STATUS,
   THAI_PRODUCT_STATUS,
 } from '../../lib/thai-locale';
 import {
@@ -23,8 +22,8 @@ import {
   CheckIcon,
   XIcon,
   AlertTriangleIcon,
-  BoxIcon,
   PlusIcon,
+  SearchIcon,
 } from '../../components/Icons';
 
 function ShipmentsPageContent() {
@@ -59,7 +58,10 @@ function ShipmentsPageContent() {
   // List & Filter states
   const [shipments, setShipments] = useState<ShipmentItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [shipmentSearch, setShipmentSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   useEffect(() => {
     let ignore = false;
@@ -67,8 +69,8 @@ function ShipmentsPageContent() {
     async function loadData() {
       try {
         setOrganizationLoadError(null);
-        const [prodRes, orgsRes, shpRes] = await Promise.all([
-          api.products.list({ limit: 50 }).catch(() => ({ data: [] })),
+        const [prodRes, orgsRes, shpRes] = await Promise.allSettled([
+          api.products.list({ limit: 50 }),
           api.organizations.shippingPartners().catch((cause: unknown) => {
             if (!ignore) {
               setOrganizationLoadError(
@@ -77,21 +79,20 @@ function ShipmentsPageContent() {
             }
             return [];
           }),
-          api.shipments.list({ limit: 50 }).catch(() => ({ data: [] })),
+          api.shipments.list({ limit: 50 }),
         ]);
 
         if (!ignore) {
-          setProducts(prodRes.data || []);
-          setOrganizations(orgsRes || []);
-          setShipments(shpRes.data || []);
-          if (preselectedProductId && !selectedProductId) {
-            setSelectedProductId(preselectedProductId);
-            setShowCreateModal(true);
+          if (prodRes.status === 'fulfilled') setProducts(prodRes.value.data || []);
+          if (orgsRes.status === 'fulfilled') setOrganizations(orgsRes.value || []);
+          if (shpRes.status === 'fulfilled') setShipments(shpRes.value.data || []);
+          if (prodRes.status === 'rejected' || shpRes.status === 'rejected') {
+            setLoadError('โหลดข้อมูลบางส่วนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
           }
         }
       } catch {
         if (!ignore) {
-          setErrorMessage('ไม่สามารถโหลดข้อมูลการจัดส่งได้ กรุณาลองใหม่อีกครั้ง');
+          setLoadError('ไม่สามารถโหลดข้อมูลการจัดส่งได้ กรุณาลองใหม่อีกครั้ง');
         }
       } finally {
         if (!ignore) {
@@ -105,10 +106,10 @@ function ShipmentsPageContent() {
     return () => {
       ignore = true;
     };
-  }, [preselectedProductId, selectedProductId]);
+  }, []);
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
-  const receivedProduct = products.find((product) => product.status === 'RECEIVED');
+  const receivedProduct = selectedProduct?.status === 'RECEIVED' ? selectedProduct : null;
   const ownerWallet = selectedProduct?.currentOwner?.walletAddress || selectedProduct?.manufacturer?.walletAddress;
 
   const handleProductChange = (productId: string) => {
@@ -122,6 +123,16 @@ function ShipmentsPageContent() {
       if (!origin.trim()) {
         setOrigin(prod.currentOwner?.name || prod.manufacturer?.name || '');
       }
+    }
+  };
+
+  const refreshShipments = async () => {
+    try {
+      const response = await api.shipments.list({ limit: 50 });
+      setShipments(response.data || []);
+      setLoadError(null);
+    } catch {
+      setLoadError('บันทึกธุรกรรมสำเร็จแล้ว แต่โหลดรายการใหม่ไม่สำเร็จ กรุณารีเฟรชหน้า');
     }
   };
 
@@ -189,9 +200,7 @@ function ShipmentsPageContent() {
       setDestination('');
       setCustomShipmentCode('');
 
-      // Refresh shipments list
-      const shpRes = await api.shipments.list({ limit: 50 });
-      setShipments(shpRes.data || []);
+      await refreshShipments();
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
       setErrorMessage(getBlockchainErrorMessage(err));
@@ -218,8 +227,7 @@ function ShipmentsPageContent() {
         txHash: res.transactionHash,
       });
 
-      const shpRes = await api.shipments.list({ limit: 50 });
-      setShipments(shpRes.data || []);
+      await refreshShipments();
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
       setErrorMessage(`${getBlockchainErrorMessage(err)} (ขั้นตอน: ${progress})`);
@@ -242,8 +250,7 @@ function ShipmentsPageContent() {
         txHash: res.transactionHash,
       });
 
-      const shpRes = await api.shipments.list({ limit: 50 });
-      setShipments(shpRes.data || []);
+      await refreshShipments();
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
       setErrorMessage(getBlockchainErrorMessage(err));
@@ -263,8 +270,7 @@ function ShipmentsPageContent() {
         title: 'อัปเดตสถานะระหว่างขนส่งสำเร็จ',
         details: 'บันทึกสถานะบน Sepolia เรียบร้อยแล้ว',
       });
-      const shpRes = await api.shipments.list({ limit: 50 });
-      setShipments(shpRes.data || []);
+      await refreshShipments();
     } catch (err: unknown) {
       setBlockchainCancelled(isBlockchainRejection(err));
       setErrorMessage(getBlockchainErrorMessage(err));
@@ -274,43 +280,61 @@ function ShipmentsPageContent() {
   };
 
   const filteredShipments = shipments.filter((shp) => {
-    if (statusFilter === 'ALL') return true;
-    return shp.status === statusFilter;
+    if (statusFilter !== 'ALL' && shp.status !== statusFilter) return false;
+    const query = shipmentSearch.trim().toLocaleLowerCase();
+    if (!query) return true;
+    return [shp.shipmentCode, shp.product?.name, shp.product?.productCode, shp.sender?.name, shp.receiver?.name, shp.origin, shp.destination]
+      .some((value) => value?.toLocaleLowerCase().includes(query));
   });
+  const activeCount = shipments.filter((shipment) => shipment.status !== 'DELIVERED').length;
+  const deliveredCount = shipments.filter((shipment) => shipment.status === 'DELIVERED').length;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"><TruckIcon className="h-4 w-4" /> Shipments</div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
                 การจัดส่งและโลจิสติกส์
               </h1>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                ทั้งหมด {shipments.length} รายการ
-              </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              จัดการใบจัดส่งสินค้า การส่งมอบ และการโอนกรรมสิทธิ์ระหว่างองค์กรพร้อมบันทึกลง Smart Contract
+            <p className="text-sm text-slate-600 mt-2 max-w-2xl">
+              ติดตามการจัดส่ง สร้างใบจัดส่ง และยืนยันการรับสินค้าระหว่างองค์กร
             </p>
           </div>
 
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition cursor-pointer self-start sm:self-auto"
+            onClick={() => { setErrorMessage(null); setShowCreateModal(true); }}
+            className="inline-flex min-h-11 items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition cursor-pointer w-full sm:w-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             <PlusIcon className="w-4 h-4" />
             <span>สร้างการจัดส่งใหม่</span>
           </button>
         </div>
 
+        <div className="grid grid-cols-3 gap-2 sm:gap-4" aria-label="สรุปรายการจัดส่งล่าสุด">
+          {[
+            { label: 'รายการล่าสุด', count: shipments.length, color: 'text-slate-900' },
+            { label: 'กำลังดำเนินการ', count: activeCount, color: 'text-blue-700' },
+            { label: 'ส่งมอบแล้ว', count: deliveredCount, color: 'text-emerald-700' },
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-5 shadow-sm">
+              <p className="text-xs sm:text-sm text-slate-500">{item.label}</p>
+              <p className={`mt-1 text-2xl font-bold tabular-nums ${item.color}`}>{loading ? '–' : item.count}</p>
+            </div>
+          ))}
+        </div>
+
+        {loadError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{loadError} <button type="button" onClick={() => window.location.reload()} className="font-semibold underline underline-offset-2">ลองใหม่</button></div>}
+
         {/* Success Alert */}
         {successMessage && (
-          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between shadow-2xs">
+          <div role="status" className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-start justify-between shadow-2xs">
             <div className="flex items-start gap-2.5">
               <CheckIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
               <div>
@@ -334,7 +358,7 @@ function ShipmentsPageContent() {
         )}
 
         {/* Error Alert */}
-        {errorMessage && (
+        {errorMessage && !showCreateModal && (
           <div role={blockchainCancelled ? 'status' : 'alert'} className={`p-4 rounded-xl border text-sm flex items-start justify-between shadow-2xs ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
             <div className="flex items-start gap-2.5">
               <AlertTriangleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
@@ -355,15 +379,15 @@ function ShipmentsPageContent() {
 
         {/* Create Shipment Modal */}
         {showCreateModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div role="presentation" className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
+            <div role="dialog" aria-modal="true" aria-labelledby="create-shipment-title" onKeyDown={(event) => { if (event.key === 'Escape' && !submitting) setShowCreateModal(false); }} className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-xl space-y-5 max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 id="create-shipment-title" className="text-lg font-bold text-slate-900">
                     สร้างการจัดส่งใหม่ (Create Shipment)
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    บันทึกข้อมูลการจัดส่งและผูกโยงกับบล็อกเชน
+                  <p className="text-sm text-slate-600 mt-1">
+                    เลือกสินค้าและผู้รับ ระบุเส้นทาง แล้วลงนามเพื่อบันทึกการจัดส่ง
                   </p>
                 </div>
                 <button
@@ -376,17 +400,26 @@ function ShipmentsPageContent() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateShipment} className="space-y-4 text-xs">
+              {errorMessage && (
+                <div role={blockchainCancelled ? 'status' : 'alert'} className={`rounded-lg border p-4 text-sm ${blockchainCancelled ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-red-200 bg-red-50 text-red-800'}`}>
+                  <p className="font-semibold">{blockchainCancelled ? 'ยกเลิกการทำรายการ' : 'สร้างการจัดส่งไม่สำเร็จ'}</p>
+                  <p className="mt-1">{errorMessage}</p>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateShipment} className="space-y-5 text-sm">
                 {/* Select Product */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    เลือกสินค้าที่ต้องการจัดส่ง <span className="text-red-500">*</span>
+                  <label htmlFor="shipment-product" className="block text-sm font-semibold text-slate-700 mb-2">
+                    1. เลือกสินค้าที่พร้อมจัดส่ง <span className="text-red-500">*</span>
                   </label>
                   <select
+                    id="shipment-product"
+                    autoFocus
                     value={selectedProductId}
                     onChange={(e) => handleProductChange(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
+                    className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 cursor-pointer"
                   >
                     <option value="">-- เลือกสินค้า --</option>
                     {products.filter((p) => p.status === 'QUALITY_CHECKED' || p.status === 'STORED').map((p) => (
@@ -395,8 +428,12 @@ function ShipmentsPageContent() {
                       </option>
                     ))}
                   </select>
+                  {!loading && !loadError && products.every((product) => !['QUALITY_CHECKED', 'STORED'].includes(product.status)) && (
+                    <p className="mt-2 text-sm text-slate-600">ยังไม่มีสินค้าที่พร้อมจัดส่ง <Link href="/products" className="font-semibold text-blue-700 underline underline-offset-2">ดูรายการสินค้า</Link></p>
+                  )}
+                  {selectedProduct && !['QUALITY_CHECKED', 'STORED'].includes(selectedProduct.status) && !receivedProduct && <p role="status" className="mt-2 text-sm text-amber-800">สินค้านี้ยังจัดส่งไม่ได้ ต้องผ่านการตรวจคุณภาพหรือจัดเก็บก่อน</p>}
                   {receivedProduct && (
-                    <p className="mt-1 text-xs text-amber-700">
+                    <p role="status" className="mt-2 text-sm text-amber-800">
                       สินค้าที่เพิ่งรับยังจัดส่งต่อไม่ได้ ต้อง{' '}
                       <Link href={`/products/${receivedProduct.id}`} className="font-semibold underline underline-offset-2">
                         เปิดหน้าสินค้าแล้วกดจัดเก็บ
@@ -408,16 +445,16 @@ function ShipmentsPageContent() {
 
                 {/* Current Owner Info Card */}
                 {selectedProduct && (
-                  <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-xs space-y-1">
+                  <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl text-sm space-y-1">
                     <div className="flex items-center justify-between text-slate-700">
                       <span className="text-slate-600 font-medium">ผู้ส่ง (เจ้าของสินค้าปัจจุบัน):</span>
                       <strong className="font-semibold text-blue-900">
                         {selectedProduct.currentOwner?.name ||
                           selectedProduct.manufacturer?.name ||
-                          'Apex Tech Manufacturing'}
+                          'ไม่ระบุองค์กร'}
                       </strong>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                    <p className="text-xs text-slate-600 leading-relaxed">
                       การจัดส่งจะโอนสิทธิ์ไปยังองค์กรคู่ค้าปลายทาง กรุณาเลือก <strong>องค์กรผู้รับ</strong> ที่เป็นคนละองค์กรกับผู้ส่ง
                     </p>
                   </div>
@@ -425,14 +462,15 @@ function ShipmentsPageContent() {
 
                 {/* Receiver Org */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    องค์กรผู้รับสินค้า (Receiver) <span className="text-red-500">*</span>
+                  <label htmlFor="shipment-receiver" className="block text-sm font-semibold text-slate-700 mb-2">
+                    2. องค์กรผู้รับสินค้า <span className="text-red-500">*</span>
                   </label>
                   <select
+                    id="shipment-receiver"
                     value={receiverOrgId}
                     onChange={(e) => setReceiverOrgId(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 cursor-pointer"
+                    className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 cursor-pointer"
                   >
                     <option value="">-- เลือกองค์กรผู้รับสินค้าปลายทาง --</option>
                     {organizations.map((org) => {
@@ -471,20 +509,21 @@ function ShipmentsPageContent() {
                       ยังไม่มีองค์กรที่เปิดใช้งานและกำหนด wallet สำหรับรับสินค้า
                     </p>
                   )}
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-2">
                     เลือกคู่ค้าปลายทาง เช่น ผู้แทนจำหน่าย (Distributor) หรือ คลังสินค้า (Warehouse)
                   </p>
                 </div>
 
                 {/* Carrier Org */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    ผู้ให้บริการขนส่ง (Carrier) (ไม่บังคับ)
+                  <label htmlFor="shipment-carrier" className="block text-sm font-semibold text-slate-700 mb-2">
+                    ผู้ให้บริการขนส่ง <span className="font-normal text-slate-500">(ไม่บังคับ)</span>
                   </label>
                   <select
+                    id="shipment-carrier"
                     value={carrierOrgId}
                     onChange={(e) => setCarrierOrgId(e.target.value)}
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   >
                     <option value="">-- ไม่มี / ส่งมอบโดยตรง --</option>
                     {organizations.map((org) => (
@@ -496,84 +535,128 @@ function ShipmentsPageContent() {
                 </div>
 
                 {/* Origin & Destination */}
+                <p className="border-t border-slate-100 pt-4 text-sm font-semibold text-slate-700">3. เส้นทางการจัดส่ง</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label htmlFor="shipment-origin" className="block text-sm font-semibold text-slate-700 mb-2">
                       สถานที่ต้นทาง <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="shipment-origin"
                       type="text"
                       value={origin}
                       onChange={(e) => setOrigin(e.target.value)}
                       required
                       placeholder="เช่น โรงงานชลบุรี"
-                      className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    <label htmlFor="shipment-destination" className="block text-sm font-semibold text-slate-700 mb-2">
                       สถานที่ปลายทาง <span className="text-red-500">*</span>
                     </label>
                     <input
+                      id="shipment-destination"
                       type="text"
                       value={destination}
                       onChange={(e) => setDestination(e.target.value)}
                       required
                       placeholder="เช่น คลังสินค้ากรุงเทพฯ"
-                      className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                      className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     />
                   </div>
                 </div>
 
                 {/* Custom Shipment Code */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    รหัสการจัดส่ง (ไม่บังคับ - สร้างอัตโนมัติหากเว้นว่าง)
+                  <label htmlFor="shipment-code" className="block text-sm font-semibold text-slate-700 mb-2">
+                    รหัสการจัดส่ง <span className="font-normal text-slate-500">(ไม่บังคับ)</span>
                   </label>
                   <input
+                    id="shipment-code"
                     type="text"
                     value={customShipmentCode}
                     onChange={(e) => setCustomShipmentCode(e.target.value)}
                     placeholder="เช่น SHP-2026-001"
-                    className="w-full rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600"
+                    className="w-full min-h-11 rounded-lg bg-white border border-slate-300 px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
+                  <p className="mt-1 text-xs text-slate-500">เว้นว่างเพื่อให้ระบบสร้างรหัสให้อัตโนมัติ</p>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-slate-100">
+                  <p className="text-xs text-slate-600 max-w-xs">ตรวจสอบข้อมูลก่อนบันทึก จากนั้นยืนยันธุรกรรมในกระเป๋าเงินของคุณ</p>
+                  <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition cursor-pointer"
+                    className="min-h-11 px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium transition cursor-pointer"
                   >
                     ยกเลิก
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                    disabled={submitting || !selectedProduct || !['QUALITY_CHECKED', 'STORED'].includes(selectedProduct.status) || !receiverOrgId || Boolean(organizationLoadError)}
+                    className="min-h-11 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
                   >
-                    {submitting ? 'กำลังบันทึกลง Blockchain...' : 'สร้างใบจัดส่งสินค้า &rarr;'}
+                    {submitting ? 'กำลังบันทึกลง Blockchain...' : 'สร้างใบจัดส่งสินค้า'}
                   </button>
+                  </div>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        {/* Filter Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-3 rounded-xl text-xs shadow-2xs">
-          <span className="text-slate-500 font-medium">กรองตามสถานะ:</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
+        <section aria-labelledby="shipment-list-title" className="bg-white border border-slate-200 p-5 sm:p-7 rounded-2xl shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-slate-100 pb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 id="shipment-list-title" className="text-lg font-bold text-slate-900 flex items-center gap-2"><TruckIcon className="h-5 w-5 text-blue-600" />รายการจัดส่งสินค้า</h2>
+                <p className="mt-1 text-sm text-slate-500">แสดงรายการล่าสุดสูงสุด 50 รายการ</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-slate-500 whitespace-nowrap">{filteredShipments.length} รายการ</span>
+                <div role="group" aria-label="รูปแบบการแสดงผล" className="inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1">
+                  <button
+                    type="button"
+                    aria-pressed={viewMode === 'list'}
+                    onClick={() => setViewMode('list')}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${viewMode === 'list' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></svg>
+                    List
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={viewMode === 'grid'}
+                    onClick={() => setViewMode('grid')}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${viewMode === 'grid' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" strokeWidth="2" /><rect x="14" y="3" width="7" height="7" rx="1" strokeWidth="2" /><rect x="3" y="14" width="7" height="7" rx="1" strokeWidth="2" /><rect x="14" y="14" width="7" height="7" rx="1" strokeWidth="2" /></svg>
+                    Grid
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="relative w-full sm:max-w-sm">
+              <label htmlFor="shipment-search" className="sr-only">ค้นหารายการจัดส่ง</label>
+              <SearchIcon className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input id="shipment-search" type="search" value={shipmentSearch} onChange={(e) => setShipmentSearch(e.target.value)} placeholder="ค้นหารหัส สินค้า หรือองค์กร" className="min-h-11 w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100" />
+            </div>
+          <div className="flex items-center gap-1.5 flex-wrap" aria-label="กรองตามสถานะ">
             {[
               { id: 'ALL', label: 'ALL · ทั้งหมด' },
               { id: 'PENDING', label: 'PENDING · รอการจัดส่ง' },
               { id: 'SHIPPED', label: 'SHIPPED · จัดส่งแล้ว' },
+              { id: 'IN_TRANSIT', label: 'IN_TRANSIT · ระหว่างขนส่ง' },
               { id: 'DELIVERED', label: 'DELIVERED · ส่งมอบสำเร็จ' },
             ].map((st) => (
               <button
                 key={st.id}
+                type="button"
                 onClick={() => setStatusFilter(st.id)}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                aria-pressed={statusFilter === st.id}
+                className={`px-3 py-2 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   statusFilter === st.id
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -583,45 +666,19 @@ function ShipmentsPageContent() {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Shipments Table */}
-        <div className="border border-slate-200 bg-white rounded-xl p-5 shadow-2xs">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <TruckIcon className="w-5 h-5 text-blue-600 shrink-0" />
-              <span>รายการการจัดส่งสินค้า (Shipments)</span>
-            </h2>
-            <span className="text-xs text-slate-500 font-mono">
-              แสดง {filteredShipments.length} รายการ
-            </span>
           </div>
 
           {loading ? (
-            <div className="py-12 flex flex-col items-center justify-center text-slate-500 text-xs">
+            <div role="status" className="py-12 flex flex-col items-center justify-center text-slate-500 text-sm">
               <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mb-2"></div>
               กำลังโหลดข้อมูลการจัดส่งและบล็อกเชน...
             </div>
           ) : filteredShipments.length === 0 ? (
             <div className="py-12 text-center text-slate-500 text-sm">
-              ยังไม่มีข้อมูลการจัดส่งสินค้าในระบบ
+              {shipments.length === 0 ? 'ยังไม่มีข้อมูลการจัดส่งสินค้าในระบบ' : 'ไม่พบรายการที่ตรงกับตัวกรอง'}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-b border-slate-200">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">รหัสการจัดส่ง</th>
-                    <th scope="col" className="px-4 py-3">สินค้า</th>
-                    <th scope="col" className="px-4 py-3">ผู้ส่ง</th>
-                    <th scope="col" className="px-4 py-3">ผู้รับ</th>
-                    <th scope="col" className="px-4 py-3">เส้นทาง</th>
-                    <th scope="col" className="px-4 py-3">สถานะ</th>
-                    <th scope="col" className="px-4 py-3">Blockchain</th>
-                    <th scope="col" className="px-4 py-3 text-right">การดำเนินการ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+            <div role="list" aria-label={`รายการจัดส่งแบบ ${viewMode === 'list' ? 'List' : 'Grid'}`} className={`grid gap-4 pt-5 ${viewMode === 'grid' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
                   {filteredShipments.map((shp) => {
                     const badge = getShipmentStatusBadge(shp.status);
                     const isActing = actionInProgressId === shp.id;
@@ -639,56 +696,48 @@ function ShipmentsPageContent() {
                     );
 
                     return (
-                      <tr key={shp.id} className="hover:bg-slate-50/80 transition">
-                        <td className="px-4 py-3.5 font-mono font-bold text-blue-600">
-                          {shp.shipmentCode}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <div className="font-semibold text-slate-900">
-                            {shp.product?.name || 'สินค้า'}
+                      <article role="listitem" key={shp.id || shp.shipmentCode} className={`rounded-xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs ${viewMode === 'grid' ? 'flex h-full flex-col' : ''}`}>
+                        <div className={`flex gap-3 ${viewMode === 'grid' ? 'flex-col' : 'flex-col sm:flex-row sm:items-start sm:justify-between'}`}>
+                          <div className="min-w-0">
+                            <p className="font-mono text-sm font-bold text-blue-700">{shp.shipmentCode}</p>
+                            <p className="mt-1 text-base font-semibold text-slate-900">{shp.product?.name || 'สินค้า'}</p>
+                            {shp.product?.productCode && <p className="mt-0.5 font-mono text-xs text-slate-500">{shp.product.productCode}</p>}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            {shp.product?.productCode}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3.5 font-medium text-slate-800">
-                          {shp.sender?.name || '-'}
-                        </td>
-                        <td className="px-4 py-3.5 font-medium text-slate-800">
-                          {shp.receiver?.name || '-'}
-                        </td>
-                        <td className="px-4 py-3.5 text-slate-600">
-                          <div>{shp.origin}</div>
-                          <div className="text-slate-400">&darr; {shp.destination}</div>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${badge.bg}`}>
-                            <span>{badge.text}</span>
-                            <span className="text-[10px] font-mono opacity-75">({shp.status})</span>
-                            <span className="sr-only">{shp.status}</span>
+                          <span className={`inline-flex w-fit items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${badge.bg}`}>
+                            {badge.text} <span className="font-mono opacity-75">(<span>{shp.status}</span>)</span>
                           </span>
-                        </td>
-                        <td className="px-4 py-3.5 font-mono text-[10px] text-slate-500">
-                          {shp.blockchainTxHash ? (
-                            <span className="text-blue-600" title={shp.blockchainTxHash}>
-                              {shp.blockchainTxHash.slice(0, 8)}...{shp.blockchainTxHash.slice(-6)}
-                            </span>
-                          ) : (
-                            <span>-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3.5 text-right space-x-1.5">
+                        </div>
+
+                        <div className={`mt-4 grid gap-3 rounded-lg bg-slate-50 p-3 text-sm sm:gap-5 sm:p-4 ${viewMode === 'grid' ? 'xl:grid-cols-2' : 'sm:grid-cols-2'}`}>
+                          <div>
+                            <p className="text-xs font-medium text-slate-500">ผู้ส่ง · ต้นทาง</p>
+                            <p className="mt-1 font-semibold text-slate-800">{shp.sender?.name || '-'}</p>
+                            <p className="mt-0.5 text-slate-600">{shp.origin || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium text-slate-500">ผู้รับ · ปลายทาง</p>
+                            <p className="mt-1 font-semibold text-slate-800">{shp.receiver?.name || '-'}</p>
+                            <p className="mt-0.5 text-slate-600">{shp.destination || '-'}</p>
+                          </div>
+                        </div>
+
+                        <div className={`flex flex-col gap-3 ${viewMode === 'grid' ? 'mt-auto pt-4' : 'mt-4 sm:flex-row sm:items-center sm:justify-between'}`}>
+                          <div className="text-xs text-slate-500">
+                            {shp.createdAt && <p>สร้างเมื่อ {new Date(shp.createdAt).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+                            {shp.blockchainTxHash && <p className="mt-1 font-mono text-blue-700" title={shp.blockchainTxHash}>Tx: {shp.blockchainTxHash.slice(0, 8)}...{shp.blockchainTxHash.slice(-6)}</p>}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
                           {shp.status === 'PENDING' && canShip && (
                             <button
                               onClick={() => shp.id && handleShip(shp.id)}
                               disabled={isActing}
-                              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] disabled:opacity-50 transition cursor-pointer"
+                              className="min-h-10 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm disabled:opacity-50 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                             >
                               {isActing ? 'กำลังจัดส่ง...' : 'จัดส่งสินค้า'}
                             </button>
                           )}
                           {shp.status === 'PENDING' && !canShip && canReceive && (
-                            <span className="text-amber-700 text-[11px]">
+                            <span className="text-amber-700 text-sm">
                               รอ {shp.sender?.name || 'ผู้ส่ง'} จัดส่ง
                             </span>
                           )}
@@ -696,7 +745,7 @@ function ShipmentsPageContent() {
                             <button
                               onClick={() => shp.id && handleInTransit(shp.id)}
                               disabled={isActing}
-                              className="px-2.5 py-1 rounded bg-amber-600 text-white font-semibold text-[11px] disabled:opacity-50 cursor-pointer"
+                              className="min-h-10 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm disabled:opacity-50 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
                             >
                               ระหว่างขนส่ง
                             </button>
@@ -705,37 +754,36 @@ function ShipmentsPageContent() {
                             <button
                               onClick={() => setConfirmReceiveShipment(shp)}
                               disabled={isActing}
-                              className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] disabled:opacity-50 transition cursor-pointer"
+                              className="min-h-10 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm disabled:opacity-50 transition cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
                             >
                               {isActing ? 'กำลังบันทึก...' : 'ยืนยันรับสินค้า'}
                             </button>
                           )}
                           {shp.status === 'DELIVERED' && (
-                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-[11px]">
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-medium text-sm">
                               <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
                               <span>รับสินค้าแล้ว</span>
                             </span>
                           )}
-                        </td>
-                      </tr>
+                          </div>
+                        </div>
+                      </article>
                     );
                   })}
-                </tbody>
-              </table>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Confirmation Modal for Receiving Shipment */}
         {confirmReceiveShipment && (
           <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+            <div role="dialog" aria-modal="true" aria-labelledby="receive-shipment-title" onKeyDown={(event) => { if (event.key === 'Escape') setConfirmReceiveShipment(null); }} className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-xl space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
                   <CheckIcon className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">
+                  <h3 id="receive-shipment-title" className="text-lg font-bold text-slate-900">
                     ยืนยันการรับสินค้า
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -759,11 +807,11 @@ function ShipmentsPageContent() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setConfirmReceiveShipment(null)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                  className="min-h-11 px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition cursor-pointer"
                 >
                   ยกเลิก
                 </button>
@@ -774,7 +822,7 @@ function ShipmentsPageContent() {
                     setConfirmReceiveShipment(null);
                     if (sid) handleReceive(sid);
                   }}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition cursor-pointer shadow-xs"
+                  className="min-h-11 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition cursor-pointer shadow-xs"
                 >
                   ยืนยันการรับสินค้า
                 </button>

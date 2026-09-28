@@ -5,6 +5,7 @@ import { api, setAuthToken } from '../lib/api';
 
 const mockPush = vi.fn();
 vi.mock('next/navigation', () => ({
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({
     push: mockPush,
   }),
@@ -88,7 +89,7 @@ describe('LoginPage Component', () => {
         password: 'SecurePassword123!',
       });
       expect(setAuthToken).toHaveBeenCalledWith('test-jwt-token-12345');
-      expect(mockPush).toHaveBeenCalledWith('/');
+      expect(mockPush).toHaveBeenCalledWith('/dashboard');
     });
   });
 });

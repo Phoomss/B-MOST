@@ -39,6 +39,8 @@ export function useAuth(options: { requireAuth?: boolean; redirectIfAuthed?: boo
       const token = getAuthToken();
 
       if (!token) {
+        // A stale cookie can make Proxy send this browser back to the dashboard.
+        clearAuthToken();
         if (isMounted) {
           setUser(null);
           setLoading(false);
@@ -65,7 +67,7 @@ export function useAuth(options: { requireAuth?: boolean; redirectIfAuthed?: boo
         if (options.redirectIfAuthed && pathname === '/login') {
           router.replace('/');
         }
-      } catch (err) {
+      } catch {
         // Token invalid or expired
         if (isMounted) {
           clearAuthToken();

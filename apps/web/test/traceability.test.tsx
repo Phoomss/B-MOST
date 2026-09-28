@@ -4,8 +4,9 @@ import TraceabilityPage from '../app/traceability/page';
 import { api, TraceabilityDetailResponse } from '../lib/api';
 
 const mockPush = vi.fn();
+const mockLocation = vi.hoisted(() => ({ search: '' }));
 vi.mock('next/navigation', () => ({
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mockLocation.search),
   useRouter: () => ({
     push: mockPush,
   }),
@@ -27,6 +28,7 @@ vi.mock('../lib/api', () => ({
 describe('TraceabilityPage Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLocation.search = '';
   });
 
   const mockTraceabilityData: TraceabilityDetailResponse = {
@@ -119,8 +121,8 @@ describe('TraceabilityPage Component', () => {
     render(<TraceabilityPage />);
 
     expect(screen.getByText('Product Lifecycle Traceability')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/enter product code/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /audit traceability/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'รหัสสินค้า หมายเลขซีเรียล หรือ UUID' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'ตรวจสอบประวัติ' })).toBeInTheDocument();
   });
 
   it('loads and displays product timeline and ownership chain on search', async () => {
@@ -128,9 +130,9 @@ describe('TraceabilityPage Component', () => {
 
     render(<TraceabilityPage />);
 
-    const input = screen.getByPlaceholderText(/enter product code/i);
+    const input = screen.getByRole('textbox', { name: 'รหัสสินค้า หมายเลขซีเรียล หรือ UUID' });
     fireEvent.change(input, { target: { value: 'PROD-2026-0001' } });
-    fireEvent.click(screen.getByRole('button', { name: /audit traceability/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'ตรวจสอบประวัติ' }));
 
     await waitFor(() => {
       expect(api.traceability.get).toHaveBeenCalledWith('PROD-2026-0001');
@@ -142,5 +144,36 @@ describe('TraceabilityPage Component', () => {
       expect(screen.getAllByText('Acme Sensor Labs').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Global Supply Distribution').length).toBeGreaterThan(0);
     });
+  });
+
+  it('does not fetch the same product twice when the search updates the URL', async () => {
+    vi.mocked(api.traceability.get).mockResolvedValue(mockTraceabilityData);
+    const view = render(<TraceabilityPage />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'รหัสสินค้า หมายเลขซีเรียล หรือ UUID' }), {
+      target: { value: 'PROD-2026-0001' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'ตรวจสอบประวัติ' }));
+    await screen.findByText('High Precision Pressure Sensor');
+
+    mockLocation.search = 'code=PROD-2026-0001';
+    view.rerender(<TraceabilityPage />);
+    await waitFor(() => expect(api.traceability.get).toHaveBeenCalledTimes(1));
+  });
+
+  it('clearly reports a blockchain hash mismatch', async () => {
+    vi.mocked(api.traceability.get).mockResolvedValue({
+      ...mockTraceabilityData,
+      blockchainVerification: { ...mockTraceabilityData.blockchainVerification, hashMatch: false },
+    });
+    render(<TraceabilityPage />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'รหัสสินค้า หมายเลขซีเรียล หรือ UUID' }), {
+      target: { value: 'PROD-2026-0001' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'ตรวจสอบประวัติ' }));
+
+    expect(await screen.findByText('ข้อมูลสินค้าในระบบไม่ตรงกับข้อมูลบนบล็อกเชน กรุณาตรวจสอบรายละเอียด')).toBeInTheDocument();
+    expect(screen.getAllByText('ข้อมูลไม่ตรงกัน').length).toBeGreaterThan(0);
   });
 });

@@ -84,7 +84,7 @@ describe('ShipmentsPage Component', () => {
     vi.mocked(api.products.list).mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } });
     vi.mocked(api.organizations.shippingPartners).mockResolvedValue([]);
     vi.mocked(api.shipments.list).mockResolvedValue({
-      data: mockShipments as any,
+      data: mockShipments,
       meta: { total: 1, page: 1, limit: 20, totalPages: 1 },
     });
   });
@@ -126,7 +126,46 @@ describe('ShipmentsPage Component', () => {
     const shippedTab = screen.getByRole('button', { name: /^shipped/i });
     fireEvent.click(shippedTab);
 
-    expect(shippedTab).toBeInTheDocument();
+    expect(shippedTab).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('SHIP-2026-0001')).not.toBeInTheDocument();
+    expect(screen.getByText('ไม่พบรายการที่ตรงกับตัวกรอง')).toBeInTheDocument();
+  });
+
+  it('searches shipment cards by product or organization', async () => {
+    render(<ShipmentsPage />);
+    expect(await screen.findByText('SHIP-2026-0001')).toBeInTheDocument();
+
+    const search = screen.getByRole('searchbox', { name: 'ค้นหารายการจัดส่ง' });
+    fireEvent.change(search, { target: { value: 'Central Distributor' } });
+    expect(screen.getByText('SHIP-2026-0001')).toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: 'not-found' } });
+    expect(screen.queryByText('SHIP-2026-0001')).not.toBeInTheDocument();
+    expect(screen.getByText('ไม่พบรายการที่ตรงกับตัวกรอง')).toBeInTheDocument();
+  });
+
+  it('switches between List and Grid while keeping shipment actions and search', async () => {
+    render(<ShipmentsPage />);
+    expect(await screen.findByText('SHIP-2026-0001')).toBeInTheDocument();
+
+    const listButton = screen.getByRole('button', { name: 'List' });
+    const gridButton = screen.getByRole('button', { name: 'Grid' });
+    expect(listButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('list', { name: 'รายการจัดส่งแบบ List' })).toBeInTheDocument();
+
+    fireEvent.click(gridButton);
+    expect(gridButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('list', { name: 'รายการจัดส่งแบบ Grid' })).toHaveClass('md:grid-cols-2');
+    expect(screen.getByRole('button', { name: 'จัดส่งสินค้า' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('searchbox', { name: 'ค้นหารายการจัดส่ง' }), {
+      target: { value: 'not-found' },
+    });
+    expect(screen.getByText('ไม่พบรายการที่ตรงกับตัวกรอง')).toBeInTheDocument();
+
+    fireEvent.click(listButton);
+    expect(listButton).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('ไม่พบรายการที่ตรงกับตัวกรอง')).toBeInTheDocument();
   });
 
   it('allows opening the new shipment form', async () => {

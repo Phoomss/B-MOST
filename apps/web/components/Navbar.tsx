@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../hooks/useAuth';
 import { useWallet } from '../hooks/useWallet';
@@ -38,14 +39,17 @@ export function Navbar() {
 
   // Close menus on route change
   useEffect(() => {
-    setMobileMenuOpen(false);
-    setLedgerDropdownOpen(false);
-    setUserMenuOpen(false);
+    const timer = window.setTimeout(() => {
+      setMobileMenuOpen(false);
+      setLedgerDropdownOpen(false);
+      setUserMenuOpen(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   const primaryNavItems = [
     {
-      href: '/',
+      href: '/dashboard',
       label: 'ภาพรวมระบบ',
       exact: true,
       icon: (
@@ -184,12 +188,14 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 gap-3">
           {/* 1. Brand Logo */}
           <div className="flex items-center gap-6 shrink-0">
-            <Link href="/" className="flex items-center gap-2.5 group">
+            <Link href="/dashboard" className="flex items-center gap-2.5 group">
               {/* Icon Logo */}
               <div className="contents">
-                <img
+                <Image
                   src="/icon_logo.png"
                   alt="B-MOST"
+                  width={40}
+                  height={40}
                   className="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-200"
                 />
               </div>

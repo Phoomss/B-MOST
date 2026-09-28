@@ -1,28 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-// import { Navbar } from '../../components/Navbar';
+import Image from "next/image";
 import { api, setAuthToken, setStoredUser, getAuthToken } from "../../lib/api";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
-  let redirectUrl = "/";
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const searchParams =
-      typeof useSearchParams === "function" ? useSearchParams() : null;
-    if (searchParams) {
-      redirectUrl = searchParams.get("redirect") || "/";
-    }
-  } catch {
-    redirectUrl = "/";
-  }
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/dashboard";
 
   const safeRedirectUrl =
-    !redirectUrl || redirectUrl === "/login" || redirectUrl.startsWith("/login")
-      ? "/"
+    !redirectUrl || redirectUrl === "/" || !redirectUrl.startsWith("/") || redirectUrl.startsWith("//") || redirectUrl === "/login" || redirectUrl.startsWith("/login?") || redirectUrl.startsWith("/login/")
+      ? "/dashboard"
       : redirectUrl;
 
   const [email, setEmail] = useState("");
@@ -33,7 +24,9 @@ export default function LoginPage() {
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
-    if (getAuthToken()) {
+    const token = getAuthToken();
+    if (token) {
+      setAuthToken(token);
       router.replace(safeRedirectUrl);
     }
   }, [safeRedirectUrl, router]);
@@ -74,8 +67,8 @@ export default function LoginPage() {
       } else {
         throw new Error("ไม่ได้รับ Access Token จากระบบ");
       }
-    } catch (err: any) {
-      const msg = err.message || "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
       setError(msg || "อีเมลหรือรหัสผ่านไม่ถูกต้อง");
     } finally {
       setLoading(false);
@@ -89,35 +82,49 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/60 to-slate-100 text-slate-900 flex flex-col font-sans">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+        <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:items-center lg:gap-16">
+          <div className="hidden lg:block">
+            <div className="mb-6 inline-flex items-center rounded-full border border-blue-200 bg-white px-4 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">B-MOST Platform</div>
+            <h2 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-900">ติดตามสินค้าได้ทุกขั้นตอน อย่างมั่นใจ</h2>
+            <p className="mt-5 max-w-md text-base leading-8 text-slate-600">จัดการสินค้า ตรวจสอบคุณภาพ และติดตามการขนส่งในที่เดียว พร้อมบันทึกธุรกรรมบนบล็อกเชน</p>
+            <div className="mt-8 rounded-2xl border border-blue-100 bg-white/80 p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900">ต้องการตรวจสอบสินค้า?</p>
+              <p className="mt-1 text-sm text-slate-600">สแกน QR Code หรือค้นหาสินค้าได้โดยไม่ต้องเข้าสู่ระบบ</p>
+              <Link href="/verify" className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">ไปหน้าตรวจสอบสินค้า <span aria-hidden="true">→</span></Link>
+            </div>
+          </div>
+        <div className="w-full max-w-md mx-auto bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-lg shadow-slate-200/70">
           {/* Logo & Header */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-7">
             <div className="contents">
-              <img
+              <Image
                 src="/brand_logo.png"
                 alt="B-MOST"
-                className="inline-block w-40 h-auto object-contain mb-4"
+                width={160}
+                height={80}
+                className="inline-block w-36 h-auto object-contain mb-5"
               />
             </div>
 
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               เข้าสู่ระบบ
             </h1>
-            <p className="text-xs font-semibold text-slate-500 mt-1">
+            <p className="text-sm font-medium text-slate-500 mt-1">
               Sign In to B-MOST
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              ระบบติดตามและตรวจสอบห่วงโซ่อุปทานด้วยเทคโนโลยีบล็อกเชน
+            <p className="text-sm text-slate-500 mt-3">
+              กรอกอีเมลและรหัสผ่านของบัญชีองค์กร
             </p>
           </div>
 
           {/* Error Alert */}
           {error && (
             <div
+              id="login-error"
               role="alert"
-              className="p-3.5 mb-5 rounded-xl border border-red-200 bg-red-50 text-red-700 text-xs sm:text-sm flex items-start gap-2.5 animate-fadeIn"
+              className="p-3.5 mb-5 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start gap-2.5"
             >
               <svg
                 className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
@@ -142,22 +149,27 @@ export default function LoginPage() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5" aria-busy={loading}>
             <div>
               <label
                 htmlFor="email-input"
-                className="block text-xs font-semibold text-slate-700 mb-1.5"
+                className="block text-sm font-semibold text-slate-700 mb-2"
               >
                 อีเมล (Email) <span className="text-red-500">*</span>
               </label>
               <input
                 id="email-input"
                 type="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); if (error) setError(null); }}
                 placeholder="user@organization.com"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "login-error" : undefined}
+                className="w-full min-h-12 px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
               />
             </div>
 
@@ -165,27 +177,30 @@ export default function LoginPage() {
               <div className="flex items-center justify-between mb-1.5">
                 <label
                   htmlFor="password-input"
-                  className="block text-xs font-semibold text-slate-700"
+                  className="block text-sm font-semibold text-slate-700"
                 >
                   รหัสผ่าน (Password) <span className="text-red-500">*</span>
                 </label>
-                <span className="text-[11px] text-slate-400">ลืมรหัสผ่าน?</span>
               </div>
               <div className="relative">
                 <input
                   id="password-input"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-10 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "login-error" : undefined}
+                  className="w-full min-h-12 px-3.5 py-2.5 pr-12 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 p-2 rounded-md focus-visible:outline-2 focus-visible:outline-blue-600"
                   aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? (
                     <svg
@@ -224,12 +239,13 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              <p className="mt-2 text-xs text-slate-500">หากลืมรหัสผ่าน กรุณาติดต่อผู้ดูแลระบบขององค์กร</p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-xs transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full min-h-12 mt-2 py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-sm transition disabled:cursor-wait disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               {loading && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -238,18 +254,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Credentials Quick-Select */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              บัญชีทดสอบระบบ (คลิกเพื่อกรอกอัตโนมัติ)
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 text-xs">
+          <details className="group mt-7 border-t border-slate-100 pt-5">
+            <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg py-1 text-sm font-semibold text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden">
+              ทดลองใช้บัญชีตัวอย่าง
+              <span aria-hidden="true" className="text-slate-400 transition group-open:rotate-180">⌄</span>
+            </summary>
+            <p className="mt-2 text-xs leading-5 text-slate-500">เลือกบทบาทเพื่อกรอกอีเมลและรหัสผ่านตัวอย่าง แล้วกดเข้าสู่ระบบ</p>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
                 onClick={() =>
                   handleQuickLogin("superadmin@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ผู้ดูแลระบบ (Admin)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -262,7 +279,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("orgadmin@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ผู้ดูแลองค์กร (Org Admin)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -275,7 +292,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("manufacturer@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ผู้ผลิต (Apex)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -288,7 +305,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("auditor@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ผู้ตรวจสอบ (Auditor)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -301,7 +318,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("distributor@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ผู้จัดจำหน่าย (Nexus)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -314,7 +331,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("warehouse@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">คลังสินค้า (Warehouse)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -327,7 +344,7 @@ export default function LoginPage() {
                 onClick={() =>
                   handleQuickLogin("retailer@bmost.io", "password123")
                 }
-                className="p-2 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700"
+                className="p-3 text-left rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition text-slate-700 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600"
               >
                 <div className="font-semibold">ร้านค้าปลีก (Retailer)</div>
                 <div className="text-[10px] text-slate-400 truncate">
@@ -336,20 +353,25 @@ export default function LoginPage() {
                 <div className="text-[9px] text-indigo-600 font-mono mt-0.5">Account 1</div>
               </button>
             </div>
-          </div>
+          </details>
 
           {/* Public Verification Link */}
-          <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
-            <span>ตรวจสอบสินค้าโดยไม่ต้องเข้าสู่ระบบ? </span>
+          <div className="mt-6 pt-5 border-t border-slate-100 text-center text-sm text-slate-600 lg:hidden">
+            <span>ต้องการตรวจสอบสินค้า? </span>
             <Link
               href="/verify"
               className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
-              สแกน QR Code ตรวจสอบ &rarr;
+              ตรวจสอบโดยไม่ต้องเข้าสู่ระบบ &rarr;
             </Link>
           </div>
+        </div>
         </div>
       </main>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return <Suspense fallback={<div className="min-h-screen bg-slate-50" />}><LoginPageContent /></Suspense>;
 }

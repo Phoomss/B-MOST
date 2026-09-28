@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow static assets, favicon, internal Next.js routes
@@ -19,12 +19,17 @@ export function middleware(request: NextRequest) {
     request.cookies.get('bmost_token')?.value ||
     request.cookies.get('b_most_auth_token')?.value;
 
+  // The root route only selects the correct landing page; it renders no UI.
+  if (pathname === '/') {
+    return NextResponse.redirect(new URL(token ? '/dashboard' : '/login', request.url));
+  }
+
   // Public routes: /verify, /verify/:code, /login
   const isPublicRoute = pathname === '/login' || pathname.startsWith('/verify');
 
   if (pathname === '/login' && token) {
     // Already authenticated -> redirect to dashboard
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   if (!isPublicRoute && !token) {
