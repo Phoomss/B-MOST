@@ -43,3 +43,9 @@ To force-recreate all seed records, set `FORCE_SEED=true`:
 ```powershell
 $env:FORCE_SEED="true"; pnpm db:seed
 ```
+
+---
+
+## 4. Comprehensive Test Cases & Presentation Dataset
+
+For detailed end-to-end system test cases, security boundary scenarios, and live presentation cue sheets, see the [System Test Cases & Presentation Dataset Guide](../testing/system-test-cases-and-demo-data.md).
