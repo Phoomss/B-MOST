@@ -38,7 +38,154 @@
 
 ---
 
-## 2. ชุดกรณีทดสอบระบบ (System Test Cases Matrix)
+## 2. ตารางชุดข้อมูลทดสอบสินค้า (Master Product Test Dataset)
+
+### 2.1 กฎเกณฑ์และข้อกำหนดข้อมูลของสินค้า (Product Data Constraints)
+
+| ฟิลด์ข้อมูล (Field) | ชนิดข้อมูล | เงื่อนไขความถูกต้อง (Validation Rules) | ข้อกำหนดบล็อกเชน / ฐานข้อมูล |
+| :--- | :--- | :--- | :--- |
+| `productCode` | String | 3–50 ตัวอักษร, Regex: `^[A-Za-z0-9_-]+$` | **Unique** ทั้งใน PostgreSQL และ Smart Contract |
+| `serialNumber` | String | 3–100 ตัวอักษร | **Unique** ใน PostgreSQL |
+| `name` | String | 2–150 ตัวอักษร, ห้ามว่าง (NotEmpty) | บันทึกใน Metadata และคำนวณเป็น Hash |
+| `description` | String | ไม่เกิน 2,000 ตัวอักษร (Optional) | บันทึกใน Metadata |
+| `category` | String | ไม่เกิน 100 ตัวอักษร (Optional) | จัดหมวดหมู่ในระบบ |
+| `manufacturerId` | UUID | ต้องเป็น ID ขององค์กรประเภท `MANUFACTURER` | อัตโนมัติจาก User Token (เว้นแต่ Super Admin) |
+| `currentOwnerId` | UUID | ค่าเริ่มต้นคือ `manufacturerId` | เปลี่ยนอัตโนมัติเมื่อเกิดการรับมอบ (`receiveProduct`) |
+| `productHash` | String (bytes32) | `0x` + 64 ตัวอักษร Hexadecimal | ได้จาก `keccak256(metadata)` บนเชน |
+| `status` | Enum (0–8) | ดูตาม State Machine | `REGISTERED` ➔ `QUALITY_CHECKED` ➔ ... ➔ `SOLD` |
+
+### 2.2 ชุดข้อมูลทดสอบสินค้าแบ่งตามกลุ่มการใช้งาน
+
+#### กลุ่ม A: ข้อมูลสำหรับโฟลว์ปกติ (Happy Path Test Data)
+
+| รหัสสินค้า (`productCode`) | หมายเลขซีเรียล (`serialNumber`) | ชื่อสินค้า (`name`) | หมวดหมู่ (`category`) | สถานะเป้าหมาย | วัตถุประสงค์ในการทดสอบ |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`PRD-2026-HP-001`** | `SN-HP-90001` | Industrial Temperature Sensor T1 | Electronics / IoT | `REGISTERED` | ทดสอบการสร้าง Draft และยิงขึ้น Blockchain ครั้งแรก |
+| **`PRD-2026-HP-002`** | `SN-HP-90002` | Organic Cold Brew Arabica 500ml | Food & Beverage | `QUALITY_CHECKED` | ทดสอบการส่งตรวจและผ่านการประเมินคุณภาพ (QC Pass) |
+| **`PRD-2026-HP-003`** | `SN-HP-90003` | Doi Chang Geisha Micro-lot #1 | Agriculture | `SHIPPED` | ทดสอบการสร้าง Shipment ทอดที่ 1 และกด Ship |
+| **`PRD-2026-HP-004`** | `SN-HP-90004` | Precision GPS Tracking Beacon v2 | Electronics / GPS | `RECEIVED` | ทดสอบการเปลี่ยนมือ (Ownership Transfer ไปยัง Distributor) |
+| **`PRD-2026-HP-005`** | `SN-HP-90005` | Premium Roasted Peaberry 250g | Specialty Coffee | `SOLD` | ทดสอบการจบลูปสมบูรณ์ (ขายออกหน้าร้านสำเร็จ) |
+
+#### กลุ่ม B: ข้อมูลทดสอบค่าขอบเขต (Boundary & Edge Cases Test Data)
+
+| รหัสสินค้า (`productCode`) | หมายเลขซีเรียล (`serialNumber`) | ชื่อสินค้า (`name`) | หมวดหมู่ | เงื่อนไขขอบเขตที่ทดสอบ | ผลลัพธ์ที่คาดหวัง |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`A_1`** (3 ตัว) | `S-1` (3 ตัว) | `OK` (2 ตัว) | - | ค่าความยาวต่ำสุดของทุกฟิลด์ (Min Length Boundary) | บันทึกสำเร็จ (HTTP 201) |
+| **`PRD-MAX-LEN-50-CHARS-TESTING-LIMIT-BOUNDARY-CHECK-01`** (50 ตัว) | `SN-MAX-LENGTH-100-CHARS-BOUNDARY-VALUE-ANALYSIS-TESTING-SYSTEM-TRACEABILITY-SERIAL-NUMBER-CHECK-SAMPLE-0001` (100 ตัว) | ชื่อยาว 150 ตัวอักษร | หมวดหมู่ยาว 100 ตัว | ค่าความยาวสูงสุดของทุกฟิลด์ (Max Length Boundary) | บันทึกสำเร็จ (HTTP 201) |
+| **`PRD_TH-กาแฟดอยช้าง-01`** | `SN_ดอยช้าง_99` | กาแฟดอยช้างพิเศษ คั่วกลาง เมล็ดคัดมือ 100% | สินค้าเกษตรแปรรูป | รองรับอักขระภาษาไทย (UTF-8 Localized Content) ในชื่อและ Description | บันทึกและแสดงผลภาษาไทยได้ถูกต้อง ไม่เพี้ยน |
+
+#### กลุ่ม C: ข้อมูลทดสอบความผิดพลาด (Negative & Validation Error Test Data)
+
+| รหัสทดสอบ | ข้อมูลที่ป้อนเข้า (Invalid Input) | สาเหตุที่ผิดพลาด | รหัส HTTP / รหัสข้อผิดพลาดที่คาดหวัง |
+| :--- | :--- | :--- | :--- |
+| **TC-PRD-ERR-01** | `productCode`: `PRD-2026-HP-001` (ซ้ำกับรายการที่มีอยู่แล้ว) | Duplicate Product Code ในฐานข้อมูล | `409 Conflict` (`PRODUCT_ALREADY_EXISTS`) |
+| **TC-PRD-ERR-02** | `serialNumber`: `SN-HP-90001` (ซ้ำกับรายการที่มีอยู่แล้ว) | Duplicate Serial Number | `409 Conflict` (`SERIAL_NUMBER_ALREADY_EXISTS`) |
+| **TC-PRD-ERR-03** | `productCode`: `PRD@COFFEE#01!` (มีอักขระพิเศษผิดกฎ) | ไม่ตรงตาม Regex `^[A-Za-z0-9_-]+$` | `400 Bad Request` (`productCode must contain only alphanumeric characters...`) |
+| **TC-PRD-ERR-04** | `productCode`: `AB` (2 ตัวอักษร) | สั้นกว่าเกณฑ์ขั้นต่ำ 3 ตัวอักษร | `400 Bad Request` (`productCode must be longer than or equal to 3 characters`) |
+| **TC-PRD-ERR-05** | `name`: `""` หรือเว้นว่าง (Empty String) | ฟิลด์ `name` เป็นฟิลด์บังคับ | `400 Bad Request` (`name should not be empty`) |
+| **TC-PRD-ERR-06** | ผู้ใช้ Role `DISTRIBUTOR` พยายามสร้างสินค้า | ไม่ใช่บทบาท `MANUFACTURER` | `403 Forbidden` (`FORBIDDEN_RESOURCE`) |
+
+#### กลุ่ม D: ข้อมูลทดสอบบล็อกเชนและความปลอดภัย (Blockchain Integrity & Tamper Test Data)
+
+| รหัสสินค้า | ข้อมูลจำลองบนเชน (On-Chain Reference) | ข้อมูลจำลองในฐานข้อมูล (Database Values) | พฤติกรรมการทดสอบ | ผลลัพธ์ที่คาดหวัง |
+| :--- | :--- | :--- | :--- | :--- |
+| **`PRD-BC-VERIFY-OK`** | `productHash`: `0x4a7c8e...`<br>Status: `5` (`RECEIVED`) | Metadata Hash คำนวณได้ตรงกัน | สแกนหน้า `/verify` ตรวจสอบสาธารณะ | แถบสีเขียว **"Authentic Product Verified"** |
+| **`PRD-BC-TAMPER-01`** | `productHash`: `0x4a7c8e...`<br>Name: "Sensor A" | มีการแอบแก้ Name ใน PostgreSQL เป็น "Sensor Fake" | สแกนหน้า `/verify` | ระบบตรวจจับ Hash Mismatch ➔ แสดงเตือน **"Data Integrity Warning"** |
+| **`PRD-BC-RECALL-99`** | `blockchainProductId`: `99`<br>Status: `8` (`RECALLED`) | Status: `RECALLED`<br>Reason: "Chemical residue" | ตรวจสอบผ่าน API และหน้าสาธารณะ | ระงับการทำธุรกรรมต่อ และแสดงป้ายสีแดงเตือนสินค้าถูกเรียกคืน |
+
+---
+
+### 2.3 ตารางขั้นตอนกรณีทดสอบสินค้า (Detailed Product Test Cases Matrix)
+
+#### TC-PRD-01: การสร้าง Draft สินค้าใหม่โดยผู้ผลิต (Create Product Draft)
+- **Role / Token**: `manufacturer@bmost.io` (`ORG-MFG-001`)
+- **Method & Endpoint**: `POST /api/products`
+- **Request Body (JSON)**:
+  ```json
+  {
+    "productCode": "PRD-2026-HP-001",
+    "serialNumber": "SN-HP-90001",
+    "name": "Industrial Temperature Sensor T1",
+    "description": "High-precision industrial telemetry node with -40C to 85C range",
+    "category": "Electronics / IoT",
+    "registerOnBlockchain": false
+  }
+  ```
+- **ผลลัพธ์ที่คาดหวัง**:
+  - HTTP Status: `201 Created`
+  - คืนค่า Object ที่มี `id` (UUID), `manufacturerId` ถูกตั้งค่าตรงกับองค์กรของผู้ใช้โดยอัตโนมัติ
+  - `status` เป็น `REGISTERED`, `blockchainProductId` และ `blockchainTxHash` ยังเป็น `null`
+
+#### TC-PRD-02: การลงทะเบียนสินค้าขึ้นบน Ethereum Sepolia (Register on Blockchain)
+- **Role / Token**: `manufacturer@bmost.io` พร้อม MetaMask Account 1 (`0x0FcD...0998`)
+- **ขั้นตอน Two-Phase Action**:
+  1. **Prepare Phase** (`POST /api/blockchain/actions/prepare`):
+     ```json
+     {
+       "action": "REGISTER_PRODUCT",
+       "entityType": "PRODUCT",
+       "entityId": "<product-uuid-from-TC-PRD-01>"
+     }
+     ```
+     ➔ คืนค่า Action Intent ID พร้อมฟังก์ชัน ABI `registerProduct(string productCode, bytes32 productHash)`
+  2. **Sign Phase**: ผู้ใช้กดยืนยันเซ็นธุรกรรมบน MetaMask ด้วย Account 1
+  3. **Confirm Phase** (`POST /api/blockchain/actions/confirm`):
+     ```json
+     {
+       "actionIntentId": "<action-intent-uuid>",
+       "transactionHash": "0x1234567890abcdef..."
+     }
+     ```
+- **ผลลัพธ์ที่คาดหวัง**:
+  - HTTP Status: `200 OK`
+  - Backend ตรวจสอบ Transaction Receipt บน Sepolia RPC สำเร็จ
+  - ฟิลด์ `blockchainProductId` ได้รับเลข On-chain ID (เช่น `1`, `2`, ...)
+  - เกิด Event `ProductRegistered` บน Smart Contract
+
+#### TC-PRD-03: การดึงข้อมูลสินค้าแบบสาธารณะผ่านรหัสสินค้า (Public Product Lookup)
+- **Role**: ใครก็ได้ (Unauthenticated / Public Consumer)
+- **Method & Endpoint**: `GET /api/products/public/PRD-2026-HP-001`
+- **ผลลัพธ์ที่คาดหวัง**:
+  - HTTP Status: `200 OK`
+  - คืนค่ารายละเอียดสินค้า, ข้อมูลผู้ผลิต, ประวัติเส้นทาง (Timeline), และสถานะความถูกต้องของ Hash
+  - ไม่เปิดเผยข้อมูลภายในที่ไม่เกี่ยวข้อง (เช่น Password Hash หรือ Internal User IDs)
+
+---
+
+### 2.4 ตัวอย่างคำสั่ง cURL สำหรับทดสอบ API สินค้า
+
+#### 1. ล็อกอินรับ JWT Token ของ Manufacturer
+```bash
+curl -X POST http://localhost:4000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "manufacturer@bmost.io",
+    "password": "Password123!"
+  }'
+```
+
+#### 2. ยิงสร้างสินค้าใหม่ (Draft)
+```bash
+curl -X POST http://localhost:4000/api/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -d '{
+    "productCode": "PRD-2026-DEMO-01",
+    "serialNumber": "SN-DEMO-90001",
+    "name": "Doi Chang Reserve Geisha Coffee",
+    "description": "Organic specialty coffee batch 2026-A1",
+    "category": "Food & Beverage"
+  }'
+```
+
+#### 3. ตรวจสอบสินค้าแบบ Public (จำลอง Consumer)
+```bash
+curl -X GET http://localhost:4000/api/products/public/PRD-2026-DEMO-01
+```
+
+---
+
+## 3. ชุดกรณีทดสอบระบบครบวงจร (End-to-End System Test Cases Matrix)
 
 ### TC-SYS-01: การสร้าง Draft สินค้าและลงทะเบียนบน Blockchain (Registration)
 - **ประเภท**: Positive / Functional
@@ -172,7 +319,7 @@
 
 ---
 
-## 3. ชุดข้อมูลสำหรับการนำเสนอ (Presentation Demo Dataset)
+## 4. ชุดข้อมูลสำหรับการนำเสนอ (Presentation Demo Dataset)
 
 สำหรับการนำเสนอ 3–5 นาที ให้เตรียมสินค้าไว้ **3 ตัวอย่าง** เพื่อครอบคลุมทั้งการสาธิตสด (Live Interaction), การตรวจสอบย้อนกลับแบบสมบูรณ์ (Full Traceability QR), และการตอบคำถามเรื่องความปลอดภัย (Recall Demonstration):
 
@@ -196,7 +343,7 @@ flowchart LR
 
 ---
 
-### 3.1 ข้อมูลสินค้าตัวอย่างที่ 1: "Hero Demo Item" (สำหรับการสาธิตสดหน้างาน)
+### 4.1 ข้อมูลสินค้าตัวอย่างที่ 1: "Hero Demo Item" (สำหรับการสาธิตสดหน้างาน)
 > **วัตถุประสงค์**: ใช้สำหรับสาธิตการโอนย้ายกรรมสิทธิ์แบบเรียลไทม์ (Live Custody Handover) ผ่าน MetaMask ในช่วงเวลา 1 นาที โดยไม่ต้องเสียเวลารอทำตั้งแต่ต้นทาง
 
 - **รหัสสินค้า (Product Code)**: `DEMO-COFFEE-TH01`
@@ -219,7 +366,7 @@ flowchart LR
 
 ---
 
-### 3.2 ข้อมูลสินค้าตัวอย่างที่ 2: "Full Provenance Showcase" (สำหรับให้ผู้ชมสแกน QR Code)
+### 4.2 ข้อมูลสินค้าตัวอย่างที่ 2: "Full Provenance Showcase" (สำหรับให้ผู้ชมสแกน QR Code)
 > **วัตถุประสงค์**: แสดงเส้นทางประวัติสินค้าตั้งแต่ต้นน้ำจนถึงการขายสำเร็จ (100% Complete Lifecycle) เพื่อเปิดหน้า Public Verification และให้คณะกรรมการสแกนดูจากสมาร์ตโฟน
 
 - **รหัสสินค้า (Product Code)**: `DEMO-COFFEE-GOLD-99`
@@ -245,7 +392,7 @@ flowchart LR
 
 ---
 
-### 3.3 ข้อมูลสินค้าตัวอย่างที่ 3: "Recall & Incident Response" (สำหรับกรณีศึกษาด้านความปลอดภัย)
+### 4.3 ข้อมูลสินค้าตัวอย่างที่ 3: "Recall & Incident Response" (สำหรับกรณีศึกษาด้านความปลอดภัย)
 > **วัตถุประสงค์**: แสดงความสามารถของแพลตฟอร์มในการรับมือวิกฤตความปลอดภัยในห่วงโซ่อุปทาน (Food Safety Incident)
 
 - **รหัสสินค้า (Product Code)**: `DEMO-COFFEE-ALERT-05`
@@ -259,7 +406,7 @@ flowchart LR
 
 ---
 
-## 4. ตารางคิวการนำเสนอและสคริปต์พูด 5 นาที (5-Minute Live Presentation Cue Sheet)
+## 5. ตารางคิวการนำเสนอและสคริปต์พูด 5 นาที (5-Minute Live Presentation Cue Sheet)
 
 | เวลา (Time) | หน้าจอ / ขั้นตอน (Screen / Action) | บัญชีที่ใช้ | ข้อมูลที่แสดง (Data Displayed) | บทพูดนำเสนอ (Thai Presenter Script) |
 | :---: | :--- | :--- | :--- | :--- |
@@ -272,7 +419,7 @@ flowchart LR
 
 ---
 
-## 5. ข้อมูลสถิติเชิงตัวเลขสำหรับใส่ในสไลด์นำเสนอ (Presentation Key Metrics)
+## 6. ข้อมูลสถิติเชิงตัวเลขสำหรับใส่ในสไลด์นำเสนอ (Presentation Key Metrics)
 
 | ตัวชี้วัด (Metric) | ค่าที่แสดง (Value) | คำอธิบายเพื่อสนับสนุนความน่าเชื่อถือ |
 | :--- | :--- | :--- |
@@ -285,7 +432,7 @@ flowchart LR
 
 ---
 
-## 6. แนวทางปฏิบัติกรณีเกิดเหตุขัดข้องหน้างาน (Demo Fallback Procedure)
+## 7. แนวทางปฏิบัติกรณีเกิดเหตุขัดข้องหน้างาน (Demo Fallback Procedure)
 
 1. **กรณี Sepolia RPC ช้า หรือ MetaMask Pending นาน**:
    - เปิดแท็บที่ 2 ซึ่งเตรียมหน้า `DEMO-COFFEE-GOLD-99` ที่มีประวัติธุรกรรมสมบูรณ์ไว้แล้ว
